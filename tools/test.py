@@ -207,43 +207,43 @@ def summarize_paper(paper_text: str, paper_name: str,subject: str) -> str:
         print(f"Error summarizing paper {paper_name}: {e}")
         return ""
 
-def batch_summarize_papers(keywords,txt_folder: str = "txt_papers", summaries_folder: str = "summaries"):
+def batch_summarize_papers(keywords: str, txt_folder: str = "txt_papers", summaries_folder: str = "summaries"): #added type hint
     """
     Summarize all text files in the folder.
     """
     print("\nGenerating summaries for all papers...")
     os.makedirs(summaries_folder, exist_ok=True)
-    
+
     txt_files = [f for f in os.listdir(txt_folder) if f.lower().endswith('.txt')]
     if not txt_files:
         return "No text files found in the specified folder."
-    
+
     all_summaries = []
     for txt_file in txt_files:
         try:
             print(f"\nProcessing: {txt_file}")
             txt_path = os.path.join(txt_folder, txt_file)
             summary_filename = os.path.join(summaries_folder, f"{os.path.splitext(txt_file)[0]}_summary.txt")
-            
+
             # Skip if summary already exists
             if os.path.exists(summary_filename):
                 print(f"Summary already exists, skipping: {summary_filename}")
                 with open(summary_filename, 'r', encoding='utf-8') as summary_file:
                     all_summaries.append(summary_file.read())
                 continue
-            
+
             with open(txt_path, 'r', encoding='utf-8') as file:
                 paper_text = file.read()
 
             paper_name = os.path.splitext(txt_file)[0]
-            summary = summarize_paper(paper_text, paper_name,keywords)
-            
+            summary = summarize_paper(paper_text, paper_name, keywords)  # Pass keywords here
+
             with open(summary_filename, 'w', encoding='utf-8') as summary_file:
                 summary_file.write(summary)
 
             all_summaries.append(summary)
             print(f"Summary saved to: {summary_filename}")
-            
+
         except Exception as e:
             print(f"Error processing {txt_file}: {e}")
             continue
@@ -409,7 +409,7 @@ These 3 sections should be short
 """
     return generate_markdown(prompt, 'abstract_intro.md')
 
-def process_papers(keywords: str, year_range: Tuple[int, int], num_papers: int) -> None:
+def process_papers(keywords: str, year_range: Tuple[int, int], num_papers: int) -> None: #added type hint
     print("Starting paper processing pipeline...")
 
     # Phase 1: Download PDFs
@@ -421,7 +421,7 @@ def process_papers(keywords: str, year_range: Tuple[int, int], num_papers: int) 
     print(f"\nPhase 2 Result: {result2}")
 
     # Phase 3: Summarize papers
-    summaries = batch_summarize_papers(keywords=keywords,txt_folder= "txt_papers", summaries_folder= "summaries")
+    summaries = batch_summarize_papers(keywords, "txt_papers", "summaries") # Pass keywords here
 
     # Phase 4: Create sections
     # print("\nGenerating Bibliometric Analysis section...")
