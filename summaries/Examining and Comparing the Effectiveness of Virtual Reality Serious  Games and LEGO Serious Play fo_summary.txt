@@ -1,0 +1,27 @@
+Okay, here's the summary:
+
+**Author:** Aldo Gordillo, Daniel López-Fernández, and Jesús Mayor
+**Title:** Examining and Comparing the Effectiveness of Virtual Reality Serious Games and LEGO Serious Play for Learning Scrum
+**Journal:** Applied Sciences
+**Pages:** 15
+**Year:** 2024
+**DOI:** https://doi.org/10.3390/app14020830
+**URL:** https://www.mdpi.com/journal/applsci/14/2/830
+
+**Relevance to the subject:** This paper directly examines two gamified approaches to learning, specifically for Scrum, which relates to the integration of Large Language Models (LLMs) in serious games, as LLMs could be incorporated into such experiences. The paper provides insights into the effectiveness of different game-based learning techniques.
+
+**Key Points:**
+
+This is an **Article** type of paper that investigates and compares the use of virtual reality (VR) serious games and LEGO Serious Play for teaching Scrum and agile practices. The study used a quasi-experimental design with two groups of software engineering students. Group A (22 students) learned through a VR serious game called ScrumVR, while Group B (37 students) participated in a LEGO Serious Play activity, both groups took pre- and post-tests to measure knowledge gain.
+
+The paper addresses three research questions: the effectiveness of VR serious games (RQ1), the effectiveness of LEGO Serious Play (RQ2), and a comparison of effectiveness between the two (RQ3).
+
+*   The results showed both methods effective for learning Scrum, demonstrating improvements in knowledge acquisition and motivation.
+*   The students using VR serious games (group A) showed statistically significant better results in learning performance than their peers using LEGO Serious Play (group B) *but* it's important to note they also started with less prior knowledge of Scrum.
+*   Both methods were well received by the students, demonstrating high levels of motivation, fun, and immersion.
+*  A notable finding was that a portion of the students in group A experienced dizziness during the VR activity, but it didn't seem to affect their overall perception of VR serious games as learning tool.
+*  The paper noted that while most students enjoyed both learning methods and would like to incorporate such activity again in their curriculum they preferred the complement the traditional method more than replacing it entirely.
+
+The paper concludes that both VR serious games and LEGO Serious Play are viable options for educators seeking innovative and engaging ways to teach agile methodologies like Scrum. The study provides a novel contribution to the field by comparing the learning effectiveness of VR serious games against LEGO Serious Play.
+
+**Citation:** The paper, [Examining and Comparing the Effectiveness of Virtual Reality Serious Games and LEGO Serious Play for Learning Scrum], suggests that both VR serious games and LEGO Serious Play are effective learning methods for Scrum, although it indicates that VR serious games resulted in better knowledge acquisition in this particular study.

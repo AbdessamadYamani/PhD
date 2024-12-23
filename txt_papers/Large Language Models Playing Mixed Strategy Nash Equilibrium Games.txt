@@ -1,0 +1,418 @@
+arXiv:2406.10574v2  [cs.GT]  12 Oct 2024Large Language Models Playing Mixed Strategy
+Nash Equilibrium Games
+Alonso Silva1
+Nokia Bell Labs, France
+alonso.silva@nokia-bell-labs.com
+https://www.bell-labs.com/about/researcher-profiles /alonsosilva/
+Abstract. Generative artiﬁcial intelligence (Generative AI), and in par-
+ticular Large Language Models (LLMs), has gained signiﬁcan t popularity
+among researchers and industrial communities, paving the w ay for the
+integration of LLMs in diﬀerent domains, such as robotics, t elecom, and
+healthcare. In this paper, we study the intersection of game theory and
+generative artiﬁcial intelligence, focusing on the capabi lities of LLMs to
+ﬁnd the Nash equilibrium in games with a mixed strategy Nash e qui-
+librium and no pure strategy Nash equilibrium (that we denot emixed
+strategy Nash equilibrium games ). The study reveals a signiﬁcant en-
+hancement in the performance of LLMs when they are equipped w ith
+the possibility to run code and are provided with a speciﬁc pr ompt to
+incentivize them to do so. However, our research also highli ghts the lim-
+itations of LLMs when the randomization strategy of the game is not
+easy to deduce. It is evident that while LLMs exhibit remarka ble proﬁ-
+ciency in well-known standard games, their performance dwi ndles when
+faced with slight modiﬁcations of the same games. This paper aims to
+contribute to the growing body of knowledge on the intersect ion of game
+theory and generative artiﬁcial intelligence while provid ing valuable in-
+sights into LLMs strengths and weaknesses. It also undersco res the need
+for further research to overcome the limitations of LLMs, pa rticularly in
+dealing with even slightly more complex scenarios, to harne ss their full
+potential.
+Keywords: Game Theory · LLMs · Generative AI.
+1 Introduction
+Generative artiﬁcial intelligence (Generative AI) has eme rged as a dynamic ﬁeld
+within AI, empowering machines with algorithms that enable them to generate
+unique content, including music, images, code, text, and hu man-like conversa-
+tions. One notable example is Large Language Models (LLMs), a speciﬁc type
+of Generative AI model that undergoes training on extensive unlabeled textual
+datasets. LLMs have demonstrated remarkable abilities in v arious domains, in-
+cluding question answering, translation, summarization, code generation, etc. [7].
+Generative AI, and in particular LLMs have gained signiﬁcan t popularity among
+2 Alonso Silva
+researchers and industrial communities, paving the way for integrating LLMs in
+diﬀerent domains, such as robotics [8], telecom [9], and hea lthcare [5].
+If we take a step back, we notice that in recent years the rapid advancement
+of artiﬁcial intelligence and machine learning technologi es has led to delegating
+an increasing number of tasks to machines. From automated cu stomer service
+chatbots to autonomous vehicles, these intelligent system s have demonstrated
+remarkable capabilities in handling complex tasks and augm enting human pro-
+ductivity. However, as our reliance on those machines grows , it becomes crucial
+to comprehend the extent of what we are delegating. LLMs have been employed
+in various domains, however amidst their impressive capabi lities, it is essential
+to acknowledge the potential drawbacks and limitations the y possess.
+One of the known drawbacks of LLMs is their capacity to random ize (see
+for example [4]), therefore we should approach with a certai n level of skepticism
+their performance on tasks when randomization is a critical factor. In the realm
+of game theory, randomization plays a pervasive role. A prim e illustration of this
+phenomenon is found in the notion of a mixed strategy Nash equ ilibrium. This
+concept entails a strategy wherein a player does not consist ently opt for the same
+action but rather elects each action with a speciﬁc probabil ity. This element of
+uncertainty adds depth and complexity to the strategic deci sion-making process,
+as players strategically allocate their choices based on th e likelihood of favorable
+outcomes.
+In this work, we focus our attention on the capabilities of LL Ms to ﬁnd the
+Nash equilibrium in games with a mixed strategy Nash equilib rium and no pure
+strategy Nash equilibrium (that throughout this work we den otemixed strategy
+Nash equilibrium games ). For other works, studying LLMs playing games, see
+for example [3] and [2]. In particular, we study two classic m ixed strategy Nash
+equilibrium games: matching pennies and rock, paper, sciss ors, which we describe
+in the following sections. These simple yet universally rec ognized games provide
+an ideal platform to evaluate the LLM capabilities in a contr olled environment.
+To perform our experiments, we used as LLM the Mistral v0.3 mo del and the
+quantized Hermes-2-Pro-Llama-3-8B, an advanced language model that lever-
+ages quantization to improve computational eﬃciency witho ut signiﬁcantly com-
+promising performance. We chose this open weights models to ensure that our ex-
+periments are designed and conducted in a manner that allows other researchers
+to replicate them accurately. This commitment to reproduci bility not only vali-
+dates our ﬁndings but also facilitates further research in t his area. Our code can
+be found on https://github.com/alonsosilvaallende/LLMs_Playing_ MSNE_Games .
+Another reason to use these models is that one of the key aspec ts we use in this
+paper is the model’s function-calling capabilities. This f eature allows the model
+to call functions to answer a user’s question. In this manusc ript, we only present
+the results for the Mistral v0.3 model (for Hermes-2-Pro-Ll ama-3-8B the results
+are similar and can be found in our code).
+Large Language Models Playing Mixed Strategy Nash Equilibr ium Games 3
+2 Matching Pennies game
+2.1 Problem description
+Matching Pennies game is a classic game. It is a two-player ze ro-sum game,
+meaning that any gain by one player is exactly oﬀset by the los s of the other
+player. The game works as follows:
+•Each player has two possible actions: to play Heads or Tails.
+•Both players reveal their choices simultaneously.
+•If both choices match (both Heads or both Tails), Player 1 win s. If the choices
+do not match (one Heads and one Tails), Player 2 wins.
+The payoﬀ matrix of the Matching Pennies game is given by Tabl e 1.
+Table 1. Payoﬀ matrix of the Matching Pennies game
+Heads Tails
+Heads (1,-1) (-1,1)
+Tails (-1,1) (1,-1)
+In the Matching Pennies game, the mixed strategy Nash equili brium occurs
+when each player chooses Heads or Tails with equal probabili ty (50% chance of
+Heads and 50% chance of Tails). This is because, given that th e other player is
+playing a 50-50 strategy, each player’s expected payoﬀ is th e same regardless of
+their own strategy. Therefore, they have no incentive to dev iate from the 50-50
+strategy, which makes it a Nash equilibrium.
+2.2 Game-playing capabilities of the LLM based purely on its
+pre-existing knowledge
+In this subsection, we investigate the capabilities of the L LM to play the game.
+First, we assess the LLM’s ability to recognize the game to se e if it is included
+in its pre-existing knowledge. To do this we use the followin g prompt:
+PROMPT: What is the mixed strategy Nash equilibrium for the matching
+pennies game?
+The response generated by the LLM indicates that indeed the N ash Equilib-
+rium of this game is included in its pre-existing knowledge:
+ANSWER: The Matching Pennies game is a two-player, zero-sum game whe re
+each player secretly chooses either heads (H) or tails (T). I f both players
+choose the same option, the player who chose ﬁrst wins the coi n, and if they
+choose diﬀerently, the second player wins.
+In a Nash equilibrium, neither player has an incentive to dev iate from
+their strategy if they believe the other player will stick to theirs. However,
+4 Alonso Silva
+in the Matching Pennies game, there is no pure strategy Nash e quilibrium
+because both players would have an incentive to deviate from their strategies
+if they knew what the other player was going to do.
+Instead, the Matching Pennies game has a mixed strategy Nash equilib-
+rium. In this case, each player should randomly choose heads or tails with
+equal probability (0.5). This way, neither player can gain a n advantage by
+deviating from their random choice, as they have no informat ion about the
+other player’s decision.
+So, the mixed strategy Nash equilibrium for the Matching Pen nies game
+is each player choosing H and T with a 50% probability.
+We assess the model’s ability to play the game of matching pen nies without
+any additional instruction. This evaluation is signiﬁcant as it tests the model’s
+capacity to comprehend and follow the game’s rules based pur ely on its pre-
+existing knowledge. To do this we use the following prompt:
+PROMPT: Respond to the following text with one of the following answe rs:
+‘heads’, ‘tails’. Provide your response in JSON format cont aining a single
+key ‘answer’. Text: Let’s play matching pennies. I have made my choice.
+Now, you should make your choice. What do you play?
+The idea of using JSON format with a single key is to make the po stprocessing
+of the LLM’s answers easier (we just need to extract the answe r from the JSON
+instead of having to search within a potentially long answer which was the action
+played by the LLM). This idea was taken from the Scikit-LLM li brary [1].
+We tested 1000diﬀerent seeds. The probabilities of obtaining Heads or Tai ls
+are given by Table 2.
+Table 2. Probabilities of obtaining Heads or Tails in the Matching Pe nnies game
+without any additional instruction.
+pHeads77.9%
+pTails22.1%
+We also tested a diﬀerent prompt explicitly telling the LLM t o play according
+to the mixed strategy Nash equilibrium of the game.
+PROMPT: Respond to the following text with one of the following answe rs:
+‘heads’, ‘tails’. Provide your response in JSON format cont aining a single
+key ‘answer’. Text: Let’s play matching pennies. I have made my choice.
+Now, you should make your choice. Play according to the mixed strategy
+Nash equilibrium. What do you play?
+We tested 1000diﬀerent seeds. The probabilities of obtaining Heads or Tai ls are
+given by Table 3.
+Large Language Models Playing Mixed Strategy Nash Equilibr ium Games 5
+Table 3. Probabilities of obtaining Heads or Tails in the Matching Pe nnies game with
+explicit prompt.
+pHeads81.6%
+pTails18.4%
+The responses generated by the LLM indicate that despite bot h the Matching
+Pennies game and its mixed strategy Nash equilibrium being i ncluded in its pre-
+existing knowledge, the LLM is unable to play according to th is strategy.
+2.3 Let LLMs run code
+In this subsection, we allow the LLM the possibility to run co de. To encourage
+the LLM to use this possibility we add the following text to th e prompt:
+Choose your choice first in valid Python code.
+Therefore, we use the following prompt:
+PROMPT: Let’s play matching pennies. I have made my choice. Now, you
+should make your choice. Choose your choice ﬁrst in valid Pyt hon code.
+The response generated by the LLM is the following:
+import random
+choice = random.randint(0,1)
+print("Heads" if choice == 0 else "Tails")
+This response indicates that despite the LLM being unable to play according
+to the mixed strategy Nash equilibrium, it does not have a pro blem generating
+the code to play the game according to the mixed strategy Nash equilibrium.
+Therefore, if we allow the LLM to run the code it generated, it indeed plays the
+mixed strategy Nash equilibrium.
+2.4 Modiﬁed Matching Pennies game
+In this subsection, we consider a modiﬁcation of the Matchin g Pennies (that
+we call the Modiﬁed Matching Pennies game) with the payoﬀ mat rix given by
+Table 4.
+Table 4. Payoﬀ matrix of the Modiﬁed Matching Pennies game
+Heads Tails
+Heads (7,-1) (-1,1)
+Tails (-1,1) (1,-1)
+6 Alonso Silva
+In this Modiﬁed Matching Pennies game, the only modiﬁcation is that if both
+players choose Heads, the ﬁrst player receives a payoﬀ of 7 in stead of 1 in the
+original matching pennies game. All the other payoﬀs are the same.
+The mixed strategy Nash equilibrium of the Modiﬁed Matching Pennies [6]
+is given by:
+•Player 1 plays both options (Heads and Tails) with equal prob ability1/2.
+•Player 2 plays Heads with probability 1/5and Tails with probability 4/5.
+To make the LLM play the Modiﬁed Matching Pennies Game, we nee d to
+be more explicit on the payoﬀ matrix since the LLM does not kno w it. We also
+need to add to the prompt the phrase "Choose your choice ﬁrst i n valid Python
+code." to encourage it to use this possibility. Therefore, w e use the following
+prompt:
+PROMPT: Let’s play a modiﬁcation of the Matching Pennies game. More
+precisely, each of us has two possible actions: to play Heads or Tails. We
+both reveal our choices simultaneously. If both of us play He ads, then I
+gain 7 points and you lose 1 point, if both of us play Tails, the n I gain 1
+point and you lose 1 point. If our choices do not match (one Hea ds and one
+Tails), you gain 1 point and I lose 1 point. I have made my choic e. Now,
+you should make your choice. What do you play? Choose your cho ice ﬁrst
+in valid Python code.
+The response generated by the LLM is the following:
+import random
+choice = "Heads" if random.randint(0,1) == 0 else "Tails"
+print("I have played", choice)
+This response is the same as the unmodiﬁed classic Matching P ennies game.
+The LLM is unable to ﬁnd the randomization needed to play the m ixed strategy
+Nash equilibrium of this slightly modiﬁed game.
+3 Rock, Paper, Scissors game
+3.1 Problem description
+The classic game of Rock, Paper, Scissors (RPS) is also a two- player zero-sum
+game. The game works as follows:
+•Each player has three possible actions: Rock, Paper, or Scis sors.
+•Both players reveal their choices simultaneously.
+•Rock crushes Scissors, Scissors cuts Paper, and Paper cover s Rock.
+The payoﬀ matrix of the original Rock, Paper, Scissors game i s given by
+Table 5. Given that payoﬀ matrix, it is well-known that the mi xed strategy
+Nash equilibrium for this game is for each player to play with equal probability
+of1/3each of the 3possible actions.
+Large Language Models Playing Mixed Strategy Nash Equilibr ium Games 7
+Table 5. Payoﬀ matrix of the Rock, Paper, Scissors game
+Rock Paper Scissors
+Rock (0, 0) (-1, 1) (1, -1)
+Paper (1, -1) (0, 0) (-1, 1)
+Scissors (-1, 1) (1, -1) (0, 0)
+3.2 Game-playing capabilities of the LLM based purely on its
+pre-existing knowledge
+In this subsection, we investigate the capabilities of the L LM to play the game.
+First, we assess the LLM’s ability to recognize the game to se e if it is included
+in its pre-existing knowledge. To do this we use the followin g prompt:
+PROMPT: What’s the Mixed Strategy Nash equilibrium for the rock, pap er,
+scissors game?
+The response generated by the LLM indicates that indeed the N ash Equilib-
+rium of this game is included in its pre-existing knowledge:
+ANSWER: In a one-shot Rock, Paper, Scissors (RPS) game between two pl ay-
+ers, there is no pure strategy Nash equilibrium because if bo th players choose
+the same strategy, they can be beaten by a deviation to anothe r strategy.
+However, in repeated games with perfect information and no b ounds on the
+number of repetitions, a mixed strategy Nash equilibrium ca n exist.
+In this case, each player randomly chooses their move (rock, paper, scis-
+sors) with probabilities that make it unproﬁtable for eithe r player to deviate
+from their chosen strategy. One possible set of such probabi lities is:
+- Player 1 plays rock with a probability of 1/3, paper with a pr obability
+of 1/3, and scissors with a probability of 1/3. - Player 2 play s rock with
+a probability of 1/3, paper with a probability of 1/3, and sci ssors with a
+probability of 1/3.
+In this mixed strategy Nash equilibrium, neither player has an incentive
+to deviate from their chosen strategy because the expected p ayoﬀ for each
+move is the same against every possible move of the other play er. This
+results in a draw on average, as each player wins approximate ly one-third
+of the games against the other player’s strategies.
+We assess the model’s ability to play the rock, paper, scisso rs game without
+any additional instruction. This evaluation is signiﬁcant as it tests the model’s
+capacity to comprehend and follow the game’s rules based pur ely on its pre-
+existing knowledge. To do this we use the following prompt:
+PROMPT: Let’s play rock, paper, scissors. I have made my choice. Now, you
+should make your choice. What do you play?
+We tested 1000diﬀerent seeds. The probabilities of obtaining rock, paper or
+scissors are given by Table 6.
+8 Alonso Silva
+Table 6. Probabilities of obtaining Rock, Paper, or Scissors withou t any additional
+instruction
+pRock 51.6%
+pPaper 0.0%
+pScissors 48.4%
+We also tested a diﬀerent prompt explicitly telling the LLM t o play according
+to the mixed strategy Nash equilibrium of the game:
+PROMPT: Let’s play rock, paper, scissors. I have made my choice. Now,
+you should make your choice. Play according to the mixed stra tegy Nash
+equilibrium. What do you play?
+We tested 1000 diﬀerent seeds. The probabilities of obtaini ng rock, paper, or
+scissors are given by Table 7.
+Table 7. Probabilities of obtaining Rock, Paper, or Scissors withou t any additional
+instruction
+pRock 6.7%
+pPaper 18.7%
+pScissors 74.6%
+The responses generated by the LLM indicate that despite bot h the matching
+pennies game and its mixed strategy Nash equilibrium being i ncluded in its pre-
+existing knowledge, the LLM is unable to play according to th is strategy.
+3.3 Let LLMs run code
+In this subsection, similar to the Matching Pennies game, we allow the LLM the
+possibility to run code. To encourage the LLM to use this poss ibility, we use the
+following prompt:
+PROMPT: Let’s play rock, paper, scissors. I have made my choice. Now, you
+should make your choice. Choose your choice ﬁrst in code.
+The response generated by the LLM is the following:
+import random
+choice = ["rock", "paper", "scissors"]
+computer_choice = random.choice(choice)
+user_input = input("Enter your choice (rock, paper or sciss ors): ")
+if user_input == computer_choice:
+print("It’s a tie!")
+elif (user_input == "rock" and computer_choice == "scissor s") or \
+Large Language Models Playing Mixed Strategy Nash Equilibr ium Games 9
+(user_input == "paper" and computer_choice == "rock") or \
+(user_input == "scissors" and computer_choice == "paper") :
+print("You win!")
+else:
+print("Computer wins!")
+Similar to the case of the Matching Pennies game, this respon se indicates
+that despite the LLM being unable to play according to the mix ed strategy
+Nash equilibrium, it does not have a problem generating the c ode to play the
+game according to the mixed strategy Nash equilibrium.
+3.4 Modiﬁed Rock, Paper, Scissors Game
+In this subsection, we consider a modiﬁcation of the Rock, Pa per, Scissors game
+(that we call the Modiﬁed Rock, Paper, Scissors game) with th e payoﬀ matrix
+given by Table 8.
+Table 8. Payoﬀ matrix of the Modiﬁed Rock, Paper, Scissors game
+Rock Paper Scissors
+Rock (0, 0) (-2, 2) (1, -1)
+Paper (2, -2) (0, 0) (-1, 1)
+Scissors (-1, 1) (1, -1) (0, 0)
+To make the LLM play the Modiﬁed Rock, Paper, Scissors Game, w e need to
+be more explicit on the payoﬀ matrix since the LLM does not kno w it. We also
+need to add to the prompt the phrase "Choose your choice ﬁrst i n valid Python
+code." to encourage it to use this possibility. Therefore, w e use the following
+prompt:
+PROMPT: Let’s play once a modiﬁcation of rock, paper, scissors. More pre-
+cisely, if I play rock and you play scissors, then I gain 1 doll ar and you lose
+1 dollar, if I play scissors and you play paper, then I gain 1 do llar and you
+lose 1 dollar, however, if I play paper and you play rock then I gain 2 dollars
+and you lose 2 dollars. The same holds by changing our roles. I have made
+my choice. Now, you should make your choice. What do you play? Choose
+your choice ﬁrst in valid Python code.
+The mixed strategy Nash equilibrium of the Modiﬁed Rock, Pap er, Scissors
+game [6] is given by Table 9.
+The response generated by the LLM is the following:
+import random
+choice = [’rock’, ’paper’, ’scissors’]
+user_choice = input(’Enter your choice (rock, paper or scis sors): ’)
+computer_choice = choice[random.randint(0, 2)]
+10 Alonso Silva
+Table 9. Nash equilibrium strategy for the Modiﬁed Rock, Paper, Scis sors game with
+payoﬀ matrix given by Table 8
+pRock 1/4
+pPaper 1/4
+pScissors 1/2
+if user_choice == computer_choice:
+print(’It is a tie!’)
+elif (user_choice == ’rock’ and computer_choice == ’scisso rs’) or \
+(user_choice == ’scissors’ and computer_choice == ’paper’ ) or \
+(user_choice == ’paper’ and computer_choice == ’rock’):
+print(’You lose 1 dollar. The computer plays’, computer_ch oice)
+else:
+print(’You win 1 dollar. The computer plays’, computer_cho ice)
+This response is similar to the response of the unmodiﬁed cla ssic Rock, Paper,
+Scissors game. The LLM is unable to ﬁnd the randomization nee ded to play
+the mixed strategy Nash equilibrium of this slightly modiﬁe d game (nor the
+modiﬁcation of the payments).
+4 Conclusions
+Our study on the intersection of game theory and generative a rtiﬁcial intelli-
+gence, particularly focusing on Large Language Models (LLM s), has provided
+valuable insights into the capabilities and limitations of LLMs in identifying
+Nash equilibria in mixed strategy games. Our ﬁndings demons trate that LLMs
+can signiﬁcantly enhance their performance when they are en abled to run code
+and are given speciﬁc prompts that encourage this functiona lity. This capability
+allows LLMs to perform well in standard game scenarios where the strategies
+are well-deﬁned and well-documented.
+However, the study also highlights critical limitations in the adaptability of
+LLMs when confronted with games that involve complex random ization strate-
+gies or slight modiﬁcations from standard scenarios. In suc h cases, the perfor-
+mance of LLMs noticeably declines, suggesting that while LL Ms are proﬁcient
+in handling familiar and straightforward game dynamics, th eir eﬀectiveness is
+reduced in more complex or altered game setups.
+This research underscores the necessity for ongoing develo pment in the ﬁeld of
+generative AI to enhance the robustness and ﬂexibility of LL Ms. Future research
+should focus on improving the ability of LLMs to handle a broa der array of game
+types, particularly those that deviate from standard forms , to fully leverage the
+potential of LLMs in practical and theoretical application s. Additionally, further
+studies are required to explore the integration of advanced machine learning
+techniques that could aid LLMs in better understanding and a dapting to complex
+game strategies.
+Large Language Models Playing Mixed Strategy Nash Equilibr ium Games 11
+Overall, our work contributes to the expanding knowledge ba se at the in-
+tersection of game theory and artiﬁcial intelligence and op ens up new avenues
+for research in enhancing the capabilities of generative AI systems in complex
+decision-making scenarios.
+Acknowledgments. The work presented in this paper has been partially carried o ut
+at LINCS (http://www.lincs.fr).
+References
+1. Scikit-LLM, https://github.com/koderEngine/scikit-llm
+2. Akata, E., Schulz, L., Coda-Forno, J., Oh, S.J., Bethge, M ., Schulz, E.: Playing
+repeated games with large language models (2023)
+3. Brookins, P., Debacker, J.: Playing games with GPT: What c an we learn about
+a large language model from canonical strategic games? SSRN Electronic Journal
+(2023),https://api.semanticscholar.org/CorpusID:259714625
+4. Hopkins, A.K., Renda, A., Carbin, M.: Can LLMs generate ra ndom
+numbers? Evaluating LLM sampling in controlled domains. In : ICML
+2023 Workshop: Sampling and Optimization in Discrete Space (2023),
+https://openreview.net/forum?id=Vhh1K9LjVI
+5. Javaid, M., Haleem, A., Singh, R.P.: Chatgpt for healthca re services:
+An emerging stage for an innovative perspective. BenchCoun cil Trans-
+actions on Benchmarks, Standards and Evaluations 3(1), 100105 (2023).
+https://doi.org/https://doi.org/10.1016/j.tbench.20 23.100105 ,
+https://www.sciencedirect.com/science/article/pii/S 2772485923000224
+6. Spaniel, W.: Game Theory 101: The Complete Textbook. Crea teSpace Independent
+Publishing Platform (2011), https://books.google.de/books?id=4d2xoAEACAAJ
+7. Yenduri, G., Ramalingam, M., Selvi, G.C., Supriya, Y., Sr ivastava, G., Mad-
+dikunta, P.K.R., Raj, G.D., Jhaveri, R.H., Prabadevi, B., W ang, W., Vasi-
+lakos, A.V., Gadekallu, T.R.: GPT (Generative Pre-trained Transformer)— a
+comprehensive review on enabling technologies, potential applications, emerg-
+ing challenges, and future directions. IEEE Access 12, 54608–54649 (2023),
+https://api.semanticscholar.org/CorpusID:258762263
+8. Zeng, F., Gan, W., Wang, Y., Liu, N., Yu, P.S.: Large langua ge models for robotics:
+A survey (2023)
+9. Zou, H., Zhao, Q., Bariah, L., Bennis, M., Debbah, M.: Wire less multi-agent gener-
+ative ai: From connected intelligence to collective intell igence (2023)
+ϬϱϭϬ ϭϱ ϮϬ Ϯϱ ϯϬ ϯϱ ϰϬ ϰϱ ϱϬ 
+Ϭ ϱ ϭϬ ϭϱ ϮϬ Ϯϱ ϯϬ ĂƚĂ 
+ĂƚĂ 

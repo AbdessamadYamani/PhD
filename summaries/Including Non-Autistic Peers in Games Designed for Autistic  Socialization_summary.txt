@@ -1,0 +1,30 @@
+Okay, here's the summary of the paper:
+
+**Author:** Yiqi Xiao
+**Title:** Including Non-Autistic Peers in Games Designed for Autistic Socialization
+**Journal:** (Not explicitly stated in the text but can be considered as a  conference or journal paper since it has references and author affiliation)
+**Pages:** 1-9
+**Year:** 2024 (Based on accessed dates and the mention of the 2023 CDC data).
+**DOI:** (Not provided in the text)
+**URL:** (Not provided in the text)
+
+**Relevance to the Subject:** This paper is highly relevant to the subject of integrating Large Language Models (LLMs) in Serious Games because it challenges the traditional, medically-focused approach to designing serious games for autistic individuals. It advocates for a neurodiversity approach, emphasizing inclusivity, affirmation, and safety, which could influence how LLMs are utilized in serious games to promote better social interactions. Specifically, the insights on designing for neurodiversity could be used to guide the development of more inclusive and affirming ways to integrate LLMs in serious games, avoiding the common mistake of using LLMs to simply make autistic people appear more "normal".
+
+**Key Points (as written in the paper):**
+
+*   **The problem:** Current public social games present safety risks for autistic children, and existing serious games for autism primarily focus on "fixing" them to fit neurotypical social norms, often excluding non-autistic peers. This approach is rooted in the medical model of autism, which can cause self-repression and feelings of not belonging.
+*   **The alternative:** The paper proposes a neurodiversity approach to serious game design, which emphasizes:
+    *   **Inclusiveness:** Games should involve both autistic and non-autistic children.
+    *   **Affirmation:** Games should allow players to feel comfortable and confident expressing their neuro-identity, not designed to focus on their challenges.
+    *   **Safety:** Games should avoid social risks during interactions.
+*   **Case Studies Analysis:**
+    *   **Case Study I:** A hybrid game promoting emotion recognition is identified as "inclusive" and "safe" but not "affirming" due to its focus on conforming to social expectations.
+    *   **Case Study II:** A collaborative puzzle game for autistic children is considered "affirming" and "safe" but not "inclusive" because it only involves autistic children.
+    *   **Case Study III:** Autcraft, a modified Minecraft server, is analyzed as “affirming” and partially “inclusive” by limiting access and providing enhanced supervision. It's presented as a call for designers to acknowledge the needs of autistic individuals for safe and affirming social interactions.
+*   **Limitations of Current Practices:** The paper highlights that neither public social games nor serious games designed solely for autistic children adequately provide a safe environment for social interactions between autistic and non-autistic individuals.
+*    **Core Message:** The paper calls for a shift in focus from "teaching autistic children social skills" to "facilitating neurodiverse social interactions" through games. The neurodiversity approach in game design is like "an open door."
+*   **Acknowledgment:** The author thanks Boyang Wu and Katryna Starks for their assistance.
+
+**Citation:**
+
+The type of this paper is an academic paper, could be a journal or a conference paper based on structure, content and references section.  And the citation is:  Xiao, Y. (2024). Including Non-Autistic Peers in Games Designed for Autistic Socialization.

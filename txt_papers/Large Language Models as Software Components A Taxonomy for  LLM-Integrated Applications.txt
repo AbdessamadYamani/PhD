@@ -1,0 +1,2025 @@
+Large Language Models as Software Components:
+A Taxonomy for LLM-Integrated Applications
+Irene Weber
+Kempten University of Applied Sciences, Germany
+irene.weber@hs-kempten.de
+Abstract
+Large Language Models (LLMs) have become widely adopted recently. Research explores their use both
+as autonomous agents and as tools for software engineering. LLM-integrated applications, on the other
+hand, are software systems that leverage an LLM to perform tasks that would otherwise be impossible or
+requiresignificantcodingeffort. WhileLLM-integratedapplicationengineeringisemergingasnewdiscipline,
+its terminology, concepts and methods need to be established. This study provides a taxonomy for LLM-
+integratedapplications, offeringaframeworkforanalyzinganddescribingthesesystems. Italsodemonstrates
+various ways to utilize LLMs in applications, as well as options for implementing such integrations.
+Following established methods, we analyze a sample of recent LLM-integrated applications to identify rel-
+evant dimensions. We evaluate the taxonomy by applying it to additional cases. This review shows that
+applications integrate LLMs in numerous ways for various purposes. Frequently, they comprise multiple
+LLM integrations, which we term “LLM components”. To gain a clear understanding of an application’s
+architecture, we examine each LLM component separately. We identify thirteen dimensions along which to
+characterize an LLM component, including the LLM skills leveraged, the format of the output, and more.
+LLM-integrated applications are described as combinations of their LLM components. We suggest a concise
+representation using feature vectors for visualization.
+The taxonomy is effective for describing LLM-integrated applications. It can contribute to theory building in
+the nascent field of LLM-integrated application engineering and aid in developing such systems. Researchers
+and practitioners explore numerous creative ways to leverage LLMs in applications. Though challenges
+persist, integrating LLMs may revolutionize the way software systems are built.
+Keywords: large language model, LLM-integrated, taxonomy, copilot, architecture, AI agent, LLM
+component
+1. Introduction
+Large Language Models (LLMs) have significantly
+impacted various sectors of economy and society [47].
+Due to their proficiency in text understanding, cre-
+ative work, communication, knowledge work, and
+code writing, they have been adopted in numerousfields, such as medicine, law, marketing, education,
+human resources, etc.
+Public discussions often focus on the ethical aspects
+and societal consequences of these systems [36, 39].
+Meanwhile, research investigates Artificial General
+Intelligences and autonomous AI agents that can use
+services, data sources, and other tools, and collabo-arXiv:2406.10300v1  [cs.SE]  13 Jun 2024
+rate to solve complex tasks [11, 62, 57, 21]. In addi-
+tion, LLMs offer many opportunities to enhance soft-
+ware systems. They enable natural language interac-
+tion [59], automate complex tasks [19], and provide
+supportive collaboration, as seen with recent LLM-
+basedassistantproductsoftenbrandedas“copilots”1.
+This paper addresses the potential of LLMs for soft-
+ware development by integrating their capabilities as
+components into software systems. This contrasts
+with current software engineering research, which
+views LLMs as tools for software development rather
+than as software components [14, 22], and with the
+considerable body of research examining LLMs as au-
+tonomous agents within multiagent systems [21].
+Software systems that invoke an LLM and process
+its output are referred to as “LLM-integrated appli-
+cations”, “LLM-integrated systems”, “LLM-based ap-
+plications”, etc. [32, 13, 57]. LLMs are versatile, mul-
+tipurpose tools capable of providing functionalities
+that would otherwise be unfeasible or require sub-
+stantial development efforts [15, 24]. By significantly
+expediting system development, they have the poten-
+tial to revolutionize not only the way users interact
+with technology, but also the fundamental processes
+of software development.
+LLM-integrated applications engineering is emerging
+as a research field. E.g., [10] proposes LLM Sys-
+temsEngineering(LLM-SE)asanoveldiscipline,and
+[44, 8, 7] discuss experiences and challenges that de-
+velopers of such systems encounter in practice.
+This study develops a taxonomy that provides a
+structured framework for categorizing and analyzing
+LLM-integrated applications across various domains.
+To develop and evaluate the taxonomy, we collected
+a sample of LLM-integrated applications, concentrat-
+ing on technical and industrial domains. These ap-
+plications showcase a broad range of opportunities
+to leverage LLMs, often integrating LLMs in mul-
+tiple ways for distinct purposes. In developing the
+taxonomy, we found that examining each of these in-
+tegrations, termed “LLM components”, separately is
+1E.g., https://docs.github.com/en/copilot ,
+https://copilot.cloud.microsoft/en-us/copilot-excel ,
+https://www.salesforce.com/einsteincopilotcrucial for a clear understanding of an application’s
+architecture.
+The taxonomy adopts an original architectural per-
+spective, focusing on how the application interacts
+with the LLM while abstracting from the specifics
+of application domains. For researchers, the taxon-
+omy contributes to shape a common understanding
+and terminology, thus aiding theory building in this
+emerging domain [29, 50, 18]. For practitioners, the
+taxonomy provides inspiration for potential uses of
+LLMs in applications, presents design options, and
+helps identify challenges and approaches to address
+them.
+Objectives. In this study, a taxonomy is understood
+as a set of dimensions divided into characteristics.
+Theobjectiveistoidentifydimensionsthatareuseful
+for categorizing the integration of LLMs in applica-
+tions from an architectural perspective. To be most
+effective, the taxonomy should be easy to understand
+and apply, yet distinctive enough to uncover the es-
+sential aspects. Additionally, we aim to develop a
+visual representation tailored to the taxonomy’s in-
+tended purposes.
+Overview. The following section 2 provides back-
+ground on LLMs and introduces relevant concepts.
+Section 3 presents an overview of related work. The
+study design adheres to a Design Science Research
+approach[46]. Weapplyestablishedmethodsfortax-
+onomy design [42, 48] as described in Section 4. This
+section also presents the sample of LLM-integrated
+applications used for this study. The developed tax-
+onomy is presented, demonstrated and formally eval-
+uated in section 5. In section 6, we discuss its usabil-
+ity and usefulness. Section 7 summarizes the contri-
+butions, addresses limitations, and concludes.
+2. Large Language Models
+2.1. Background
+State-of-the-art LLMs such as GPT-3.5, GPT-4,
+Llama, PALM2, etc., are artificial neural networks
+consisting of neurons, i.e., very simple processing
+2
+units, that are organized in layers and connected by
+weighted links. Training a neural network means
+adapting these weights such that the neural network
+shows a certain desired behavior. Specifically, an
+LLM is trained to predict the likelihoods of pieces
+of text termed, tokens, to occur as continuations of
+a given text presented as input to the LLM. This in-
+put is referred to as prompt. The prompt combined
+with the produced output constitutes the contextof
+an LLM. It may comprise more than 100k tokens in
+state-of-the-artLLMs2. Still, itslengthislimitedand
+determinesthemaximumsizeofpromptsandoutputs
+that an LLM is capable of processing and generating
+at a time.
+Training of an LLM optimizes its parameters such
+that its computed likelihoods align with real text ex-
+amples. The training data is a vast body of text snip-
+pets extracted, processed, and curated from sources
+suchasWikipedia,Githubcoderepositories,common
+websites, books, or news archives. An LLM trained
+on massive examples is termed a foundation model
+orpre-trained model . During training, an LLM not
+only learns to produce correct language but also ab-
+sorbs and stores information and factual knowledge.
+However, it is well known that LLMs frequently pick
+up biases, leading to ethical problems. They may
+also produce factually incorrect outputs that sound
+plausible and convincing, termed hallucinations .
+Recent findings show that LLMs can be applied to
+a wide range of tasks by appropriately formulating
+prompts. Different prompt patterns succeed in dif-
+ferent tasks. Basic approaches rely on instructing
+the LLM to solve a task described or explained in
+the prompt. In few-shot prompting (also known as
+few-shot learning), the prompt is augmented with ex-
+ampleinput-outputpairsillustratinghowtosolvethe
+task, e.g., the requested output format. The number
+of examples can vary. Prompting with one example is
+calledone-shot prompting, while prompting without
+anyexamplesiscalled zero-shot prompting. One-shot
+andfew-shot prompting fall under the broader cat-
+egory of in-context learning . Prompt patterns such
+2https://platform.openai.com/docs/modelsaschain-of-thought andthinking-aloud aim to elicit
+advanced reasoning capabilities from LLMs.
+As effective prompts are crucial for unlocking the di-
+verse capabilities of an LLM, the discipline of prompt
+engineering is evolving, focusing on the systematic
+design and management of prompts [66, 9, 53, 31].
+2.2. Definitions
+Invoking an LLM results in an input-processing-
+output sequence: Upon receiving a prompt, the LLM
+processes it and generates an output. We refer to an
+individual sequence of input-processing-output per-
+formed by the LLM as LLM invocation , and define
+anLLM-integrated application as a system in which
+the software generates the prompt for the LLM and
+processes its output. The concept of an application
+is broad, encompassing service-oriented architectures
+and systems with components loosely coupled via
+API calls.
+Given an LLM’s versatility, an application can uti-
+lize it for different tasks, each demanding a specific
+approach to create the prompt and handle the re-
+sult. This paper defines a particular software compo-
+nentthataccomplishesthisasan LLM-based software
+component or, simply, LLM component . An LLM-
+integrated application can comprise several LLM
+components. The study develops a taxonomy for
+LLM components. LLM-integrated applications are
+described as combinations of their LLM components.
+3. Related Work
+With the recent progress in generative AI and LLMs,
+the interest in these techniques has increased, and
+numerous surveys have been published, providing an
+extensive overview of technical aspects of LLMs [72],
+reviewingLLMsastoolsforsoftwareengineering[22],
+and discussing the technical challenges of applying
+LLMs across various fields [25]. Further studies ad-
+dress the regulatory and ethical aspects of Genera-
+tive AI and ChatGPT, with a particular focus on
+AI-human collaboration [41], and Augmented Lan-
+guage Models (ALMs), which are LLMs that enhance
+3
+their capabilities by querying tools such as APIs,
+databases, and web search engines [38].
+Taxomonies related to LLMs include a taxonomy for
+prompts designed to solve complex tasks [49] and a
+taxonomy of methods for cost-effectively invoking a
+remote LLM [60]. A comparative analysis of stud-
+ies on applications of ChatGPT is provided by [27],
+whereas LLMs are compared based on their applica-
+tion domains and the tasks they solve in [20]. Most
+closely related to the taxonomy developed here is a
+taxonomy for LLM-powered multiagent architectures
+[21] which focuses on autonomous agents with less
+technical detail. Taxonomies of applications of AI in
+enterprises [48] and applications of generative AI, in-
+cluding but not limited to LLMs [52], are developed
+using methods similar to those in our study.
+Several taxonomies in the field of conversational
+agents and task-oriented dialog (TOD) systems ad-
+dresssystemarchitecture[1,40,12,3]. However, they
+omitdetailedcoverageoftheintegrationofgenerative
+language models.
+4. Methods
+We constructed the taxonomy following established
+guidelines [42, 48, 29], drawing from a sample of
+LLM-integrated applications. These applications are
+detailed in section 4.1.
+4.1. Development
+Taxonomy. We derived an initial taxonomy from the
+standard architecture of conversational assistants de-
+scribed in [3], guided by the idea that conversational
+assistants are essentially “chatbots with tools”, i.e.,
+language-operated user interfaces that interact with
+externalsystems. Thisapproachprovedunsuccessful.
+The second version was based on the classical three-
+tier software architecture, and then extended over
+several development cycles. By repeatedly apply-
+ing the evolving taxonomy to the example instances,
+we identified dimensions and characteristics using an
+“empirical-to-conceptual” approach. When new di-
+mensionsemerged, additionalcharacteristicswerede-
+rived in a “conceptual-to-empirical” manner. Afterfive major refinement cycles, the set of dimensions
+and characteristics solidified. In the subsequent eval-
+uation phase, we applied the taxonomy to a new set
+of example instances that were not considered while
+constructing the taxonomy. As the dimensions and
+characteristics remained stable, the taxonomy was
+considered complete. In the final phase, we refined
+the wording and visual format of the taxonomy.
+Visualization. Developing a taxonomy involves cre-
+ating a representation that effectively supports its
+intended purpose [29]. Taxonomies can be repre-
+sented in various formats, with morphological boxes
+[54, 55] or radar charts [21] being well-established
+approaches. We evaluated morphological boxes, be-
+cause they effectively position categorized instances
+withinthedesignspace. However, wefoundthatthey
+make it difficult to perceive a group of categorized in-
+stances as a whole since they occupy a large display
+area. This drawback is significant for our purposes,
+as LLM-integrated applications often comprise mul-
+tiple LLM components. Therefore, we developed a
+more condensed visualization of the taxonomy based
+on feature vectors.
+Example instances. We searched for instances of
+LLM-integrated applications for taxonomy develop-
+ment that should meet the following criteria:
+•The application aims for real-world use rather
+than focusing on research only (such as testbeds
+for experiments or proofs-of-concept). It demon-
+strateseffortstowardspracticalusabilityandad-
+dresses challenges encountered in real-world sce-
+narios.
+•The application’s architecture, particularly its
+LLM components, is described in sufficient de-
+tail for analysis.
+•The sample of instances covers a diverse range
+of architectures.
+•Theexampleinstancesaresituatedwithinindus-
+trial or technical domains, as we aim to focus on
+LLM-integrated applications beyond well-known
+fields like law, medicine, marketing, human re-
+sources, and education.
+4
+The search revealed a predominance of theoretical re-
+search on LLM-integrated applications while papers
+focusing on practically applied systems were scarce.
+Searching non-scientific websites uncovered commer-
+cially advertised AI-powered applications, but their
+internalworkingsweretypicallyundisclosed, andreli-
+able evaluations were lacking. Furthermore, the het-
+erogeneous terminology and concepts in this emerg-
+ing field make a comprehensive formal literature
+search unfeasible. Instead, by repeatedly search-
+ing Google Scholar and non-scientific websites using
+terms “LLM-integrated applications”, “LLM-powered
+applications”, “LLM-enhanced system”, “LLM” and
+“tools”, alongsimilarvariants, weselectedsixsuitable
+instances. Some of them integrate LLMs in multiple
+ways, totaling eleven distinct LLM components.
+For a thorough evaluation, we selected new instances
+using relaxed criteria, including those intended for
+research. Additionally, we included a real-world ex-
+ample lacking explicit documentation to broaden the
+diversity of our sample and assess the taxonomy’s
+coverage. Within the five selected instances, we iden-
+tified ten LLM components.
+4.2. Sample of LLM-integrated applications
+Table1givesanoverviewofthesample. Namesofap-
+plications and LLM components are uniformly writ-
+tenasoneCamelCasewordandtypesetinsmallcaps,
+deviating from the format chosen by the respective
+authors.
+Honeycomb .Honeycomb is an observability plat-
+form collecting data from software applications in
+distributed environments for monitoring. Users
+define queries to retrieve information about the
+observed software systems through Honeycomb ’s
+Query Builder UI. The recently added LLM-based
+QueryAssistant allows users to articulate inquiries
+in plain English, such as “slow endpoints by status
+code” or “which service has the highest latency?”
+TheQueryAssistant converts these into queries in
+Honeycomb ’s format, which users can execute and
+manually refine [7, 8].LowCode .LowCode is a web-based application
+consisting of a prompt-definition section and a di-
+alogue section. The prompt-definition section sup-
+ports the design of prompts for complex tasks, such
+as composing extensive essays, writing resumes for
+job applications or acting as a hotel service chatbot
+[5]. In the dialogue section, users converse with an
+LLM to complete the complex task based on the de-
+fined prompt.
+LowCode comprises two LLM components termed
+Planning andExecuting .Planning operates in
+the prompt-definition section, where a user roughly
+describes a complex task, and Planning designs a
+workflowforsolvingit. Theprompt-definitionsection
+offers a low-code development environment where the
+LLM-generated workflow is visualized as a graphi-
+cal flowchart, allowing a user to edit and adjust the
+logic of the flow and the contents of its steps. For
+instance, in essay-writing scenarios, this involves in-
+serting additional sections, rearranging sections, and
+refining the contents of sections. Once approved by
+the user, LowCode translates the modified work-
+flow back into natural language and incorporates it
+into a prompt for Executing . In the dialogue sec-
+tion, users converse in interactive, multi-turn dia-
+logueswith Executing . Asdefinedintheprompt, it
+acts as an assistant for tasks such as writing an essay
+or resume, or as a hotel service chatbot. While the
+idea of the LLM planning a workflow might suggest
+using the LLM for application control, LowCode
+Planning actuallyservesasapromptgeneratorthat
+supports developing prompts for complex tasks.
+MyCrunchGpt .MyCrunchGpt acts as an ex-
+pert system within the engineering domain, specif-
+ically for airfoil design and calculations in fluid me-
+chanics. These tasks require complex workflows com-
+prising several steps such as preparing data, param-
+eterizing tools, and evaluating results, using vari-
+ous software systems and tools. The aim of My-
+CrunchGpt is to facilitate the definition of these
+workflows and automate their execution [28].
+MyCrunchGpt offers a web interface featuring a
+dialogue window for inputting commands in plain
+English, along with separate windows displaying the
+5
+Table 1: Example instances selected for development (top 6) and evaluation (bottom 5)
+Application References LLM components
+Honeycomb [7, 8] QueryAssistant
+LowCode [5],[35] Planning ,Executing
+MyCrunchGpt [28] DesignAssistant ,SettingsEditor ,DomainExpert
+MatrixProduction [69] Manager ,Operator
+WorkplaceRobot [37] TaskPlanning
+AutoDroid [64] TaskExecutor ,MemoryGenerator
+ProgPrompt [51] ActionPlanning ,ScenarioFeedback
+FactoryAssistants [26] QuestionAnswering
+SgpTod [71] DstPrompter ,PolicyPrompter
+TruckPlatoon [70] Reporting
+ExcelCopilot [16, 44] ActionExecutor ,Advisor ,IntentDetector ,Explainer
+output and results of software tools invoked by My-
+CrunchGpt in the backend. MyCrunchGpt relies
+on predefined workflows, not supporting deviations
+or cycles. By appending a specific instruction to the
+dialogue history in the prompt for each step of the
+workflow, it uses the LLM as a smart parser to ex-
+tract parameters for APIs and backend tools from
+user input. APIs and tools are called in the prede-
+fined order [28, p. 56].
+MyCrunchGpt is still in development. The paper
+[28] explains the domain as well as the integration of
+the LLM, but does not fully detail the implementa-
+tion of the latter. Still, MyCrunchGpt illustrates
+innovative applications of an LLM in a technical do-
+main. We categorize three LLM components solving
+tasks within MyCrunchGpt : aDesignAssistant
+guiding users through workflows and requesting pa-
+rameters for function and API calls; a SettingsEd-
+itorupdating a JSON file with settings for a back-
+endsoftwaretool; anda DomainExpert whichhelps
+evaluating results by comparing them to related re-
+sults, e.g., existing airfoil designs, which it derives
+from its trained knowledge.
+MatrixProduction .MatrixProduction em-
+ploys an LLM for controlling a matrix production
+system [69]. While in a classical line production
+setup, workstations are arranged linearly and the
+manufacturing steps follow a fixed sequence, matrix
+production is oriented towards greater flexibility.Autonomous transport vehicles carry materials
+and intermediate products to workstations, termed
+automation modules, each offering a spectrum of
+manufacturing skills that it can contribute to the
+production process. Compared to line production,
+matrix production is highly adaptable and can
+manufacture a variety of personalized products with
+full automation. This requires intelligent production
+management to (a) create workplans that orchestrate
+and schedule the automation modules’ skills, and (b)
+program the involved automation modules such that
+they execute the required processing steps.
+MatrixProduction incorporates two LLM compo-
+nents: Manager creates workplans as sequences of
+skills (a), while Operator generates programs for
+the involved automation modules (b).
+MatrixProduction prompts Manager andOp-
+erator to provide textual explanations in addition
+to the required sequences of skills or automation
+module programs. The LLM output is processed
+by a parser before being used to control the physi-
+cal systems. Manager relies on built-in production-
+specific knowledge of the LLM such as “a hole is pro-
+duced by drilling”.
+Noteworthy in this approach is its tight integra-
+tion into the system landscape of Industry 4.0.
+Thefew-shot Manager andOperator prompts
+are generated automatically using Asset Adminis-
+tration Shells , which are standardized, technology-
+6
+independent data repositories storing digital twins of
+manufacturing assets for use in Industry 4.0 [2].
+WorkplaceRobot .An experimental robot system
+is enhanced with LLM-based task planning in [37].
+The robot operates in a workplace environment fea-
+turing a desk and several objects. It has previously
+been trained to execute basic operations expressed
+in natural language such as “open the drawer” or
+“take the pink object and place it in the drawer”.
+LLM-based task planning enables the robot to per-
+form more complex orders like “tidy up the work area
+and turn off all the lights”. To this end, an LLM is
+prompted to generate a sequence of basic operations
+that accomplish the complex order.
+Although the robot expects operations phrased in
+natural language, the LLM is prompted with a
+Python coding task. For instance, the basic opera-
+tion“turnonthegreenlight” correspondstoaPython
+command push_button(’green’) . The prompt for
+the LLM includes several examples each consisting
+of a description of an environment state, a complex
+order formatted as a comment, and a sequence of
+Python robot commands that accomplish the com-
+plex order. When invoking the LLM to generate the
+Python program for a new order, the prompt is aug-
+mented with a description of the environment’s cur-
+rent state and the new order as a comment.
+The Python code produced by the LLM is trans-
+lated back to a sequence of basic operations in nat-
+ural language. When the robot executes these oper-
+ations, there is no feedback about successful comple-
+tion. Rather, the system assumes that all basic op-
+erations require a fixed number of timesteps to com-
+plete.
+AutoDroid .The goal of mobile task automation is
+hands-free user interaction for smartphones through
+voice commands. AutoDroid is a voice control sys-
+tem for smartphones that can automatically execute
+complex orders such as “remind me to do laundry on
+May 11th” or “delete the last photo I took” [64, 65].
+Such complex orders are fulfilled by performing se-
+quences of basic operations in an Android app, suchas “scroll down, then press button x” in the calen-
+dar app. AutoDroid employs an LLM component
+TaskExecutor to plan these sequences of opera-
+tions. The challenge is that the next operation to ex-
+ecutedependsonthecurrentstateoftheAndroidapp
+which continuously changes as the app is operated.
+AutoDroid solves this by invoking the TaskEx-
+ecutor repeatedly after each app operation with the
+prompt comprising the updated state of the Graph-
+ical User Interface (GUI) along with the user’s com-
+plex order.
+Before executing irrevocable operations, such as per-
+manently deleting data or calling a contact, Auto-
+Droidprompts the user to confirm or adjust the op-
+eration. TaskExecutor is instructed to include a
+“confirmation needed” hint in its output for such op-
+erations.
+The prompt for TaskExecutor comprises an ex-
+tract from a knowledge base which is built automati-
+cally in an offline learning phase as follows: In a first
+step, a “UI Automator” (which is not an LLM com-
+ponent) automatically and randomly operates the
+GUI elements of an Android app to generate a UI
+Transition Graph (UTG). The UTG has GUI states
+as nodes and the possible transitions between GUI
+states as edges. As next steps, AutoDroid invokes
+two LLM components referred to as MemoryGen-
+erators to analyze the UTG.
+The first MemoryGenerator is prompted repeat-
+edly for each GUI state in the UTG. Its task is to
+explain the functionality of the GUI elements. Be-
+sides instructions and examples of the table format
+desired as output, its prompt includes an HTML rep-
+resentation of the GUI state, the GUI actions preced-
+ing this state, and the GUI element operated next.
+Its output consists of tuples explaining the function-
+ality of a GUI element by naming the derived func-
+tionality (e.g., “delete all the events in the calendar
+app”)andtheGUIstatesandGUIelementactionsin-
+volved. Similarly, the second MemoryGenerator
+is prompted to output a table listing GUI states and
+explanations of their functions. These tables consti-
+tuteAutoDroid ’s knowledge base.
+ProgPrompt .ProgPrompt [51] is an approach
+to LLM-based robot task planning similar to
+7
+WorkplaceRobot . Its robot is controlled by
+Python code and works in a real and a simulated
+household environment.
+ProgPrompt comprisestwoLLMcomponents. Ac-
+tionPlanning generates Python scripts for tasks
+such as “microwave salmon” using basic opera-
+tions like grab(’salmon’) ,open(’microwave’) ,
+andputin(’salmon’, ’microwave’) , notably with-
+out considering the current state of the environment.
+To establish a feedback loop with the environment,
+ActionPlanning adds assertstatements. These
+statements verify the preconditions of basic opera-
+tionsandtriggerremedialactionswhenpreconditions
+are not met. For instance, a script for “microwave
+salmon” comprises the following code fragment:
+if assert(’microwave’ is ’opened’)
+else: open(’microwave’)
+putin(’salmon’, ’microwave’)
+When operating in the simulated environment,
+ProgPrompt can verify an assert statement
+through its second LLM component, Scenario-
+Feedback . Prompted with the current state of the
+environment and the assertstatement, Scenario-
+Feedback evaluates it and outputs TrueorFalse.
+FactoryAssistants .FactoryAssistants advise
+workers on troubleshooting production line issues in
+two manufacturing domains: detergent production
+and textile production [26]. The assistants leverage
+domain knowledge from FAQs and documented prob-
+lem cases to answer user queries. The required do-
+main knowledge is provided as a part of the prompt.
+SgpTod .SgpTod employs an LLM to implement a
+chatbot, specifically, a task-oriented dialogue (TOD)
+system [71]. TOD systems are also known as conver-
+sational assistants. In contrast to open-domain dia-
+logue (ODD) systems, which engage users in goalless
+conversations, they are designed for assisting users in
+specific tasks.
+In general, TOD systems require the following
+components [3]: Natural Language Understanding
+(NLU), analyzing the user’s input to classify intents
+and extract entities; Dialogue Management (DM) fordeciding on a system action that is appropriate in
+a given dialogue state (e.g., ask for more informa-
+tion or invoke a hotel booking service); and Natu-
+ral Language Generation (NLG) for producing a re-
+sponse that the TOD system can present to the user.
+Intent classification, also known as intent detection,
+matches free-text user input to one of several tasks a
+TOD system can perform (e.g., book a hotel). Entity
+extraction isolates situational values, called entities,
+from the user input (e.g., the town and the date of
+the hotel booking). The TOD system may require
+several dialogue turns to elicit all necessary entities
+from the user. In TOD research, the system’s in-
+ternal representation of the user’s intentions and the
+entity values is commonly referred to as its “belief
+state”. For example, in the restaurant search domain,
+the belief state may include attribute-value pairs like
+cuisine:Indian andpricerange:medium.
+SgpTod is a multi-domain TOD system, concur-
+rently handling multiple task domains found in stan-
+dard TOD evaluation datasets, such as recommend-
+ing restaurants or finding taxis. Similar to other ex-
+perimental TOD systems [23], SgpTod accesses a
+database that stores information from the task do-
+mains, such as available hotels and restaurants.
+SgpTod comprises two LLM components, called
+DstPrompter andPolicyPrompter , that are
+bothinvokedineverydialogueturnbetween SgpTod
+and the user. The DstPrompter handles the NLU
+aspect, analyzing the user’s input and populating the
+system’s belief state. It outputs is an SQL query
+suited to extract the database entries that match the
+current belief state. Upon retrieving the database en-
+tries, SgpTod invokes its PolicyPrompter which
+covers both DM and NLG. Prompted with the dia-
+logue history and the database entries retrieved, it
+produces a two-part output: a natural language re-
+sponse for NLG and a system action for DM.
+TruckPlatoon .The concept of truck platooning
+means that trucks travel closely together for bet-
+ter fuel efficiency and traffic flow. TruckPla-
+tooncomprises an algorithmic control loop which
+autonomously maintains a consistent distance be-
+tween trucks. It invokes an LLM to generate natural-
+language reports on the platoon’s performance and
+8
+stability from measurements tracked by the control
+algorithm, providing easily understandable informa-
+tion for engineers involved in monitoring and opti-
+mizing the truck platooning system.
+ExcelCopilot .ExcelCopilot is an example of
+a recent trend where software companies integrate
+LLM-based assistants, often termed “copilots”, into
+their products [44]. These copilots not only provide
+textual guidance but also perform actions within the
+software environment, constituting a distinctive type
+of LLM-integrated application. We chose Excel-
+Copilot as an example for evaluating our taxonomy.
+Since its implementation is undisclosed, we infer its
+architecturefromindirectsources, includingascreen-
+cast and a report on insights and experiences from
+copilot developers [16, 44]. This inferred architecture
+may deviate from the actual implementation.
+ExcelCopilot is accessible in a task bar along-
+side the Excel worksheet. It features buttons with
+context-dependent suggestions of actions and a text
+box for users to type in commands in natural lan-
+guage. ExcelCopilot only works with data tables,
+so its initial suggestion is to convert the active work-
+sheet’s data into a data table. Copilot functions ac-
+tivate when a data table or part of it is selected. It
+then presents buttons for four top-level tasks: “add
+formula columns”, “highlight”, “sort and filter”, and
+“analyze”. The “analyze” button triggers the copilot
+to display more buttons, e.g., one that generates a
+pivot chart from the selected data. ExcelCopilot
+can also add a formula column to the data table and
+explain the formula in plain language.
+When a user inputs a free-text command, Excel-
+Copilot may communicate its inability to fulfill
+it. This constantly occurs with commands requiring
+multiple steps, indicating that ExcelCopilot lacks
+a planning LLM component as seen in, for example,
+MatrixProduction . This observation, along with
+itsmentionin[44], suggeststhat ExcelCopilot em-
+ploys an intent detection-skill routing architecture.
+This architecture includes an LLM component that
+maps free-text user commands to potential intents
+and then delegates to other LLM components tasked
+with generating actions to fulfill those intents. Ac-cordingly, ExcelCopilot comprises several types of
+LLM components:
+•Several distinct Action Executor s generate
+code for specific application actions, such as cre-
+ating a pivot table, designing a worksheet for-
+mula, inserting a diagram, and so on.
+•AnAdvisor suggests meaningful next actions.
+Its outputs serve to derive button captions and
+prompts for ActionExecutor s.
+•When a user inputs a free-text command, the
+IntentDetector is invoked to determine and
+trigger a suitable ActionExecutor . The In-
+tentDetector communicates its actions to
+users and informs them when it cannot devise
+a suitable action.
+•TheExplainer generates natural language ex-
+planations of formulae designed by ExcelCopi-
+lot. It is unclear whether under the hood, the
+ActionExecutor is generating both the for-
+mula and the explanation, or if two separate
+LLM components are being invoked. We assume
+the latter, i.e., that a separate Explainer LLM
+component exists.
+While users interact repeatedly with ExcelCopi-
+lot, each interaction adheres to a single-turn pat-
+tern, with the user providing a command and Ex-
+celCopilot executing it [44].
+5. A Taxonomy for LLM Components and
+LLM-Integrated Applications
+When developing the taxonomy, it emerged that an-
+alyzing an LLM-integrated application should begin
+withidentifyinganddescribingitsdistinctLLMcom-
+ponents. Analyzing each LLM component separately
+helpscapturedetailsandprovidesaclearunderstand-
+ing of how the application utilizes LLM capabili-
+ties. The LLM-integrated application can then be
+described as a combination of the LLM components
+it employs.
+9
+Table 2: Dimensions and characteristics of the taxonomy. Codes of characteristics are printed in uppercase. “Meta” means
+“metadimension”. “MuEx” means “mutual exclusiveness”.
+Meta Dimension Characteristics MuEx
+Invocation Interaction App,Command,Dialog enforced
+Frequency Single,Iterative yes
+Function Logic c Alculate,Control yes
+UI none ,Input,Output,Both yes
+Data none ,Read,Write,Both yes
+Prompt Instruction none ,User,LLM,Program enforced
+State none ,User,LLM,Program enforced
+Task none ,User,LLM,Program yes
+Check none ,User,LLM,Program enforced
+Skills re Write,Create,conVerse,Inform,Reason,Planno
+Output Format FreeText,Item,Code,Structure no
+Revision none ,User,LLM,Program enforced
+Consumer User,LLM,Program,Engine enforced
+5.1. Overview and demonstration
+The taxonomy identifies 13 dimensions for LLM com-
+ponents, grouped into five metadimensions as shown
+in table 2. It comprises both dimensions with gen-
+uinely mutually exclusive characteristics and those
+with non-exclusive characteristics. For dimensions
+related to the technical integration of LLMs within
+applications, mutual exclusiveness is enforced. Given
+the open nature of software architecture, the inte-
+gration of LLMs allows for significant diversity. In
+practice, LLM components may show multiple char-
+acteristics within these dimensions. Nonetheless, the
+taxonomy requires categorizing each component with
+a predominant characteristic, enforcing a necessary
+level of abstraction to effectively organize and struc-
+ture the domain.
+We applied the taxonomy to categorize each of the
+example instances described in section 4.2. The re-
+sults are depicted in figure 1. The dimensions and
+their characteristics are detailed and illustrated with
+examples in section 5.2.
+The taxonomy visualizes an LLM component by a
+feature vector comprising binary as well as multi-
+valued features. Non-mutually exclusive dimensions
+are represented by a set of binary features. The re-
+maining dimensions are encoded as n-valued features
+where ndenotes the number of characteristics. Forcompactness, we use one-letter codes of the charac-
+teristics as feature values in the visualizations. In
+table 2, these codes are printed in upper case in the
+respective characteristic’s name.
+A feature vector representing an LLM component
+is visualized in one line. For dimensions with non-
+mutually exclusive characteristics, all possible codes
+are listed, with the applicable ones marked. The re-
+maining dimensions are represented by the code of
+the applicable characteristic, with the characteris-
+ticnoneshown as an empty cell. We shade feature
+values with different tones to support visual percep-
+tion. LLM components within the same application
+are grouped together, visualizing an LLM-integrating
+application in a tabular format.
+5.2. Dimensions and characteristics
+5.2.1. Invocation dimensions
+TwoInvocation dimensions address the way the LLM
+is invoked within the application.
+Interaction describes how the user interacts with the
+LLM with three characteristics:
+App: Users never converse with the LLM directly
+in natural language, rather the application invokes
+the LLM automatically. E.g., users do not interact
+10
+Invocation Function Prompt Skills Out. Format Output
+z}| { z }| { z }| { z }| { z }| { z }|{Interaction
+Frequency
+Logic
+UI
+Data
+Instruction
+State
+Task
+Check
+reWrite
+Create
+conVerse
+Inform
+Reason
+Plan
+FreeText
+Item
+Code
+Structure
+Revision
+Consumer
+Honeycomb QueryAssistant CSA RPPUP P C PE
+LowCode Planning CSA P U I P SUL
+LowCode Executing DIAB PLU CVI F U
+MyGrunchGpt DesignAssistant DIAB PPU V S E
+MyGrunchGpt SettingsEditor CSA PPP W C E
+MyGrunchGpt DomainExpert CSA PPP I F U
+MatrixProduction Manager CSCIPPU I PF S L
+MatrixProduction Operator ASC PPL PF S E
+WorkplaceRobot CSCIPPU P C E
+AutoDroid Executor CICIPLUP P IS E
+AutoDroid MemoryGenerator2AIA PPP R S L
+ProgPrompt ActionPlanning CSCIP U P C E
+ProgPrompt ScenarioFeedback AIC PPL R I E
+FactoryAssistant DSA PPU W V F U
+SgpTod DstPrompter DSAIRPPU V R C E
+SgpTod PolicyPrompter ASCO PPP R FI P
+TruckPlatoon ASAO PPP W F U
+ExcelCopilot ActionExecutor∗ASA PPL PF C E
+ExcelCopilot Advisor ASA PPP R F S P
+ExcelCopilot IntentDetector CSC PPU R IS P
+ExcelCopilot Explainer ASA PPP R F U
+Figure 1: Categorized example instances. See table 2 for a legend. ∗,2: multiple LLM components.
+directly with ExcelCopilot ActionExecutor or
+withMatrixProduction Operator .
+Command : Users input single natural language
+commands. E.g., users interact with AutoDroid
+TaskExecutor through single natural language
+commands.
+Dialog: Usersengageinmulti-turndialogueswiththe
+LLM component to achieve a use goal. E.g., users
+repeatedly prompt LowCode Executing orMy-
+CrunchGpt DesignAssistant in multi-turn dia-logues to obtain an essay or an airfoil design, respec-
+tively.
+Frequency addresses how often the application in-
+vokes a specific LLM component to fulfill a goal:
+Single: A single invocation of an LLM component
+is sufficient to produce the result. E.g., in My-
+CrunchGpt , the application internally invokes dis-
+tinct LLM components once for each user input by
+injecting varying prompt instructions.
+Iterative: The LLM component is invoked repeatedly
+to produce the result. E.g., AutoDroid TaskEx-
+11
+ecutor is invoked multiple times to fulfill a com-
+mand with an updated environment description in
+theStateprompt; LowCode Executing is repeat-
+edly prompted by the user to achieve the use goal
+while the application updates the dialogue history.
+5.2.2. Function dimensions
+TheFunction dimensions are derived from the classi-
+cal three-tier software architecture model which seg-
+regates an application into three distinct layers: pre-
+sentation, logic and data [17]. The presentation layer
+implements the UI. On the input side, it allows users
+to enter data and commands that control the appli-
+cation. On the output side, it presents information
+andprovidesfeedbackontheexecutionofcommands.
+The logic layer holds the code that directly realizes
+the core objectives and processes of an application
+such as processing data, performing calculations, and
+making decisions. The data layer of an application
+manages the reading and writing of data from and
+to persistent data storage. Due to its versatility, an
+LLM component can simultaneously implement func-
+tionality for all three layers. The taxonomy addresses
+this with three Function dimensions.
+UIindicateswhetheranLLMcomponentcontributes
+significantly to the user interface of an application,
+avoiding the need to implement graphical UI controls
+or display elements:
+none: No UI functionality is realized by the LLM.
+E.g., in ExcelCopilot , the LLM does not replace
+any UI elements.
+Input: Input UI is (partially) implemented by
+the LLM. E.g., in MatrixProduction Manager ,
+users input their order in natural language, obviating
+a product configuration GUI.
+Output: Output UI is (partially) implemented by the
+LLM. E.g., in TruckPlatoon , the output gener-
+ated by the LLM component can replace a data cock-
+pit with gauges and other visuals displaying numeri-
+cal data.
+Both: Input and output UI are (partially) imple-
+mented by the LLM. E.g., in MyCrunchGpt , the
+DesignAssistant provides a convenient conversa-
+tional interface for parameterization of APIs andtools and feedback on missing values, which other-
+wise might require a complex GUI.
+Logicindicates whether the LLM component deter-
+mines the control flow of the application. It discerns
+two characteristics:
+cAlculate : The output does not significantly impact
+the control flow of the application, i.e., the output
+is processed like data. E.g., MyCrunchGpt Set-
+tingsEditor modifies a JSON file, replacing a pro-
+grammed function; MyCrunchGpt DesignAssis-
+tantasks the user for parameters, but the sequence
+of calling APIs and tools follows a predefined work-
+flow; the workflow computed by LowCode Plan-
+ningis displayed without influencing the applica-
+tion’s control flow.
+Control: The output of the LLM is used for con-
+trolling the application. E.g., the plans generated
+byMatrixProduction Manager serve to sched-
+ule and activate production modules; the actions pro-
+posed by AutoDroid TaskExecutor are actually
+executed and determine how the control flow of the
+app proceeds.
+Since an LLM invocation always computes a result,
+cAlculate is interpreted as “calculate only”, making
+cAlculate andControlmutually exclusive.
+DataaddresseswhethertheLLMcontributestoread-
+ing or writing persistent data:
+none: The LLM does not contribute to reading or
+writing persistent data. This characteristic applies
+to most sample instances.
+Read: TheLLMisappliedforreadingfrompersistent
+data store. E.g., SgpTod DstPrompter generates
+SQL queries which the application executes; Honey-
+comb QueryAssistant devises analytical database
+queries.
+WriteandBoth: No LLM component among the
+samples generates database queries for creating or
+updating persistent data.
+5.2.3. Prompt-related dimensions
+Integrating an LLM into an application poses spe-
+cific requirements for prompts, such as the need for
+prompts to reliably elicit output in the requested
+12
+form [68]. While a broad range of prompt patterns
+have been identified and investigated [66], there is
+still a lack of research on successful prompt pat-
+terns specifically for LLM-integrated applications, on
+whichthistaxonomycouldbuild. Developingprompt
+taxonomiesisachallengingresearchendeavorinitself
+[49] and is beyond the scope of this research. There-
+fore, the taxonomy does not define a dimension with
+specificpromptpatternsascharacteristics, butrather
+focuses on how the application generates the prompt
+for an LLM component from a technical perspective.
+Prompts generally consist of several parts with dis-
+tinct purposes, generated by different mechanisms.
+Although many authors explore the concepts, a com-
+mon terminology has yet to be established. This is
+illustrated in table 3, showing terms from an ad-hoc
+selection of recent papers addressing prompt gener-
+ation in applications. In the table, italics indicate
+that the authors refrain from introducing an abstract
+term and instead use a domain-specific description.
+The term “examples” indicates a one-shot orfew-shot
+prompt pattern. The terms that are adopted for the
+taxonomy are underlined.
+The taxonomy distinguishes three prompt parts re-
+ferred to as Prompt Instruction ,Prompt State , and
+Prompt Task . These parts can occur in any order,
+potentially interleaved, and some parts may be ab-
+sent.
+•Instruction is the part of a prompt that outlines
+how to solve the task. Defined during LLM com-
+ponent development, it remains static through-
+out an application’s lifespan.
+•Stateis the situation-dependent part of the
+prompt that is created dynamically every time
+the LLM is invoked. The taxonomy opts for the
+termStateinstead of “context” in order to avoid
+confusion with the “LLM context” as explained
+in section 2. The Statemay include the current
+dialogue history, an extract of a knowledge base
+needed specifically for the current LLM invoca-
+tion, or a state or scene description, etc.
+•Taskis the part of the prompt conveying the
+task to solve in a specific invocation.Prompt Instruction ,StateandTaskdescribe the ori-
+gins of the prompt parts by uniform characteristics:
+none: The prompt part is not present. E.g., Prog-
+Prompt ActionPlanning has noStateprompt,
+nor does LowCode Planning (except the dialogue
+history when planning a subprocess). Instruction
+andTaskprompt parts are present in all sample in-
+stances.
+User: The user phrases the prompt part. E.g., the
+TaskforExcelCopilot IntentDetector or for
+LowCode Planning is phrased by the user. There
+are no sample instances where the user provides the
+Instruction orStateprompt parts.
+LLM:ThepromptpartisgeneratedbyanLLM.E.g.,
+LowCode Planning generates the StateforLow-
+Code Executing andExcelCopilot IntentDe-
+tector generates the TaskforExcelCopilot Ac-
+tionExecutor s.
+Program: Application code generates the prompt
+part. E.g., AutoDroid programmatically generates
+theStateand theTaskparts for its MemoryGen-
+erators in the knowledge base building phase.
+ThePrompt Instruction dimension is always gener-
+ated byProgram. While a user and possibly an LLM
+have defined this prompt part during application de-
+velopment, this falls outside the scope of this taxon-
+omy. Therefore, the Prompt Instruction dimension is
+not discriminating and categorizes all cases as Pro-
+gram. Itisretainedinthetaxonomyforcompleteness
+and better understandability.
+Prompt Check describes whether the application em-
+ploys a review mechanism to control and modify the
+prompt before invoking the LLM. The same charac-
+teristics as for the prompt parts are applicable:
+none: The prompt is used without check.
+User: The user checks and revises the prompt.
+LLM: Another LLM component checks or revises the
+prompt.
+Program: The application comprises code to check
+or revise the prompt. E.g., AutoDroid removes
+personal data, such as names, to ensure privacy
+before invoking the TaskExecutor ;Honeycomb
+QueryAssistant incorporates a coded mechanism
+against prompt injection attacks.
+13
+Table 3: Terms used for prompt parts. Expressions specific to a domain are printed in italics, “examples” indicates a one-shot
+orfew-shot prompt pattern. Terms adopted for the taxonomy are underlined.
+Source Instruction State Task
+[72] task description + examples test instance
+[34] instruction prompt data prompt
+[32] predefined prompt user prompt
+[45] prompt template + examples DB schema user input question
+[45] examples SQL query result
+[37] prompt context, i.e., examples environment state , scene
+descriptioninput task commands
+[5] education prompt dialogue history user input task prompt
+[5] education prompt dialogue history + provided
+workflow(circumscribed)
+[69] role and goal + instruction + examples context current task
+[26] predefined system instruction +
+domain-specific informationquery results from
+knowledge graphthe user’s request
+Most example instances omit prompt checks. There
+are no examples where a Checkis performed by a
+Useror anLLM.
+5.2.4. Skills dimensions
+TheSkillsdimension captures the types of LLM ca-
+pabilities that an application utilizes. It is designed
+as a dimension with six non-mutually exclusive char-
+acteristics.
+Skillsis decomposed into six specific capabilities:
+reWrite: The LLM edits or transforms data or
+text, such as rephrasing, summarizing, reformat-
+ting, correcting, or replacing values. E.g., My-
+CrunchGpt SettingsEditor replaces values in
+JSON files; TruckPlatoon converts measurements
+into textual explanations.
+Create: The LLM generates novel output. E.g.,
+LowCode Executing generates substantial bodies
+of text for tasks like essay writing.
+conVerse : The application relies on the LLM’s capa-
+bility to engage in purposeful dialogues with humans.
+E.g.,MyCrunchGpt DesignAssistant asks users
+for missing parameters; SgpTod PolicyPrompter
+decides how to react to user inputs and formulates
+chatbot responses.Inform: The application depends on knowledge that
+the LLM has acquired during its training, unlike
+applications that provide all necessary information
+within the prompt. E.g., MyCrunchGpt Domain-
+Expert providesexpertknowledgeonairfoildesigns;
+MatrixProduction relies on built-in knowledge of
+production processes, such as “a hole is produced
+by drilling”; LowCode Executing uses its learned
+knowledge for tasks like essay writing.
+Reason: The LLM draws conclusions or makes log-
+ical inferences. E.g., FormulaExplainer inEx-
+celCopilot explains the effects of Excel functions
+in formulas; AutoDroid MemoryGenerator s ex-
+plain the effects of GUI elements in Android apps.
+Plan: The LLM designs a detailed method or course
+of action to achieve a specific goal. E.g., Au-
+toDroid TaskExecutor andWorkplaceRobot
+TaskPlanning devise action plans to achieve goals.
+ThePlanandReasoncharacteristics are interrelated,
+as planning also requires reasoning. The intended
+handling of these characteristics is to categorize an
+LLM component as Planonly and understand Plan
+as implicitly subsuming Reason.
+The effectiveness of LLMs as components of software
+applications relies on their commonsense knowledge
+and their ability to correctly interpret and handle a
+broad variety of text inputs, including instructions,
+14
+examples, and code. It is reasonable to assume that a
+fundamental capability, which might be termed Un-
+terstand, is leveraged by every LLM component. As
+it is not distinctive, the taxonomy does not list it
+explicitly in the Skillsdimension.
+Applying this taxonomy dimension requires users to
+determine which skills are most relevant and worth
+highlighting in an LLM component. Given the versa-
+tilityofLLMs, reducingthefocustofewpredominant
+skills is necessary to make categorizations distinctive
+and expressive.
+5.2.5. Output-related dimensions
+Output Format characterizestheformatoftheLLM’s
+output. As an output may consist of several parts in
+diverse formats, this dimension is designed as non-
+mutually exclusive, same as the Skillsdimension. It
+distinguishes four characteristics that are distinctive
+and well discernible:
+FreeText : unstructured natural language text out-
+put. E.g., TruckPlatoon andMyCrunchGpt
+DomainExpert generate text output in natural lan-
+guage; MatrixProduction Manager andMa-
+trixProduction Operator produceFreeText ex-
+planations complementing output in custom formats
+to be parsed by the application.
+Item: a single text item from a predefined set of
+items, such as a class in a classification task. E.g.,
+ProgPrompt ScenarioFeedback outputs either
+TrueorFalse.
+Code: source code or other highly formalized output
+that the LLM has learned during its training, such
+as a programming language, XML, or JSON. E.g.,
+AutoDroid TaskExecutor producescodetosteer
+an Android app; MyCrunchGpt SettingsEditor
+outputs JSON.
+Structure : structured, formalized output adhering to
+a custom format. E.g., LowCode Planning out-
+puts text in a format that can be displayed as a flow
+chart; MatrixProduction Manager andOper-
+atorproduce output in custom formats combined
+withFreeText explanations.
+Output Revision indicates whether the application
+checks or revises the LLM-generated output beforeutilization. These characteristics and their interpre-
+tations mirror those in the Prompt Check dimension:
+none: There is no revision of the LLM output.
+User: The user revises the LLM output. E.g.,
+the user improves the plan generated by LowCode
+Planning .
+LLM: A further LLM component checks or revises
+the output of the LLM component under considera-
+tion.
+Program: Programmed code checks or revises the
+LLM output. E.g., Honeycomb QueryAssistant
+corrects the query produced by the LLM before exe-
+cuting it [7].
+There are no instances in the sample set where an-
+other LLM revises or checks the output of the LLM.
+Most sample applications do not check or revise the
+LLM’s output, though several of them parse and
+transform it. The purpose of the Output Revision
+dimension is to indicate whether the application in-
+cludes control or correction mechanisms, rather than
+just parsing it.
+Output Consumer addresses the way of utilizing the
+LLM output:
+Usersignifies that the LLM output is presented to
+a human user. E.g., the text output of TruckPla-
+toonis intended for humans, as well as the output
+ofMyCrunchGPT DomainExpert .
+LLMindicates that the output serves as a prompt
+part in a further LLM invocation. E.g., the knowl-
+edgebaseentriesgeneratedbyan AutoDroid Mem-
+oryGenerator become part of the prompt for
+AutoDroid TaskExecutor ; the plan output by
+LowCode Planning serves as a part of the prompt
+forLowCode Executing .
+Program describes instances where the LLM output
+isconsumedandprocessedfurtherbyasoftwarecom-
+ponent of the application. E.g., the output of Ma-
+trixProduction Manager is handled by software
+systems (including a Manufacturing Execution Sys-
+tem) which use it to compute prompts for other LLM
+components.
+Enginecovers scenarios where the LLM output is in-
+tended for execution on a runtime engine. E.g., the
+SQL query generated by SgpTod DstPrompter is
+15
+processed by a SQL interpreter; a part of the output
+ofMatrixProduction Operator is executed by
+automation modules.
+Although applications may parse and transform the
+LLM output before use, the Output Consumer di-
+mension is meant to identify the ultimate consumer,
+such as an execution engine, rather than an interme-
+diary parser or transformation code. When applica-
+tions divide the LLM output into parts for different
+consumers, users applying the taxonomy need to de-
+termine which consumer is most relevant, since this
+dimension is designed to be mutually exclusive.
+5.3. Evaluation
+Figure 2 displays the number of occurrences of char-
+acteristics within the example instances. It must
+be noted, however, that these do not reflect actual
+frequencies, as similar LLM components within the
+same application are aggregated together, indicated
+by symbols ∗and 2in figure 1. Furthermore, Ex-
+celCopilot likely includes occurrences of Prompt
+CheckandOutput Revision which are not counted
+due to insufficient system documentation.
+We evaluate the taxonomy against commonly ac-
+cepted quality criteria: comprehensiveness, robust-
+ness, conciseness, mutual exclusiveness, explanatory
+power, and extensibility [58, 42]. The taxonomy
+encompasses all example instances including those
+that were not considered during its development.
+Thisdemonstrates comprehensiveness . Asfigure1
+shows, all example instances have unique categoriza-
+tions, supporting the taxonomy’s robustness . This
+not only indicates that the dimensions and charac-
+teristics are distinctive for the domain, but also high-
+lightsthewidevarietypossibleinthisfield. Concise-
+nessdemands that the taxonomy uses the minimum
+number of dimensions and characteristics. The tax-
+onomy gains conciseness by identifying relatively few
+and abstract characteristics within each dimension.
+However, it does not adhere to the related subcri-
+terion that each characteristic must be present in at
+leastoneinvestigatedinstance[54]. Unoccupiedchar-
+acteristics are retained for dimensions whose char-
+acteristics were derived conceptually, specifically, forthePromptdimensions, the Output Revision dimen-
+sion, and the Data Function dimension, enhancing
+the taxonomy’s ability to illustrate design options
+and inspire novel uses for LLM integrations in ap-
+plications. Some dimensions are constructed in par-
+allel, sharing common sets of characteristics. While
+this affects conciseness, it makes the taxonomy easier
+to understand and apply. As is often seen in tax-
+onomy development [54], we deliberately waived the
+requirement for mutual exclusiveness for some di-
+mensions, specifically the Output Format andSkills
+dimensions. In the context of this taxonomy, these
+can equivalently be understood as a set of of six
+and four binary dimensions respectively, each divided
+into characteristics “yes” and “no”. However, framing
+them as a single dimension with non-mutually exclu-
+sive characteristics seems more intuitive.
+Metadimensions structure the taxonomy, and most
+of the characteristics are illustrated through exam-
+ples. These measures are recognized for enhancing
+theexplanatory power of a taxonomy [58]. The
+taxonomy’s flat structure allows for the easy addition
+of dimensions and characteristics, indicating that its
+extensibility is good. Potential extensions and fur-
+ther aspects of the taxonomy, including its usefulness
+and ease of use, are discussed in section 6.
+We visualize the taxonomy (or, strictly speaking, cat-
+egorized instances) in a compact form using feature
+vectors with characteristics abbreviated to single-
+letter codes. This approach has a drawback, as
+it requires referencing a legend. Additionally, non-
+applicable characteristics in mutually exclusive di-
+mensions are not visible, which means the design
+space is not completely shown. However, the com-
+pactness of the representation allows LLM compo-
+nents within a common application to be grouped
+closely, so that an LLM-integrated application can
+be perceived as a unit without appearing convoluted.
+This is a significant advantage for our purposes.
+6. Discussion
+The discussion first focuses on the taxonomy’s appli-
+cability and ease of use before considering its overall
+usefulness.
+16
+Invocation Function Prompt Output Output
+z}| { z }| { z }| { Skills Format z }| {
+Inter. Freq. Logic UI Data Instr. State Task Check z }| { z }|{Revision Consumer
+A C D I SC AI O BR W B U L P U L P U L P U L PW C V I R P F I C S U L P U L P E
+8 9 4 5 168 135 2 2 2 0 0 0 0 21 0 2 1711 3 7 0 0 2 3 1 4 4 7 8 10 4 6 8 1 0 1 5 3 3 10
+Figure 2: Occurrences of characteristics in the sample set of LLM-integrated applications.
+6.1. Applicability and ease of use
+The taxonomy was effectively applied to LLM-
+integrated applications based on research papers,
+source code blog posts, recorded software demonstra-
+tions, and developer experiences. The analysis of
+LowCode revealed it to be a prompt definition tool
+combined with an LLM-based chatbot, which devi-
+ates from the strict definition of an LLM-integrated
+application. Still, the taxonomy provided an effective
+categorization and led to a clear understanding of the
+system’s architecture.
+Obviously, the ease of categorization depends on the
+clarity and comprehensiveness of the available infor-
+mation, which varies across analyzed systems. An-
+alyzing applications of LLMs in novel and uncom-
+mon domains can be challenging. While these papers
+present inspiring and innovative ideas for LLM inte-
+gration, such as MyCrunchGpt andTruckPla-
+toon, they may prioritize explaining the application
+areaandstruggletodetailthetechnicalaspectsofthe
+LLM integration. A taxonomy for LLM-integrated
+applications can guide and facilitate the writing pro-
+cess and lead to more standardized and comparable
+descriptions.
+Applying the taxonomy is often more straightforward
+for research-focused systems. Omitting the com-
+plexities required for real-world applications, such as
+prompt checks and output revisions, their architec-
+tures are simpler and easier to describe. A taxonomy
+can point out such omissions.
+A fundamental challenge in applying the taxonomy
+arises from the inherent versatility of LLMs, which
+allows to define LLM components serving multiple
+purposes. This is exemplified by SgpTod Poli-cyPrompter , where the prompt is designed to pro-
+duce a structure with two distinct outcomes (a class
+label and a chatbot response), and similarly by Ma-
+trixProduction , as detailed section 4.2. Draw-
+ing an analogy to “function overloading” in classical
+programming, such LLM components can be termed
+“overloaded LLM components”.
+A taxonomy can handle overloaded LLM components
+in several ways: (1) define more dimensions as non-
+mutually exclusive, (2) label overloaded LLM compo-
+nents as“overloaded” withoutamoredetailedcatego-
+rization, or (3) categorize them by their predominant
+purpose or output. While the first approach allows
+for the most precise categorization, it complicates the
+taxonomy. Moreover, it will likely result in nearly all
+characteristics being marked for some LLM compo-
+nents, which is ultimately not helpful. The second
+approachsimplifiescategorizationbutsacrificesmuch
+detail. Our taxonomy adopts the third approach, en-
+forcing simplification and abstraction in descriptions
+of overloaded LLM components while retaining es-
+sential detail. The taxonomy can easily be extended
+to include approach (2) as an additional binary di-
+mension.
+6.2. Usefulness
+The search for instances of LLM-integrated appli-
+cations uncovered activities across various domains.
+Substantial research involving LLM integrations, of-
+ten driven by theoretical interests, is notable in robot
+task planning [37, 51, 61, 33, 63] and in the TOD
+field [23, 71, 4, 6, 56]. Research exploring LLM po-
+tentials from a more practical perspective can be
+found in novel domains, such as industrial produc-
+tion [69, 26] and other technical areas [28, 70]. Fur-
+17
+thermore, developers of commercial LLM-based ap-
+plications are beginning to communicate their efforts
+and challenges [44, 7]. The taxonomy has been ap-
+plied to example instances from these and additional
+areas. This demonstrates its potential as a common,
+unified framework for describing LLM-integrated ap-
+plications, facilitating the comparison and sharing
+of development knowledge between researchers and
+practitioners across various domains.
+When applying the taxonomy to the example in-
+stances, it proved to be effective and useful as an
+analytical lens. Descriptions of LLM-integrated ap-
+plications commonly explain background information
+and details of the application domain in addition to
+its LLM integration. When used as an analytical
+lens, the taxonomy quickly directs the analysis to-
+wards the aspects of LLM integration, abstracting
+from the specificities of the domain.
+ThetaxonomydescribeshowLLMcapabilitiescanbe
+leveraged in software systems, offers inspiration for
+LLM-based functions, and outlines options for their
+implementation as follows. The Skillsdimension out-
+lines the range of capabilities an LLM can contribute
+to an application through a concise set of characteris-
+tics, while the Function dimension suggests potential
+uses, furthersupportedbythe Interaction dimension.
+TheOutput Type dimension indicates options for en-
+coding the output of an LLM in formats beyond plain
+text, making it processable by software. The Output
+Consumer dimension illustrates the diverse ways to
+utilizeoractuponLLMoutput. Thus, thetaxonomy,
+as intended, spans a design space for LLM integra-
+tions.
+The sampled LLM-integrated applications showcase
+the creativity of researchers and developers in ap-
+plying and exploiting the potentials of LLMs, rang-
+ing from straightforward solutions (e.g., TruckPla-
+toon) to highly sophisticated and technically com-
+plex ones (e.g., AutoDroid ). When using the tax-
+onomy to inspire innovative uses of LLMs, we recom-
+mend supplementing it with descriptions of example
+applicationstoenhanceitsillustrativeness. Thechar-
+acteristics of the Skillsdimension are derived prag-
+matically from the investigated example instances.
+While they do not claim to be exhaustive or deeplyrooted in LLM theory or cognitive science, they add
+relevant details to the categorizations and illustrate
+design options and potentials for using LLMs as soft-
+ware components.
+It emerged as a key insight of this research that,
+rather than analyzing an LLM-integrated application
+in whole, analysis should start with the identifica-
+tion and description of its distinct LLM components.
+This is essential for gaining a clear understanding of
+how the application utilizes the capabilities of LLMs.
+The LLM-integrated application then manifests as a
+combinationofitsLLMcomponents. Asshowninfig-
+ure 1, the visualization effectively displays both the
+quantity and the variety of LLM components in an
+LLM-integrated application.
+LLM components interact through prompt chaining,
+where one LLM component’s output feeds into an-
+other’s input [67]. When an LLM-integrated applica-
+tion involves such an interaction, the taxonomy rep-
+resents it as an LLMcharacteristic within a Prompt
+dimension. The taxonomy can capture the variance
+in these interactions. For instance, in AutoDroid
+TaskExecutor andLowCode Executing , the
+LLMcharacteristic appears in the Prompt State di-
+mension, because their prompt components (knowl-
+edge base excerpts and prompt definition, respec-
+tively) are generated by other LLM components in a
+preparatory stage. In contrast, the LLMcharacter-
+istic appears in the Prompt Task dimension for Ma-
+trixProduction Operator , because its prompt
+part is generated individually by the MatrixPro-
+duction Manager almost immediately before use.
+Taxonomy dimensions that cover entire LLM-
+integrated applications may be useful. Given their
+complexity, these dimensions should be designed
+basedonabroaderrangeofexamples, whichwillonly
+become available as more LLM-integrated applica-
+tions are developed and their architectures disclosed
+in the future. Extensions to the taxonomy could
+also include dimensions for describing the structure
+of prompts in more detail, as well as dimensions ad-
+dressing characteristics of the language models used.
+18
+Table 4: LLM usage in the sample instances. “Evals” indicates evaluations of various LLMs.
+Application Used or best LLM Evals Comments
+Honeycomb GPT-3.5 yes GPT-4 far too slow
+LowCode GPT-3.5-turbo
+MyCrunchGpt GPT-3.5 then awaiting the publication of GPT-4
+MatrixProduction text-davinci-003
+WorkplaceRobot GPT-3
+AutoDroid GPT-4 yes GPT-4 best for tasks requiring many steps
+ProgPrompt GPT-3 CODEX better, but access limits prohibitive
+FactoryAssistants GPT-3.5
+SgpTod GPT-3.5 yes GPT-3.5 best more often than others combined
+TruckPlatoon GPT-3.5-turbo
+ExcelCopilot N/A combined LLMs in Copilot for Microsoft 365 [43]
+7. Conclusion
+This paper investigates the use of LLMs as soft-
+ware components. Its perspective differs from cur-
+rent software engineering research, which investigates
+LLMs as tools for software development [14, 22] and
+fromresearchexaminingLLMsasautonomousagents
+[11, 62, 57, 21]. This paper defines the concept of an
+LLM component as a software component that re-
+alizes its functionality by invoking an LLM. While
+LLM components implicitly appear in various works,
+termed, for example, “prompters”, “prompted LLM”,
+“prompt module”, or “module” [30, 71, 6, 7], to our
+knowledge, this concept has not yet been formalized
+or systematically investigated.
+The main contribution of this study is a taxonomy
+for the analysis and description of LLM components,
+extending to LLM-integrated applications by charac-
+terizing them as combinations of LLM components.
+In addition to the dimensions and characteristics of
+the taxonomy, the study contributes a taxonomy vi-
+sualization based on feature vectors, which is more
+compact than the established visualizations such as
+morphological boxes [55] or radar charts. It repre-
+sentsanLLM-integratedapplicationasonevisualen-
+tity in a tabular format, with its LLM components
+displayed as rows.
+The taxonomy was constructed using established
+methods, based on a set of example instances, and
+evaluated with a new set of example instances. Thecombined samples exhibit broad variation along the
+identified dimensions. For some instances, informa-
+tion was not available, necessitating speculative in-
+terpretation. However, since the sample is used for
+identifying options rather than quantitative analysis,
+this issue and the representativeness of the sample
+are not primary concerns. The evaluation was con-
+ducted by the developer of the taxonomy, consistent
+with recent related work [21, 52, 48]. Using a new
+sample for evaluation strengthens the validity of the
+results.
+A further significant contribution of the paper is a
+systematic overview of a sample of LLM-integrated
+applications across various industrial and technical
+domains, illustrating a spectrum of conceptual ideas
+and implementation options.
+As the examples show, LLM components can re-
+place traditionally coded functions in software sys-
+tems and enable novel use cases. However, practi-
+cal challenges persist. Developers report that new
+software engineering methods are required, e.g., for
+managing prompts as software assets and for test-
+ing and monitoring applications. For instance, the
+costs of LLM invocations prohibit the extensive au-
+tomated testing that is standard in software devel-
+opment practice [44, 7]. Challenges also arise from
+the inherent indeterminism and uncontrollability of
+LLMs. Small variations in prompts can lead to differ-
+ences in outputs, while automated output processing
+19
+in LLM-integrated applications requires the output
+to adhere to a specified format.
+Furthermore, the deployment mode of LLMs,
+whether local (on the same hardware as the ap-
+plication) or remote, managed privately or offered
+as Language-Models-as-a-Service (LMaaS), has im-
+pact on performance and usability. Table 4 gives an
+overview of the LLMs used in our sample of appli-
+cations. Where papers report evaluations of mul-
+tiple LLMs, the table displays the chosen or best-
+performing LLM. Although not representative, the
+table provides some insights. LMaaS dominates,
+likely due to its convenience, but more importantly,
+due to the superior performance of the provided
+LLMs.
+Concerns regarding LMaaS include privacy, as sensi-
+tive data might be transmitted to the LLM through
+the prompt [64], and service quality, i.e., reliability,
+availability, and costs. Costs typically depend on the
+quantity of processed tokens. This quantity also af-
+fects latency, which denotes the processing time of
+an LLM invocation. A further important factor for
+latency is the size of the LLM, with larger models
+being slower [7].
+When building LLM-based applications for real-
+worlduse, thereliabilityandavailabilityofanLMaaS
+are crucial. Availability depends not only on the
+technical stability of the service, but also on factors
+such as increased latency during high usage periods
+or usage restrictions imposed by the provider of an
+LMaaS, as reported for ProgPrompt [51]. Beyond
+technical aspects, the reliability of an LMaaS also en-
+compassesitsbehavior. Forinstance,providersmight
+modify a model to enhance its security, potentially
+impacting applications that rely on it.
+Despite practical challenges, integrating LLMs into
+systems has the potential to alter the way software
+is constructed and the types of systems that can be
+realized. Prompts are central to the functioning of
+LLM components which pose specific requirements
+such as strict format adherence. Therefore, an im-
+portant direction for future research will be prompt
+engineering specifically tailored for LLM-integrated
+applications.In future work, the taxonomy will be extended to
+distinguish finer-grained parts of prompts, allowing a
+more detailed description and comparison of prompts
+andrelatedexperimentalresults. Initialstudiesshare
+results on the format-following behavior of LLMs [68]
+as a subtopic of instruction-following [73], derived
+with synthetic benchmark data. It is necessary to
+complementtheirresultswithexperimentsusingdata
+and tasks from real application development projects
+because, in the early stages of this field, synthetic
+benchmarks may fail to cover relevant aspects within
+the wide range of possible options. Another crucial
+research direction involves exploring how LLM char-
+acteristics correspond to specific tasks, such as de-
+termining the optimal LLM size for intent detection
+tasks. Thetaxonomydevelopedinthisstudycansys-
+tematize such experiments and their outcomes. Ad-
+ditionally, it provides a structured framework for de-
+lineating design choices in LLM components, making
+it a valuable addition to future training materials.
+Acknowledgements
+SpecialthankstoAntoniaWeberandConstantinWe-
+berforproofreadingandprovidinginsightfulandcon-
+structive comments.
+References
+[1] EleniAdamopoulouandLefterisMoussiades. An
+Overview of Chatbot Technology. In Ilias Ma-
+glogiannis, Lazaros Iliadis, and Elias Pimeni-
+dis, editors, Artificial Intelligence Applications
+and Innovations , IFIP Advances in Information
+and Communication Technology, pages 373–383,
+Cham, 2020. Springer International Publishing.
+doi:10.1007/978-3-030-49186-4_31.
+[2] Sebastian Bader, Erich Barnstedt, Heinz Be-
+denbender, Bernd Berres, Meik Billmann, and
+Marko Ristin. Details of the asset adminis-
+tration shell-part 1: The exchange of informa-
+tion between partners in the value chain of in-
+dustrie 4.0 (version 3.0 rc02). Working Paper,
+Berlin: Federal Ministry for Economic Affairs
+20
+and Climate Action (BMWK), 2022. doi.org/
+10.21256/zhaw-27075 .
+[3] Marcos Baez, Florian Daniel, Fabio Casati, and
+Boualem Benatallah. Chatbot integration in few
+patterns. IEEE Internet Computing , pages 1–1,
+2020. doi:10.1109/MIC.2020.3024605.
+[4] Tom Bocklisch, Thomas Werkmeister,
+Daksh Varshneya, and Alan Nichol. Task-
+Oriented Dialogue with In-Context Learn-
+ing. (arXiv:2402.12234), February 2024.
+doi:10.48550/arXiv.2402.12234.
+[5] Yuzhe Cai, Shaoguang Mao, Wenshan Wu, Ze-
+hua Wang, Yaobo Liang, Tao Ge, Chenfei Wu,
+Wang You, Ting Song, Yan Xia, Jonathan Tien,
+and Nan Duan. Low-code LLM: Visual Pro-
+grammingoverLLMs. (arXiv:2304.08103), April
+2023. doi:10.48550/arXiv.2304.08103.
+[6] Lang Cao. DiagGPT: An LLM-based Chatbot
+with Automatic Topic Management for Task-
+Oriented Dialogue. (arXiv:2308.08043), August
+2023. doi:10.48550/arXiv.2308.08043.
+[7] Phillip Carter. All the Hard Stuff No-
+body Talks About When Building Prod-
+ucts with LLMs . Honeycomb, May
+2023. https://www.honeycomb.io/blog/
+hard-stuff-nobody-talks-about-llm .
+[8] Phillip Carter. So We Shipped an AI Prod-
+uct. Did It Work? Honeycomb, Octo-
+ber 2023. https://www.honeycomb.io/blog/
+we-shipped-ai-product .
+[9] Banghao Chen, Zhaofeng Zhang, Nicolas
+Langrené, and Shengxin Zhu. Unleash-
+ing the potential of prompt engineering in
+Large Language Models: A comprehensive
+review. (arXiv:2310.14735), October 2023.
+doi:10.48550/arXiv.2310.14735.
+[10] Wang Chen, Yan-yi Liu, Tie-zheng Guo, Da-
+peng Li, Tao He, Li Zhi, Qing-wen Yang,
+Hui-han Wang, and Ying-you Wen. Sys-
+tems engineering issues for industry appli-
+cations of large language model. AppliedSoft Computing , 151:111165, January 2024.
+doi:10.1016/j.asoc.2023.111165.
+[11] Yuheng Cheng, Ceyao Zhang, Zhengwen Zhang,
+Xiangrui Meng, Sirui Hong, Wenhao Li, Zihao
+Wang, Zekai Wang, Feng Yin, Junhua Zhao, and
+Xiuqiang He. Exploring Large Language Model
+based Intelligent Agents: Definitions, Methods,
+and Prospects. (arXiv:2401.03428), January
+2024. doi:10.48550/arXiv.2401.03428.
+[12] Silvia Colabianchi, Andrea Tedeschi, and
+Francesco Costantino. Human-technology in-
+tegration with industrial conversational agents:
+A conceptual architecture and a taxonomy for
+manufacturing. Journal of Industrial Infor-
+mation Integration , 35:100510, October 2023.
+doi:10.1016/j.jii.2023.100510.
+[13] Jonathan Evertz, Merlin Chlosta, Lea Schön-
+herr, and Thorsten Eisenhofer. Whispers in
+the Machine: Confidentiality in LLM-integrated
+Systems. (arXiv:2402.06922), February 2024.
+doi:10.48550/arXiv.2402.06922.
+[14] Angela Fan, Beliz Gokkaya, Mark Harman,
+Mitya Lyubarskiy, Shubho Sengupta, Shin Yoo,
+and Jie M. Zhang. Large Language Models
+for Software Engineering: Survey and Open
+Problems. (arXiv:2310.03533), November 2023.
+doi:10.48550/arXiv.2310.03533.
+[15] Wenqi Fan, Zihuai Zhao, Jiatong Li, Yunqing
+Liu, Xiaowei Mei, Yiqi Wang, Zhen Wen, Fei
+Wang, Xiangyu Zhao, Jiliang Tang, and Qing
+Li. Recommender Systems in the Era of Large
+Language Models (LLMs). (arXiv:2307.02046),
+August 2023. doi:10.48550/arXiv.2307.02046.
+[16] David Fortin. Microsoft Copilot in Excel:
+What It Can and Can’t Do . YouTube, Jan-
+uary 2024. https://www.youtube.com/watch?
+v=-fsu9IXMZvo .
+[17] Martin Fowler. Patterns of Enterprise Applica-
+tion Architecture . 2002. ISBN 978-0-321-12742-
+6.
+21
+[18] Shirley Gregor. The nature of theory in infor-
+mation systems. MIS quarterly , pages 611–642,
+2006. doi:10.2307/25148742.
+[19] Yanchu Guan, Dong Wang, Zhixuan Chu, Shiyu
+Wang, Feiyue Ni, Ruihua Song, Longfei Li, Jin-
+jie Gu, and Chenyi Zhuang. Intelligent Vir-
+tual Assistants with LLM-based Process Au-
+tomation. (arXiv:2312.06677), December 2023.
+doi:10.48550/arXiv.2312.06677.
+[20] Muhammad Usman Hadi, Qasem Al Tashi,
+Rizwan Qureshi, Abbas Shah, Amgad Muneer,
+Muhammad Irfan, Anas Zafar, Muhammad Bi-
+lal Shaikh, Naveed Akhtar, Jia Wu, and Seyedali
+Mirjalili. Large Language Models: A Compre-
+hensive Survey of its Applications, Challenges,
+Limitations, and Future Prospects, September
+2023. doi:10.36227/techrxiv.23589741.v3.
+[21] Thorsten Händler. A Taxonomy for Au-
+tonomous LLM-Powered Multi-Agent Architec-
+tures:. In Proceedings of the 15th Interna-
+tional Joint Conference on Knowledge Discov-
+ery, Knowledge Engineering and Knowledge
+Management , pages 85–98, Rome, Italy, 2023.
+SCITEPRESS - Science and Technology Publi-
+cations. doi:10.5220/0012239100003598.
+[22] Xinyi Hou, Yanjie Zhao, Yue Liu, Zhou Yang,
+KailongWang, LiLi, XiapuLuo, DavidLo, John
+Grundy, and Haoyu Wang. Large Language
+Models for Software Engineering: A Systematic
+Literature Review. (arXiv:2308.10620), Septem-
+ber 2023. doi:10.48550/arXiv.2308.10620.
+[23] Vojtěch Hudeček and Ondrej Dusek. Are
+Large Language Models All You Need for Task-
+Oriented Dialogue? In Svetlana Stoyanchev,
+Shafiq Joty, David Schlangen, Ondrej Dusek,
+Casey Kennington, and Malihe Alikhani, edi-
+tors,Proceedings of the 24th Annual Meeting of
+the Special Interest Group on Discourse and Di-
+alogue,pages216–228,Prague,Czechia,Septem-
+ber 2023. Association for Computational Lin-
+guistics. doi:10.18653/v1/2023.sigdial-1.21.[24] Kevin Maik Jablonka, Qianxiang Ai, Alexander
+Al-Feghali, ShrutiBadhwar, JoshuaD.Bocarsly,
+Andres M. Bran, Stefan Bringuier, Catherine L.
+Brinson, Kamal Choudhary, Defne Circi, Sam
+Cox, Wibe A. de Jong, Matthew L. Evans, Nico-
+las Gastellu, Jerome Genzling, María Victoria
+Gil, Ankur K. Gupta, Zhi Hong, Alishba Im-
+ran, Sabine Kruschwitz, Anne Labarre, Jakub
+Lála, Tao Liu, Steven Ma, Sauradeep Majum-
+dar, Garrett W. Merz, Nicolas Moitessier, Elias
+Moubarak, Beatriz Mouriño, Brenden Pelkie,
+Michael Pieler, Mayk Caldas Ramos, Bojana
+Ranković, Samuel Rodriques, Jacob Sanders,
+Philippe Schwaller, Marcus Schwarting, Jiale
+Shi, Berend Smit, Ben Smith, Joren Van Herck,
+Christoph Völker, Logan Ward, Sean War-
+ren, Benjamin Weiser, Sylvester Zhang, Xiaoqi
+Zhang, Ghezal Ahmad Zia, Aristana Scour-
+tas, K. Schmidt, Ian Foster, Andrew White,
+and Ben Blaiszik. 14 examples of how LLMs
+can transform materials science and chem-
+istry: A reflection on a large language model
+hackathon. Digital Discovery , 2(5):1233–1250,
+2023. doi:10.1039/D3DD00113J.
+[25] Jean Kaddour, Joshua Harris, Maximilian
+Mozes, Herbie Bradley, Roberta Raileanu, and
+Robert McHardy. Challenges and Applica-
+tions of Large Language Models, July 2023.
+doi:10.48550/arXiv.2307.10169.
+[26] Samuel Kernan Freire, Mina Foosherian, Chao-
+fan Wang, and Evangelos Niforatos. Harnessing
+Large Language Models for Cognitive Assistants
+in Factories. In Proceedings of the 5th Interna-
+tional Conference on Conversational User Inter-
+faces, CUI ’23, pages 1–6, New York, NY, USA,
+July 2023. Association for Computing Machin-
+ery. doi:10.1145/3571884.3604313.
+[27] Anis Koubaa, Wadii Boulila, Lahouari Ghouti,
+Ayyub Alzahem, and Shahid Latif. Explor-
+ing ChatGPT Capabilities and Limitations: A
+Survey.IEEE Access , 11:118698–118721, 2023.
+doi:10.1109/ACCESS.2023.3326474.
+[28] Varun Kumar, Leonard Gleyzer, Adar Ka-
+hana, Khemraj Shukla, and George Em Karni-
+22
+adakis. MyCrunchGPT:ALLMAssistedFrame-
+work for Scientific Machine Learning. Jour-
+nal of Machine Learning for Modeling and
+Computing , 4(4), 2023. doi.org/10.1615/
+JMachLearnModelComput.2023049518 .
+[29] Dennis Kundisch, Jan Muntermann,
+Anna Maria Oberländer, Daniel Rau, Maxi-
+milian Röglinger, Thorsten Schoormann, and
+Daniel Szopinski. An Update for Taxonomy
+Designers. Business & Information Systems
+Engineering , 64(4):421–439, August 2022.
+doi:10.1007/s12599-021-00723-x.
+[30] Gibbeum Lee, Volker Hartmann, Jongho
+Park, Dimitris Papailiopoulos, and Kang-
+wook Lee. Prompted LLMs as chatbot
+modules for long open-domain conversation.
+In Anna Rogers, Jordan Boyd-Graber, and
+Naoaki Okazaki, editors, Findings of the as-
+sociation for computational linguistics: ACL
+2023, pages 4536–4554, Toronto, Canada, July
+2023.AssociationforComputationalLinguistics.
+doi:10.18653/v1/2023.findings-acl.277.
+[31] Pengfei Liu, Weizhe Yuan, Jinlan Fu, Zheng-
+bao Jiang, Hiroaki Hayashi, and Graham Neu-
+big. Pre-train, Prompt, and Predict: A Sys-
+tematic Survey of Prompting Methods in Nat-
+ural Language Processing. ACM Comput-
+ing Surveys , 55(9):195:1–195:35, January 2023.
+doi:10.1145/3560815.
+[32] Yi Liu, Gelei Deng, Yuekang Li, Kailong Wang,
+Tianwei Zhang, Yepang Liu, Haoyu Wang, Yan
+Zheng, and Yang Liu. Prompt Injection at-
+tack against LLM-integrated Applications, June
+2023. doi:10.48550/arXiv.2306.05499.
+[33] Yuchen Liu, Luigi Palmieri, Sebastian
+Koch, Ilche Georgievski, and Marco Aiello.
+DELTA: Decomposed Efficient Long-Term
+Robot Task Planning using Large Language
+Models. (arXiv:2404.03275), April 2024.
+doi:10.48550/arXiv.2404.03275.
+[34] Yupei Liu, Yuqi Jia, Runpeng Geng, Jinyuan
+Jia, and Neil Zhenqiang Gong. Prompt Injec-
+tion Attacks and Defenses in LLM-IntegratedApplications. (arXiv:2310.12815), October2023.
+doi:10.48550/arXiv.2310.12815.
+[35] Shaoguang Mao, Qiufeng Yin, Yuzhe Cai,
+and Dan Qiao. LowCodeLLM. https:
+//github.com/chenfei-wu/TaskMatrix/
+tree/main/LowCodeLLM , May 2023.
+[36] Scott McLean, Gemma J. M. Read, Jason
+Thompson,ChrisBaber,NevilleA.Stanton,and
+Paul M. Salmon. The risks associated with Ar-
+tificial General Intelligence: A systematic re-
+view.Journal of Experimental & Theoretical
+Artificial Intelligence , 35(5):649–663, July 2023.
+doi:10.1080/0952813X.2021.1964003.
+[37] Oier Mees, Jessica Borja-Diaz, and Wolfram
+Burgard. Grounding Language with Visual Af-
+fordances over Unstructured Data. In 2023
+IEEE International Conference on Robotics
+and Automation (ICRA) , pages 11576–11582,
+London, United Kingdom, May 2023. IEEE.
+doi:10.1109/ICRA48891.2023.10160396.
+[38] Grégoire Mialon, Roberto Dessì, Maria
+Lomeli, Christoforos Nalmpantis, Ram Pa-
+sunuru, Roberta Raileanu, Baptiste Rozière,
+Timo Schick, Jane Dwivedi-Yu, Asli Ce-
+likyilmaz, Edouard Grave, Yann LeCun,
+and Thomas Scialom. Augmented Lan-
+guage Models: A Survey, February 2023.
+doi:10.48550/arXiv.2302.07842.
+[39] Melanie Mitchell. Debates on the na-
+ture of artificial general intelligence. Sci-
+ence, 383(6689):eado7069, March 2024.
+doi:10.1126/science.ado7069.
+[40] Quim Motger, Xavier Franch, and Jordi Marco.
+Software-Based Dialogue Systems: Survey,
+Taxonomy, and Challenges. ACM Comput-
+ing Surveys , 55(5):91:1–91:42, December 2022.
+doi:10.1145/3527450.
+[41] Fiona Fui-Hoon Nah, Ruilin Zheng, Jingyuan
+Cai, Keng Siau, and Langtao Chen. Gen-
+erative AI and ChatGPT: Applications, chal-
+lenges, and AI-human collaboration. Jour-
+23
+nal of Information Technology Case and Ap-
+plication Research , 25(3):277–304, July 2023.
+doi:10.1080/15228053.2023.2233814.
+[42] Robert C Nickerson, Upkar Varshney, and
+Jan Muntermann. A method for taxon-
+omy development and its application in in-
+formation systems. European Journal of In-
+formation Systems , 22(3):336–359, May 2013.
+doi:10.1057/ejis.2012.26.
+[43] Camille Pack, Cern McAtee, Samantha Robert-
+son, Dan Brown, Aditi Srivastava, and Kweku
+Ako-Adjei. Microsoft Copilot for Microsoft
+365 overview. https://learn.microsoft.
+com/en-us/copilot/microsoft-365/
+microsoft-365-copilot-overview , March
+2024.
+[44] Chris Parnin, Gustavo Soares, Rahul Pan-
+dita, Sumit Gulwani, Jessica Rich, and
+Austin Z. Henley. Building Your Own Prod-
+uct Copilot: Challenges, Opportunities, and
+Needs. (arXiv:2312.14231), December 2023.
+doi:10.48550/arXiv.2312.14231.
+[45] Rodrigo Pedro, Daniel Castro, Paulo Car-
+reira, and Nuno Santos. From Prompt In-
+jections to SQL Injection Attacks: How Pro-
+tected is Your LLM-Integrated Web Appli-
+cation? (arXiv:2308.01990), August 2023.
+doi:10.48550/arXiv.2308.01990.
+[46] Ken Peffers, Tuure Tuunanen, Marcus A.
+Rothenberger, and Samir Chatterjee. A De-
+sign Science Research Methodology for Infor-
+mation Systems Research. Journal of Man-
+agement Information Systems , 24(3):45–77, De-
+cember 2007. ISSN 0742-1222, 1557-928X.
+doi:10.2753/MIS0742-1222240302.
+[47] Mohaimenul Azam Khan Raiaan, Md. Sad-
+dam Hossain Mukta, Kaniz Fatema, Nur Mo-
+hammad Fahad, Sadman Sakib, Most Mar-
+ufatul Jannat Mim, Jubaer Ahmad, Mo-
+hammed Eunus Ali, and Sami Azam. A Review
+on Large Language Models: Architectures, Ap-
+plications, Taxonomies, Open Issues and Chal-lenges. IEEE Access , 12:26839–26874, 2024.
+doi:10.1109/ACCESS.2024.3365742.
+[48] Jack Daniel Rittelmeyer and Kurt Sandkuhl.
+Morphological Box for AI Solutions: Evalua-
+tion and Refinement with a Taxonomy Develop-
+mentMethod. InKnutHinkelmann, FranciscoJ.
+López-Pellicer, and Andrea Polini, editors, Per-
+spectives in Business Informatics Research , Lec-
+ture Notes in Business Information Process-
+ing, pages 145–157, Cham, 2023. Springer Na-
+ture Switzerland. doi:10.1007/978-3-031-43126-
+5_11.
+[49] Shubhra Kanti Karmaker Santu and Dongji
+Feng. TELeR: A General Taxonomy of
+LLM Prompts for Benchmarking Complex
+Tasks. (arXiv:2305.11430), October 2023.
+doi:10.48550/arXiv.2305.11430.
+[50] Thorsten Schoormann, Frederik Möller, and
+Daniel Szopinski. Exploring Purposes of Us-
+ing Taxonomies. In Proceedings of the Inter-
+national Conference on Wirtschaftsinformatik
+(WI), Nuernberg, Germany, February 2022.
+[51] Ishika Singh, Valts Blukis, Arsalan Mousa-
+vian, Ankit Goyal, Danfei Xu, Jonathan Trem-
+blay, Dieter Fox, Jesse Thomason, and Ani-
+mesh Garg. ProgPrompt: Generating Situated
+Robot Task Plans using Large Language Mod-
+els. In2023 IEEE International Conference on
+Robotics and Automation (ICRA) , pages 11523–
+11530, London, United Kingdom, May 2023.
+IEEE. doi:10.1109/ICRA48891.2023.10161317.
+[52] Gero Strobel, Leonardo Banh, Frederik Möller,
+and Thorsten Schoormann. Exploring Gener-
+ative Artificial Intelligence: A Taxonomy and
+Types. In Proceedings of the 57th Hawaii Inter-
+national Conference on System Sciences , Hon-
+olulu, Hawaii, January 2024. https://hdl.
+handle.net/10125/106930 .
+[53] Hendrik Strobelt, Albert Webson, Victor Sanh,
+Benjamin Hoover, Johanna Beyer, Hanspeter
+Pfister, and Alexander M. Rush. Interac-
+tive and Visual Prompt Engineering for Ad-
+hoc Task Adaptation With Large Language
+24
+Models. IEEE Transactions on Visualization
+and Computer Graphics , pages 1–11, 2022.
+doi:10.1109/TVCG.2022.3209479.
+[54] Daniel Szopinski, Thorsten Schoormann, and
+DennisKundisch. CriteriaasaPreludeforGuid-
+ing Taxonomy Evaluation. In Proceedings of the
+53rd Hawaii International Conference on Sys-
+tem Sciences , 2020. https://hdl.handle.net/
+10125/64364 .
+[55] Daniel Szopinski, Thorsten Schoormann, and
+Dennis Kundisch. Visualize different: To-
+wards researching the fit between taxon-
+omy visualizations and taxonomy tasks. In
+Tagungsband Der 15. Internationalen Tagung
+Wirtschaftsinformatik (WI 2020) , Potsdam,
+2020. doi:10.30844/wi_2020_k9-szopinski.
+[56] Manisha Thakkar and Nitin Pise. Unified Ap-
+proach for Scalable Task-Oriented Dialogue Sys-
+tem.International Journal of Advanced Com-
+puter Science and Applications , 15(4), 2024.
+doi:10.14569/IJACSA.2024.01504108.
+[57] Oguzhan Topsakal and Tahir Cetin Akinci. Cre-
+ating Large Language Model Applications Uti-
+lizing Langchain: A Primer on Developing LLM
+Apps Fast. In International Conference on
+Applied Engineering and Natural Sciences , vol-
+ume 1, pages 1050–1056, 2023.
+[58] Michael Unterkalmsteiner and Waleed Adbeen.
+A compendium and evaluation of taxonomy
+quality attributes. Expert Systems , 40(1):
+e13098, 2023. doi:10.1111/exsy.13098.
+[59] Bryan Wang, Gang Li, and Yang Li. En-
+abling Conversational Interaction with Mo-
+bile UI using Large Language Models. In
+Proceedings of the 2023 CHI Conference on
+Human Factors in Computing Systems , CHI
+’23, pages 1–17, New York, NY, USA, April
+2023. Association for Computing Machinery.
+doi:10.1145/3544548.3580895.
+[60] Can Wang, Bolin Zhang, Dianbo Sui, Zhiying
+Tu, Xiaoyu Liu, and Jiabao Kang. A Survey onEffective Invocation Methods of Massive LLM
+Services. (arXiv:2402.03408), February 2024.
+doi:10.48550/arXiv.2402.03408.
+[61] Jun Wang, Guocheng He, and Yiannis Kan-
+taros. Safe Task Planning for Language-
+Instructed Multi-Robot Systems using Confor-
+mal Prediction. (arXiv:2402.15368), February
+2024. doi:10.48550/arXiv.2402.15368.
+[62] Lei Wang, Chen Ma, Xueyang Feng, Zeyu
+Zhang, Hao Yang, Jingsen Zhang, Zhiyuan
+Chen, Jiakai Tang, Xu Chen, Yankai Lin,
+Wayne Xin Zhao, Zhewei Wei, and Jirong
+Wen. A survey on large language model
+based autonomous agents. Frontiers of Com-
+puter Science , 18(6):186345, March 2024.
+doi:10.1007/s11704-024-40231-1.
+[63] Shu Wang, Muzhi Han, Ziyuan Jiao, Zeyu
+Zhang, Ying Nian Wu, Song-Chun Zhu, and
+Hangxin Liu. LLM3:Large Language Model-
+based Task and Motion Planning with Motion
+Failure Reasoning. (arXiv:2403.11552), March
+2024. doi:10.48550/arXiv.2403.11552.
+[64] Hao Wen, Yuanchun Li, Guohong Liu, Shan-
+hui Zhao, Tao Yu, Toby Jia-Jun Li, Shiqi Jiang,
+Yunhao Liu, Yaqin Zhang, and Yunxin Liu. Em-
+powering LLM to use Smartphone for Intelligent
+Task Automation. (arXiv:2308.15272), Septem-
+ber 2023. doi:10.48550/arXiv.2308.15272.
+[65] Hao Wen, Yuanchun Li, and Sean KiteFly-
+Kid. MobileLLM/AutoDroid. MobileLLM,Jan-
+uary 2024. https://github.com/MobileLLM/
+AutoDroid .
+[66] Jules White, Quchen Fu, Sam Hays, Michael
+Sandborn, Carlos Olea, Henry Gilbert, Ashraf
+Elnashar, Jesse Spencer-Smith, and Dou-
+glas C. Schmidt. A Prompt Pattern Cat-
+alog to Enhance Prompt Engineering with
+ChatGPT. (arXiv:2302.11382), February 2023.
+doi:10.48550/arXiv.2302.11382.
+[67] Tongshuang Wu, Michael Terry, and Car-
+rie Jun Cai. AI Chains: Transparent and
+25
+Controllable Human-AI Interaction by Chain-
+ing Large Language Model Prompts. In
+Proceedings of the 2022 CHI Conference on
+Human Factors in Computing Systems , CHI
+’22, pages 1–22, New York, NY, USA, April
+2022. Association for Computing Machinery.
+doi:10.1145/3491102.3517582.
+[68] Congying Xia, Chen Xing, Jiangshu Du, Xinyi
+Yang, Yihao Feng, Ran Xu, Wenpeng Yin,
+and Caiming Xiong. FOFO: A Benchmark
+to Evaluate LLMs’ Format-Following Capa-
+bility. (arXiv:2402.18667), February 2024.
+doi:10.48550/arXiv.2402.18667.
+[69] Yuchen Xia, Manthan Shenoy, Nasser Jazdi,
+and Michael Weyrich. Towards autonomous
+system: Flexible modular production sys-
+tem enhanced with large language model
+agents. In 2023 IEEE 28th International Con-
+ference on Emerging Technologies and Fac-
+tory Automation (ETFA) , pages 1–8, 2023.
+doi:10.1109/ETFA54631.2023.10275362.
+[70] I. de Zarzà, J. de Curtò, Gemma Roig,
+and Carlos T. Calafate. LLM Adaptive
+PID Control for B5G Truck Platooning Sys-
+tems. Sensors, 23(13):5899, January 2023.
+doi:10.3390/s23135899.
+[71] Xiaoying Zhang, Baolin Peng, Kun Li, Jingyan
+Zhou, and Helen Meng. SGP-TOD: Build-
+ing Task Bots Effortlessly via Schema-Guided
+LLMPrompting. (arXiv:2305.09067), May2023.
+doi:10.48550/arXiv.2305.09067.
+[72] Wayne Xin Zhao, Kun Zhou, Junyi Li, Tianyi
+Tang, Xiaolei Wang, Yupeng Hou, Yingqian
+Min, Beichen Zhang, Junjie Zhang, Zican Dong,
+Yifan Du, Chen Yang, Yushuo Chen, Zhipeng
+Chen, Jinhao Jiang, Ruiyang Ren, Yifan Li,
+Xinyu Tang, Zikang Liu, Peiyu Liu, Jian-Yun
+Nie, and Ji-Rong Wen. A Survey of Large Lan-
+guage Models. (arXiv:2303.18223), May 2023.
+doi:10.48550/arXiv.2303.18223.
+[73] Jeffrey Zhou, Tianjian Lu, Swaroop Mishra,
+Siddhartha Brahma, Sujoy Basu, Yi Luan,Denny Zhou, and Le Hou. Instruction-
+Following Evaluation for Large Language Mod-
+els. (arXiv:2311.07911), November 2023.
+doi:10.48550/arXiv.2311.07911.
+26

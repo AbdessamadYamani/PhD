@@ -1,0 +1,23 @@
+Okay, here's the summary:
+
+**Author:** Irene Weber
+**Title:** Large Language Models as Software Components: A Taxonomy for LLM-Integrated Applications
+**Journal:** Not specified (Published on arXiv)
+**Pages:** 27
+**Year:** 2024
+**DOI:** 10.48550/arXiv.2406.10300
+**URL:** https://arxiv.org/abs/2406.10300
+
+**Relevance to the subject:** This paper is highly relevant to the SLR on "Exploring the Impact of the integration of Large Language Models on Serious Games." It provides a detailed taxonomy for understanding how LLMs can be integrated into any software application (which a serious game is) as software components, offering an architectural perspective that is critical for researchers and developers looking to use LLMs in their serious games. It helps in understanding and categorizing the various roles an LLM can play within the system.
+
+**Key Points as Written in the Paper:**
+
+This paper presents a taxonomy for Large Language Model (LLM)-integrated applications, focusing on the architectural perspective of how LLMs are utilized as software components. The study analyzed a sample of recent LLM-integrated applications and identified 13 dimensions to characterize an LLM component. These dimensions are grouped into five meta-dimensions and cover aspects such as *Invocation* (Interaction and Frequency), *Function* (Logic, UI, and Data), *Prompt* (Instruction, State, Task, and Check), *Skills*, and *Output* (Format, Revision, and Consumer).
+
+The paper defines an LLM-integrated application as a system where the software generates the prompt for the LLM and processes its output, while an *LLM component* is a software component that realizes its functionality by invoking an LLM. Each LLM-integrated application can comprise several LLM components. The taxonomy also suggests a visualization method using feature vectors to represent the dimensions of each LLM component and to gain a clear understanding of an application's architecture, the paper advocates examining each LLM component separately, and describe LLM-integrated applications as combinations of these components.
+
+This review demonstrates that LLMs are integrated in numerous ways for various purposes. The taxonomy is designed to facilitate theory building in the nascent field of LLM-integrated application engineering, providing a framework for analyzing and describing these systems, and to aid in the development of such systems. The paper concludes that the integration of LLMs may revolutionize software development.
+
+**Citation and Paper Type:**
+
+[Large Language Models as Software Components A Taxonomy for LLM-Integrated Applications] is a **research paper** that proposes a taxonomy for analyzing and describing software applications that integrate Large Language Models (LLMs) as components.

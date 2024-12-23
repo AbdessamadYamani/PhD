@@ -1,0 +1,396 @@
+A Comprehensive Review on Generative
+AI for Education
+UDAY MITTAL1, SIVA SAI 1, VINAY CHAMOLA 1,2, (Senior Member, IEEE),
+AND DEVIKA SANGWAN 3
+1Department of Electrical and Electronics Engineering, Birla Institute of Technology and Science at Pilani (BITS), Pilani, Rajasthan 333031, India
+2Anuradha and Prashanth Palakurthi Centre for Artificial Intelligence Research (APPCAIR), Goa 403726, India
+3Department of Humanities and Social Science, Birla Institute of Technology and Science at Pilani (BITS), Pilani, Rajasthan 333031, India
+Corresponding author: Devika Sangwan (devika@pilani.bits-pilani.ac.in)
+ABSTRACT Artificial Intelligence (AI) has immense potential for personalized learning experiences,
+content generation, and vivid educational support. This paper delves into generative AI (GAI) and its
+potential applications within GAI, specifically mentioning generative adversarial networks (GANs). The
+article delves into the transformative impact of GAI in education, underscoring its expertise in creating
+diverse instructional materials, from texts and images to videos. Adaptive learning, one of the chief abilities
+of GAI, has been highlighted, emphasizing its capability to select content customized to individual student
+profiles, learning habits, and preferences. The paper further explores the fusion of GAI with innovative
+education systems, highlighting how these models can mimic conversational interfaces, promoting an
+engaging, customized learning journey. The exploration doesn’t stop at the benefits; it delves into challenges
+like ensuring data privacy, mitigating biases, and ensuring accountability in AI-driven educational systems.
+The conclusion contemplates the potential limitations and assurances of embedding GAI within educational
+setups. An appeal has been made for more profound research and enhancement of AI’s educational function.
+The intersection of pedagogical insights and effective human-AI collaboration is pivotal in this journey.
+This paper serves as a compass, guiding educators, researchers, and policymakers toward harnessing GAI’s
+potential to sculpt enriched, immersive educational landscapes.
+INDEX TERMS GAI, education, applications, case studies, challenges, metaverse.
+I. INTRODUCTION
+The intelligence contained within AI has been making
+great leaps and bounds in today’s time and age. Many
+efforts are being made to link everything with some ML
+algorithm. In all these fields, GAI has become one of
+the most popular and has outperformed all the existing
+AI and ML technologies by proving its capabilities to all.
+GAI is a set of AI algorithms that utilize existing content
+like text, audio files, or images to create new content [1].
+It allows computers to abstract the underlying pattern related
+to the input and then use that to generate similar content.
+Nowadays, GAI technologies available in the market are
+specialized to do specific tasks, which have been categorized
+The associate editor coordinating the review of this manuscript and
+approving it for publication was Laxmisha Rai .
+on the criteria of what they generate. Figure 1 gives a brief
+overview of it.
+Some research groups that should be credited for making GAI very popular due to their outstanding research
+and products include OpenAI, Hugging Face, Alphabet
+(Google), Microsoft, Synthesis AI, and Cohere. GPT [2],
+Dall-E [3], Bard, Midjourney, Stable Diffusion, diffusion
+models [4], [5], and Synthesia are some of the products
+that have made a breakthrough in this technology. These
+products have been quite popular in the market since their
+release due to their valuable service, which has attracted
+the attention of various research groups. Much active
+research has been conducted in this area recently, in which
+researchers have tried to analyze and study these products
+to benefit the world and make modern technology even
+better.
+VOLUME 12, 2024
+2024 The Authors. This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 License.
+For more information, see https://creativecommons.org/licenses/by-nc-nd/4.0/ 142733U. Mittal et al.: Comprehensive Review on Generative AI for Education
+intervention’s necessity to eliminate biases, ensuring the
+model’s robustness and acceptance among diverse audiences.
+Today’s world is globalized, where many ethnicities and
+groups sit and work together. Having a biased GAI model
+would reduce its acceptance among the students, and it can
+also lead to a biased rationale of students from the very beginning of their lives, leading to a biased society. Hence, bias
+must be removed from the GAI models.
+The following measures could be taken to remove bias
+from the model.
+• To mitigate biases in GAI, selecting a diverse dataset is
+essential. The model should undergo training and finetuning on this dataset to ensure it is not skewed toward
+any particular group. This approach promotes fairness
+and inclusivity in the generated outcomes.
+• Regular monitoring and performance checks are imperative to detect and rectify biases in GAI models. These
+ongoing evaluations ensure fairness and prevent the
+reinforcement of any unintended biases in the generated
+content.
+• Adopting fairness measures and bias correction techniques, including pre-processing and post-processing
+methods, is crucial. Tools such as AI Fairness 360, IBM
+Watson OpenScale, and Google’s What-If Tool can be
+utilized to identify and address biases effectively in GAI
+models. These tools enhance the fairness and equity of
+the generated content.
+• Innovative transparency mechanisms should be developed to enable users to comprehend the model’s outputs
+and the underlying data and assumptions used in
+the generation process. This transparency fosters trust
+and understanding, which is crucial for the ethical
+deployment of GAI models.
+• Training programs should be implemented for teachers
+and students to recognize biases and learn appropriate
+methods to address them effectively. This education promotes awareness and equips individuals with the skills
+to handle discrimination in GAI applications.
+• Continuous updates to the database with diverse and
+unbiased datasets are essential. This ongoing effort
+ensures that the GAI model remains current, representative, and free from biases, enhancing its outputs’ quality
+and fairness.
+H. LIMITED GENERALIZATION
+GAI models frequently face difficulty generalizing beyond
+their training data. While they can produce samples resembling the training data, creating diverse and entirely novel
+outputs remains challenging. Generating content beyond the
+confines of the training data poses a significant hurdle in this
+technology.
+I. COMPREHENSIBILITY AND EXPLAINIBILITY
+GAI models are intricate and expansive, making them
+difficult to interpret. Grasping and explaining specific outputs
+generated by these models is a complex task. Consequently,
+enhancing the explainability and interpretability of GAI
+models has become a focal point for future research.
+Numerous research groups are delving into these areas
+to unravel the complexities associated with these models.
+One of the chief ML technologies that could be used in
+education is explainable AI (XAI). XAI means six principles:
+interpretability, transparency, fairness, trust, robustness, and
+privacy. Making the GAI models explainable helps the
+researchers and the users track down where the model went
+wrong, and it will also help train the users regarding how to
+use the models. By doing so, the impact of such inaccuracies
+on the student’s learning can be minimized, as a proper
+guideline could also be devised, suggesting how to use the
+GAI model and what should not be done. It will also help
+create awareness among the students and the learners, helping
+them to do their tasks effectively. XAI is being used in
+industry for educational purposes. Some of the examples and
+important case studies of it are
+• FUMA a framework that is used for modeling and
+supporting students in learning for various exploratory,
+open-ended learning environments, such as interactive
+simulations, educational games, etc.
+• RiPPLE It is a course-level platform that instructors can
+incorporate into their teaching.
+• AcaWriter It has been developed to primarily target university-level writing through both integration into specific courses like law and accounting, wider rollout to all
+students and supporting academic material to implement
+the tool in their context, and a high-level research version
+both as a standalone and integrated into an online course
+for learning how to write the abstract.
+• TeamWork Analytics It was developed to support
+educators and undergraduate nursing students enrolled
+in clinical units.
+J. COMPUTATIONAL RESOURCES
+GAI models demand substantial computational power, relying on advanced hardware and extensive training data. Their
+development and deployment consume significant time and
+resources, limiting their accessibility. This means devising
+such models requires a lot of funds and expertise. Due to this,
+GAI models could not be built or used at small scales, making
+it difficult for schools and small educational institutions to
+afford these models and use them regularly in classes.
+Reuters reported that OpenAI, since 2020, has utilized a
+massive supercomputer constructed by Microsoft, equipped
+with 10,000 Nvidia graphics processing units (GPUs) [146].
+Among these, ChatGPT uses the NVIDIA A100 HPC
+accelerator, a high-performance tensor core GPU costing
+$12,500, featuring 80 GB of HBM2 memory with up
+to 2 TBps memory bandwidth [147]. An analysis by Bernstein
+analyst Stacy Rasgon indicates that each ChatGPT query
+costs approximately 4 cents. If ChatGPT queries reached a
+tenth of Google’s search volume, it would require around
+$48.1 billion worth of GPUs and about $16 billion worth of
+chips annually to remain operational.
+142752 VOLUME 12, 2024U. Mittal et al.: Comprehensive Review on Generative AI for Education
+K. DATA REQUIREMENTS
+GAI models need high-quality training data to grasp meaningful patterns and produce realistic content. Acquiring and
+organizing extensive and diverse datasets can be exceptionally challenging, especially in fields where data availability
+is limited [148].
+L. DISTINGUISH MODEL VS. STUDENT RESPONSES
+With advancements in GAI, distinguishing between humanwritten and machine-generated text has become increasingly
+challenging. Addressing this concern, New York City’s
+Department of Education banned ChatGPT from school
+devices and networks [149]. A tool named GPTZero has
+been developed to detect AI-generated text. It utilizes
+perplexity as a measure, indicating generalization capabilities
+and seeing AI involvement in text creation. Techniques
+such as watermarking, proposed by [150], involve inserting
+specific words uncommon in human conversation, aiding in
+distinguishing AI-generated content.
+M. TRIGGER EMOTIONS THROUGH GAI
+In a recent study outlined by [39], specific prompts were
+utilized to evoke curiosity among students, showcasing the
+potential of enhancing learning experiences. However, this
+innovation also raises significant concerns. If this technology
+were compromised, malicious individuals could exploit it
+to manipulate students’ emotions negatively. Such misuse
+can potentially cause misinformation and harm, underlining
+the critical need for ethical considerations in implementing
+emotion-inducing AI in educational settings.
+Children and students inherently require emotional support. If malicious entities manipulate emotions, it can
+profoundly impact students, diverting them down destructive
+paths. Hence, when it comes to students, it is crucial
+to scrutinize and regulate AI’s emotion-inducing features,
+finding ways to prevent such potential harm [151]
+N. VERITY OF CONTENT
+The verity of the content produced by GAI is a crucial
+concern. Although GAI can produce huge amounts of
+educational content, their accuracy and reliability are not
+always guaranteed. For example, the content generated by
+GAI may not always reflect the nuances and complexities
+of the real world, which may lead to false conclusions and
+interpretations. The quality of content generated may also
+vary, along with the existing concerns of content ownership,
+privacy, and security.
+Some of the potential measures to solve the problem are
+• GAI tools should be integrated with human oversight
+and validation, ensuring the quality and credibility of the
+generated educational content.
+• Strong frameworks should be established to safeguard
+the stakeholders and ensure the responsibility of GAI in
+education.
+• Quality assurance machines should be developed which
+will help assure the integrity and the value of the educational content generated by GAI.
+• Educators should be properly trained regarding how to
+use the content generated by GAI in their educational
+content.
+• Awareness should be created among the educators and
+the students regarding the limitations of GAI in this field,
+to help them not to fall prey to this limitation of GAI.
+O. FEEDBACK MECHANISM IN GENERATIVE AI
+As discussed above, it can be easily concluded that GAI poses
+many problems that hinder GAI’s wide-scale acceptance in
+educational institutions. One of the ways to help GAI be more
+robust is through the use of feedback mechanisms or feedback
+loops. Feedback loops help the model learn from the outputs
+it has previously generated and the mistakes committed previously. Feedback loops identify the mistakes in the outputs
+generated by the model and then help the model prevent it
+from committing similar mistakes in the future. The corrected
+information is then fed into the model as input, which allows
+it to retrain and adapt to new data. This process continuously
+helps to improve the accuracy and performance of the model.
+Human feedback is also valuable in this loop. It is precious in
+model drifts when the model’s accuracy degrades over time
+due to changes in the user’s behavior, various updates in the
+content, and seasonal trends. Human evaluators can evaluate
+model predictions and provide valuable feedback, which will
+help rectify the discrepancies in the model.
+Feedback loops help the model to learn from its mistakes
+and increase the reliability and accuracy of the outputs.
+By continuously improving the model’s performance, the
+feedback loops reduce the need for the intervention of a
+human being, thus making the model more efficient and
+cost-effective. It also increases the model’s adaptability by
+adapting to the ever-changing behavior of human beings. This
+is also important because children’s behavior changes very
+rapidly.
+If the feedback provided to the model is malicious, then
+it will significantly affect the accuracy and performance of
+the model, irrespective of whether the malicious feedback
+was intentional or unintentional. Malicious feedback can
+lead to bias in the model, which results in inaccurate and
+unfair predictions, leading to significant consequences in the
+educational sector, as discussed earlier in X-G. Malicious
+feedback can also erode trust in the model, as many users may
+become skeptical of its predictions. This can lead to losing
+confidence in the model, ultimately harming its adoption and
+usage.
+Some ways to mitigate malicious feedback are implementing a detection mechanism to identify malicious feedback through some ML algorithm or manual detection or
+techniques like data validation, filtering, anomaly detection,
+etc. If some malicious feedback is detected, it should be
+immediately flagged for further review, and legal action could
+also be taken. Machine Unlearning algorithms could also
+VOLUME 12, 2024 142753U. Mittal et al.: Comprehensive Review on Generative AI for Education
+FIGURE 7. Feedback loop mechanism.
+remove that malicious feedback from the model without
+disturbing any of the crucial model’s information [152].
+XI. FUTURE RESEARCH WORKS
+This section examines future research opportunities in GAI
+for education, exploring untapped potential and innovative
+avenues to enhance learning experiences.
+A. IMPROVE MODEL EFFICIENCY
+Efforts should focus on creating generative models capable
+of generating high-quality data and content even with sparse
+or limited input. This advancement can significantly reduce
+computational costs and memory requirements. Research
+initiatives should prioritize the development of innovative
+training techniques, such as supervised and semi-supervised
+learning, enabling the creation of models with smaller
+datasets or fewer labeled samples.
+B. ENHANCE MODEL CAPABILITIES
+Research efforts should concentrate on developing versatile
+GAI models capable of simultaneously producing various
+types of content, such as text, audio, and images. Enabling
+user interaction and influence over the generated output is
+essential to tailor content to specific needs and facilitate
+monetization.
+Enhancing the quality and realism of generated content
+remains a challenge for researchers. Future studies could
+explore advanced models to improve audio, video, text, and
+image quality. It is vital to achieve precise control over the
+generated output and understand the model’s evaluations,
+particularly in applications like autonomous vehicles.
+Moreover, progress can be made by ensuring models
+generate content within defined user constraints. Integrating
+multiple modalities, including images, audio, and videos, into
+generative models broadens the scope of GAI, enhancing its
+versatility and accessibility.
+Additionally, valuable research directions include investigating techniques for few-shot learning (making predictions
+based on limited samples) and zero-shot understanding (generalizing from a category of pieces using pre-trained models)
+in GAI. Training models to generate content with minimal
+examples enhances flexibility and adaptability, making GAI
+more responsive to diverse contexts and requirements.
+C. BIAS AND FAIRNESS
+Addressing issues related to bias and fairness is critical in
+GAI. Future research should focus on detecting biases in
+training data and developing unbiased models representing
+diverse populations. It is essential to ensure impartial outputs
+across demographic groups. Exploring methods to enhance
+the interpretability of these models is crucial. Models should
+be capable of explaining their generated content, increasing
+user acceptance, and aiding in identifying and correcting
+potential shortcomings. Improving the interpretability of GAI
+models is vital for their adoption, particularly in critical
+domains. Further research can concentrate on developing
+techniques to interpret the decision-making processes of
+these models.
+D. ETHICAL AND RESPONSIBLE AI
+In the realm of GAI, it is essential for research to prioritize
+ethical considerations and responsible usage. This means
+delving into the implications of GAI technologies and
+actively addressing concerns related to privacy, ownership,
+and the reliable implementation of generative models.
+By studying these ethical dimensions, the research community can ensure that the development and deployment of GAI
+are conducted to be mindful of social and moral implications,
+promoting ethical advancements in the field.
+E. ADVERSARIAL ROBUSTNESS
+Researching methods to bolster the robustness of GAI models
+against adversarial attacks is a crucial study area. It is
+imperative to develop techniques that enhance the resilience
+of generative models, ensuring their integrity and security
+even when faced with manipulative inputs. Moreover, it is
+142754 VOLUME 12, 2024U. Mittal et al.: Comprehensive Review on Generative AI for Education
+essential to guarantee that these models generate accurate and
+reliable outputs, even in the presence of malicious inputs.
+To achieve this, GAI models must be fortified against
+various attacks, including data leakage and model inversion
+attacks. Strengthening the security measures surrounding
+these models is essential to maintain their effectiveness and
+trustworthiness, safeguarding them from potential vulnerabilities and ensuring their safe deployment in real-world
+applications.
+F. HUMAN AI COLLABORATION
+A burgeoning research area involves exploring effective
+methods to facilitate collaboration and interaction between
+humans and GAI models. Understanding how humans can
+collaborate with AI systems to co-create, refine, and enhance
+generated outputs has the potential to yield more productive
+and beneficial applications. This research direction fosters
+a deeper understanding of human-AI collaboration and
+paves the way for innovative approaches in leveraging GAI
+technology for various creative and problem-solving tasks.
+G. ENVIRONMENTAL AND SUSTAINABLE AI
+Promoting research efforts geared towards developing
+energy-efficient generative models is essential for fostering
+the growth of sustainable AI technologies. Research groups
+are encouraged to delve into the applications of generative
+models in environmental science. This includes generating
+synthetic environmental data designed explicitly for climate
+modeling and analysis. By focusing on these areas, the
+research community can significantly contribute to the
+advancement of AI technology and its positive impact on
+environmental research and sustainability efforts.
+H. EXPLORE NEW ARCHITECTURE AND PARADIGMS
+Combining neural networks with symbolic logic offers a
+promising avenue to create generative models capable of reasoning and generating structured, interpretable outputs [153].
+This integration can instill logic and reasoning skills in
+students, enhancing their understanding and problem-solving
+abilities [154].
+Additionally, the potential of quantum computing in
+generative modeling should be thoroughly explored [155].
+Investigating the advantages of quantum parallelism can
+open new doors for generating intricate data distributions,
+offering innovative solutions to complex computational
+challenges [156]. By harnessing the power of quantum computing, generative models can potentially achieve significant
+advancements in their capabilities and efficiency [157].
+I. DIVERSITY AND CREATIVITY
+Research into techniques enabling precise control over
+generated samples is pivotal. These methods should empower
+users to influence specific output attributes, including style,
+mood, and content. Additionally, exploring the intersection
+between GAI and creativity is essential. Investigating how
+AI systems can exhibit true creativity by generating novel
+and imaginative content across diverse domains holds the key
+to unlocking groundbreaking advancements in the field. This
+research direction can redefine the boundaries of artificial
+intelligence and human-machine collaboration in creative
+endeavors.
+XII. CONCLUSION
+GAI empowers machines with human-like capabilities,
+enabling them to generate new content on text, music, video,
+images, etc. In this study, several applications of GAI have
+been explored in the context of using it for educational
+purposes. Implementation of GAI will bring revolution in
+the field of education. It will help provide the students with
+an immersive education experience, motivating them to learn
+and excel in their studies. The applications of GAI are not just
+limited to the students but also to the teachers, who can use
+GAI for evaluation and several other purposes, which have
+been listed in the studies, which will help them focus more
+on the students and their growth. Along with applications,
+some of the limitations of GAI have also been listed in this
+study, including privacy threats, bias, etc. Since GAI is a
+progressive and emerging field, the team has also figured
+out some areas where GAI could be used and where future
+research is needed

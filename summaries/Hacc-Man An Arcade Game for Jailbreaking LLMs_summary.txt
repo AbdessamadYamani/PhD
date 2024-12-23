@@ -1,0 +1,33 @@
+Okay, here's the summary of the provided paper:
+
+**Author(s):** Matheus Valentim, Jeanette Falk, and Nanna Inie
+
+**Title:** Hacc-Man: An Arcade Game for Jailbreaking LLMs
+
+**Journal:** Proceedings of ACM SIGCHI Conference on Designing Interactive Systems (PREPRINT - accepted to DIS ’24)
+
+**Pages:** 4
+
+**Year:** 2024
+
+**DOI:** https://doi.org/10.1145/nnnnnnn.nnnnnnn
+
+**URL:** Not explicitly provided, but accessible through the DOI.
+
+**Relevance to the subject of integrating Large Language Models (LLMs) into Serious Games:** While this paper does not directly address integrating LLMs into serious games, it explores a very relevant aspect for any interactive system powered by LLMs including serious games. It focuses on the security risks and creative user interactions with LLMs, which are crucial factors to consider when incorporating these models into a learning or training environment. Understanding how users can "jailbreak" an LLM, i.e., subvert its intended behavior, is important for designing robust and reliable serious games that employ LLMs.
+
+**Key Points (as written in the paper):**
+
+*   The paper introduces *Hacc-Man*, an arcade game designed to challenge players to "jailbreak" LLMs by eliciting outputs they are not intended to produce.
+*   The game aims to (1) raise awareness about the risks associated with deploying fragile LLMs, (2) increase user self-efficacy in interacting with LLMs, and (3) explore the creative problem-solving strategies users deploy in this context.
+*   The authors highlight the increasing relevance of LLM security due to the ease of interaction with LLMs through natural language.
+*   They note that jailbreaking LLMs is a form of creative problem-solving, involving both divergent and convergent thinking.
+*   The game provides six challenges with different system instructions and LLMs, mimicking various security and safety risks.
+*   The system stores user interactions for research purposes, intending to analyze the creative problem-solving strategies users employ.
+*   The paper references  [Hacc-Man: An Arcade Game for Jailbreaking LLMs], as a **Research Paper** introducing an arcade game for jailbreaking Large Language Models.
+*   The work relates to existing research in jailbreaking, red teaming, and creativity.
+
+**Citation:**
+
+The paper [Hacc-Man: An Arcade Game for Jailbreaking LLMs] is cited here as a **Research Paper** introducing the Hacc-Man arcade game.
+

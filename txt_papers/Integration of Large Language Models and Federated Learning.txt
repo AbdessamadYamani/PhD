@@ -1,0 +1,1424 @@
+Integration of Large Language Models and
+Federated Learning
+Chaochao Chen
+Zhejiang University
+zjuccc@zju.edu.cnXiaohua Feng
+Zhejiang University
+fengxiaohua@zju.edu.cnYuyuan Li
+Hangzhou Dianzi University
+y2li@zju.edu.cn
+Lingjuan Lyu
+Sony AI
+lingjuan.lv@sony.comJun Zhou
+Ant Group
+junzhougucas@gmail.comXiaolin Zheng∗
+Zhejiang University
+xlzheng@zju.edu.cn
+Jianwei Yin∗
+Zhejiang University
+zjuyjw@zju.edu.cn
+Abstract
+As the parameter size of Large Language Models (LLMs) continues to expand,
+there is an urgent need to address the scarcity of high-quality data. In response,
+existing research has attempted to make a breakthrough by incorporating Federated
+Learning (FL) into LLMs. Conversely, considering the outstanding performance
+of LLMs in task generalization, researchers have also tried applying LLMs within
+FL to tackle challenges in relevant domains. The complementarity between LLMs
+and FL has already ignited widespread research interest. In this paper, we aim to
+deeply explore the integration of LLMs and FL. We propose a research framework,
+dividing the fusion of LLMs and FL into three parts: the combination of LLM
+sub-technologies with FL, the integration of FL sub-technologies with LLMs, and
+the overall merger of LLMs and FL. We first provide a comprehensive review of
+the current state of research in the domain of LLMs combined with FL, including
+their typical applications, integration advantages, challenges faced, and future
+directions for resolution. Subsequently, we discuss the practical applications of the
+combination of LLMs and FL in critical scenarios such as healthcare, finance, and
+education, and provide new perspectives and insights into future research directions
+for LLMs and FL.
+1. Introduction
+The advent of Large Language Models [ 173] (LLMs) has markedly influenced contemporary society.
+These models use deep learning strategies, principally the transformer architecture [ 102] to discern
+intricate patterns and structures inherent to data [ 2]. Presently, a vast amount of work [ 124,19,115]
+confirms that these models exhibit superior performance both in predefined tasks and practical
+applications. Impressively, given accurate instructions and demonstrations, these models are capable
+of adapting to specific contexts or addressing new tasks without additional fine-tuning, as corroborated
+by numerous studies [ 208,88,162]. Moreover, LLMs have made significant strides in specialized
+domains, delivering commendable outcomes in areas like healthcare [ 167], finance [ 198], law [ 72,
+111, 38], scientific knowledge analysis [155], and code generation [113, 93].
+∗Corresponding authors.arXiv:2307.08925v3  [cs.LG]  30 Oct 2024
+As the size of these models grows, more extensive training data is needed [ 84,68]. However, recent
+research [ 163] points out that there is a gap between the slow growth of public domain data and the
+rapid expansion of training data needs. This discrepancy may result in a shortage of high-quality
+public domain data for LLM training. Conversely, while private domains harbor colossal data
+volumes, concerns about privacy and commercial competition often hinder open collaboration and
+knowledge exchange. Take Fig. 1 for example, suppose that three hospitals want to establish an LLMs
+for the medical field, their own datasets would likely be insufficient. A joint dataset, on the other
+hand, would yield a substantial corpus. However, real-world data privacy regulations [ 4] prevent
+direct plain text sharing between separate entities.
+Assumed  situation:
+𝐃𝐃𝐃𝐃𝐃𝐃𝐃𝐃𝟏𝟏𝐃𝐃𝐃𝐃𝐃𝐃𝐃𝐃𝟐𝟐𝐃𝐃𝐃𝐃𝐃𝐃𝐃𝐃𝟑𝟑+ +
+Sufficient data
+𝐓𝐓𝐃𝐃𝐓𝐓𝐓𝐓Medical LLM𝐇𝐇𝐇𝐇𝐓𝐓𝐇𝐇𝐇𝐇𝐃𝐃𝐃𝐃𝐇𝐇𝟏𝟏Medical LLM Insufficient 𝐝𝐝𝐃𝐃𝐃𝐃𝐃𝐃𝟏𝟏
+𝐇𝐇𝐇𝐇𝐓𝐓𝐇𝐇𝐇𝐇𝐃𝐃𝐃𝐃𝐇𝐇𝟐𝟐 Medical LLM Insufficient 𝐝𝐝𝐃𝐃𝐃𝐃𝐃𝐃𝟐𝟐
+𝐇𝐇𝐇𝐇𝐓𝐓𝐇𝐇𝐇𝐇𝐃𝐃𝐃𝐃𝐇𝐇𝟑𝟑Medical LLM Insufficient 𝐝𝐝𝐃𝐃𝐃𝐃𝐃𝐃𝟑𝟑Unable to exchange data in plaintextReal -world situation:
+Unable to exchange data in plaintext
+𝐓𝐓𝐃𝐃𝐓𝐓𝐓𝐓𝟏𝟏
+𝐓𝐓𝐃𝐃𝐓𝐓𝐓𝐓𝟐𝟐
+𝐓𝐓𝐃𝐃𝐓𝐓𝐓𝐓𝟑𝟑Unable to 
+complete
+Unable to 
+complete
+Unable to 
+complete
+Figure 1: The diagram illustrates the problem of data scarcity in LLMs. None of the hospitals have
+enough data for training LLMs and they are reluctant to share data with each other.
+Considering the large parameter size and complex model structure of LLMs, common privacy-
+preserving computation techniques, such as Secure Multi-party Computation [ 34] (SMPC), Differen-
+tial Privacy [ 43] (DP), and Trusted Execution Environments [ 128] (TEE), struggle to juggle privacy
+protection and computational efficiency effectively. Unlike these methods, Federated Learning [ 106]
+(FL) offers a more practical approach by allowing collaborative model development. FL demonstrates
+a mature engineering execution method and strikes an ideal balance between efficiency and data pri-
+vacy [ 17]. Therefore, a feasible solution to address the challenges of LLMs in practical applications is
+to introduce FL into the LLMs. Conversely, capitalizing on the strong task generalization capabilities
+of LLMs, they can also be employed within FL systems to help address challenges inherent to FL.
+Based on this complementarity, the combination of LLMs with FL has demonstrated exceptional
+performance benefits and mutual enhancement, a characteristic that has elicited widespread research
+interest.
+In this paper, we focus on the promising direction of combining LLMs and FL. Previous studies
+present initial perspectives on this integration [ 26,210,196], providing preliminary insights into its
+motivations and future directions. Despite this, current research has not fully covered all areas related
+to the integration of LLMs and FL. Specifically, some studies focus on exploring the integration of
+sub-technologies within LLMs and FL [ 210], neglecting the importance of the overall concept of
+Federated Large Language Models (FedLLMs). In view of this, we adopt a more comprehensive
+research approach to organize existing work on combining LLMs and FL. By analyzing the current
+progress in research combining LLMs and FL, we offer unique insights into the benefits, challenges,
+and future development trends of their integration. Notably, while analyzing the combination of
+sub-technologies in LLMs and FL, we also explored sub-technologies shared by foundational models,
+extending beyond just language models to include multimodal and visual models. Since these shared
+sub-technologies can be easily adapted to language models, this broader perspective offers valuable
+insights into the integration of LLMs with FL.
+The remainder of this paper is organized as follows: we first briefly introduce the technical back-
+grounds of FL and LLMs in Section 2. In Section 3, we present a comprehensive analysis of the
+current status, challenges, and future directions regarding the combination of LLMs and FL. This
+includes three sub-sections: i) the integration of sub-technologies in LLMs with FL, ii) the integration
+of sub-technologies in FL with LLMs, and iii) the overall integration of LLMs and FL. Section 4
+analyzes the application scenarios where LLMs are combined with FL. Finally, in Section 5, we
+2
+summarize the progress of research on the integration of LLMs and FL and present insights into the
+future development of this field.
+2. Background
+2.1 Large Language Models
+Language Models (LMs) aim to predict the probability distribution of future tokens based on a given
+sequence of tokens [ 146]. As the size of model parameters and the amount of training data increase,
+LLMs have shown impressive capabilities in handling complex tasks, including In-context Learning
+(ICL) [19], instruction following [162, 115, 172], and step-by-step reasoning [174].
+The success of LLMs is not just due to their larger model sizes and extensive training data but also
+owes much to the Transformer architecture [ 161]. Existing LLMs primarily rely on two design
+architectures [ 207]: only-decoder, and encoder-decoder [ 161], with the only-decoder architectures
+further divided into causal decoder [ 123,19] and prefix decoder [ 204]. Causal decoder architectures,
+which combine a unidirectional attention mask to ensure each input token can only attend to past
+tokens and itself [ 122], have been widely adopted across various existing LLMs, offering significant
+advantages with massive training data. Specifically, GPT-3 [ 19] successfully demonstrated the
+effectiveness of this architecture.
+Zhao et. al. [ 207] outline three key stages of training LLMs: pre-training, instruction-tuning, and
+alignment-tuning. During the pre-training stage, LLMs learn basic language processing abilities
+and world knowledge across a broad corpus, such as grammar, syntax, and general knowledge.
+Instruction-tuning becomes crucial for refining LLMs’ ability to handle new tasks effectively. It
+involves crafting precise task instructions or contextual learning strategies to bolster the model’s
+adaptability to unseen tasks [ 172]. Despite the benefits, there’s a risk of instruction-fine-tuned models
+generating harmful content due to potential misalignment with human values [ 14,175]. Therefore,
+aligning LLMs with human values, such as honesty and harmlessness, through alignment-tuning
+has become an important task. To this end, InstructGPT [ 115] proposes alignment training methods,
+including supervised fine-tuning and reinforcement learning from human feedback [115].
+2.2 Federated Learning
+The concept of FL emerged to execute collaborative model learning with the data from participants
+while safeguarding their privacy [ 106]. Within FL, client devices asynchronously share updates
+such as weights and gradients while keeping raw data locally. The Federated Averaging (FedAvg)
+algorithm [ 106], which aggregates model updates from participating clients by averaging, is among
+the most prevalent aggregation algorithms in FL. Furthermore, studies [ 189] consider the statistical
+challenges posed by heterogeneous user data in real-world scenarios where direct collaboration of
+data may be of poor quality, incomplete, or insufficient. In summary, these advancements greatly
+accelerate the development of FL, striking a balance between maintaining data quality and enhancing
+the efficiency of collaborative model creation.
+3. Analysis of Current Integration of LLMs and FL
+3.1 Integration of Sub-technologies in LLMs with FL
+Although FL has been widely applied in practice, unsolved issues remain. LLMs introduce novel
+solutions to FL by leveraging their pre-trained knowledge and generalization abilities for universal
+tasks. Combining sub-technologies from LLMs with FL is a current focus of research exploration
+(Tabel 1). Below, we analyze the research status of integrating sub-technologies from LLMs with FL,
+the challenges present, and possible future solutions.
+3.1.1 Current Status
+Combining sub-technologies within LLMs with FL, current research primarily explores the following
+two aspects: pre-training and prompt engineering. Below, we detail the research status of each
+integration approach.
+3
+Current status Advantages Challenges Future directionsSub-technologies 
+in LLMs with FLSub-technologies 
+in FL with LLMsLLMs with FL
+(1) Pre -training with FL 
+(2) Prompt engineering with FL(1) Distributed features with LLMs
+(2) Privacy protection features with 
+LLMs(1) FATE -LLM
+(2) Shepherd
+(3) FederatedScope -LLMs
+(3) OpenFedLLMs
+• Reducing the time for training 
+convergence
+• Solving non -iid problems
+• Empowering FL models to handle 
+multiple tasks
+• Solving personalization  problems
+• Solving the domain generalization
+• Labelling unsupervised data
+• LLMs as data generators• Assess ing computing resources
+• Enhancing LLMs task 
+generalization capabilities
+• Improving prompt generation ability
+• Assisting with the Selection of CoT 
+prompt• Improving the performance of LLMs
+• A new task adaptation paradigm
+• Realising  the possibility of lifelong 
+learning
+• Bias between the pre -training data 
+for LLMs and the data used for FL
+• Data bias transmission issues
+• Data privacy and copyright issues
+• Combination of black -box LLMs 
+and FL• Additional communication overhead
+• Model property rights issues• Synchronisation  problems due to 
+differences in computing resources
+• Incentive mechanisms for FedLLMs
+• Continuous data stream
+• Personalisation  issues in FedLLMs
+• Additional security and privacy threats
+• Outdated defense techniques
+• Aligning LLMs and FL Systems with 
+reinforcement learning
+• Fairer data enhancement, bias 
+memory elimination, more robust FL 
+aggregation approach
+• Distribution -based generative data 
+detection techniques
+• Developing distillation techniques for 
+LLMs in a black -box environment• More efficiently distributed 
+computing strategies, migrating 
+accelerated training strategies for 
+LLMs to FL
+• Development of model 
+watermarking techniques for 
+LLMs• Limit high -computing -power clients to 
+  fill low -computing -power clients
+• Reinforcement learning -based incentive 
+mechanisms  in FedLLMs  environment
+• Combining federal continuous learning 
+with FedLLMs
+• Personalization methods based on 
+parameter selection
+• Conduct more empirical research on 
+privacy and security threats to FedLLMs
+• Development of defense techniques 
+adapted to FedLLMsFigure 2: Overview of the analysis process combining LLMs and FL. We sequentially analyze the
+integration of sub-technologies within LLMs with FL, the integration of sub-technologies within FL
+with LLMs, and the overall framework combining LLMs and FL. This includes the current status of
+integration, the advantages brought by the combination, potential challenges, and future directions
+for solutions.
+4
+Table 1: Overview of the current state of sub-technologies within LLMs and their integration with
+FL. We list the existing research on the combination of each sub-technology with FL and analyze the
+benefits they bring. Subsequently, we provide a brief summary of their methodologies.
+Sub-technologies Advantages of integration Summary of method References
+Pre-trainingReducing the time for training convergence Pre-trained models serve as the starting point for FL training [153, 99, 112]
+Solving non-iid problems in FL The server performs pre-training before commencing FL training [112, 27]
+Empowering FL models to handle multiple tasks Modular design assigns each task to the corresponding module [3, 203, 206]
+Prompts engineeringSolving personalization problems in FL Personalized prompts are utilized to represent the local data distribution of client [185, 91]
+Solving the domain generalization problem in FL Adaptive prompts for domain generalization are learned in a distributed manner [171, 12]
+Pre-training. Current research leverages pre-training techniques within LLMs to tackle multi-
+ple challenges in FL, such as reducing the time to convergence for FL training, addressing non-
+independent identically distributed (non-iid) issues in FL, and empowering FL models with the ability
+to handle multiple tasks.
+Reducing the time for training convergence. In FL research, starting with randomly initialized neural
+network weights often slows down model convergence. Studies show that using pre-trained models,
+trained on large datasets, as a starting point for FL can significantly reduce training time. [ 153,99].
+Instead of starting from scratch, clients can fine-tune the FL model using their local data. Experiments
+demonstrate that using a pre-trained model can reduce the training time required to achieve a target
+error rate than those starting from random initialization [ 112]. This faster convergence results in
+better-performing models in fewer communication rounds.
+Solving non-iid problems in FL. One common challenge in FL is dealing with data and system
+heterogeneity. Data heterogeneity refers to variations in data distributions across clients [ 82], while
+system heterogeneity relates to differences in client device capabilities [ 112]. To mitigate these
+challenges, researchers have developed joint optimization methods [ 74,75]. Starting FL from a
+pre-trained model initialization has been found to help alleviate the effects of data and system
+heterogeneity [ 112]. This approach can lead to more stable global model aggregation and reduce
+the accuracy gap between FL and centralized learning, especially in scenarios with non-iid client
+data [27].
+Empowering FL models to handle multiple tasks. FL typically focuses on a single task, which may
+not be sufficient for real-world applications with diverse task requirements [ 211]. Large pre-trained
+models have demonstrated the ability to perform well across multiple tasks [ 19]. Some research
+endeavors to integrate pre-trained models into the FL framework to enable FL models to handle
+various tasks [ 3,203]. However, more attention is needed on FL in mobile and edge devices. The
+FedYolo framework proposes a modular approach where clients load a complete pre-trained model
+and make future updates through communication-efficient modules [ 206]. Experiments show that
+this design allows clients to simultaneously solve multiple unrelated tasks with a single pre-trained
+model, reducing catastrophic forgetting compared to full updates.
+Prompts engineering. Prompt techniques have demonstrated exceptional performance within
+LLMs [ 60]. Current research is exploring the integration of prompts with the FL framework to
+address issues of personalization, and domain generalization within FL.
+Solving personalization problems in FL. Personalized FL allows for personalized models to enhance
+their generalization and robustness by leveraging knowledge from distributed clients. The pFedPG
+framework has utilized large-scale pre-trained models to acquire robust representations while achiev-
+ing efficient model personalization for heterogeneous clients [ 185]. While pFedPG does not consider
+client data characteristics, recent work, i.e., pFedPT, uses personalized prompts to implicitly represent
+local data distributions [ 91]. During pFedPT training, each client generates a personalized prompt
+related to their data distribution, aiding classification tasks by incorporating this information into the
+aggregated model.
+Solving the domain generalization problem in FL. FL is crucial for learning from decentralized data,
+but faces challenges when training data (source domain) differs from the test dataset (target domain).
+The Fed-DPT framework initially addressed this using visual and textual prompts, but required
+domain labels during training and had limitations on the number of domains [ 171]. To overcome this,
+the DiPrompT framework was proposed, learning adaptive prompts for domain generalization in a
+distributed manner [ 12]. DiPrompT uses global prompts to capture shared knowledge and domain
+5
+prompts for specific domain knowledge, eliminating the need for a strict one-to-one mapping between
+source domains and local clients.
+3.1.2 Challenges and Future Directions
+The integration of sub-technologies within LLMs with FL can resolve many issues but also introduce
+some new challenges. Below, we discuss each of these new challenges.
+Bias between the pre-training data for LLMs and the data used for FL. The domain mismatch
+between training and test data poses a significant challenge in current research [ 53,101,152],
+especially when integrating sub-technologies from LLMs into FL. This mismatch can reduce the
+effectiveness of model transfer and application. Additionally, if synthetic data created by LLMs does
+not align with client data distribution, it may introduce bias and noise into the FL process. To address
+these challenges, future research should focus on enhancing the quality and diversity of synthetic
+data generated by LLMs to closely match the underlying data distribution and application domains in
+FL. One potential approach is to utilize pre-processing techniques to fine-tune the alignment between
+LLMs and FL systems before incorporating them into FL processes [ 81]. This strategy aims to
+minimize the bias between LLM-generated data and foundational FL data, ensuring their distributions
+are as similar as possible.
+Data bias transmission issues. In the era of LLMs, the training and fine-tuning datasets for LLMs
+are vast and diverse, potentially containing toxic content, user privacy data, politically sensitive infor-
+mation, and biases [ 110]. LLMs, being probabilistic generative models with limited interpretability
+and controllability [ 139], may generate synthetic data of questionable quality and safety, leading to
+issues like data toxicity, biases, and misinformation. When FL training is conducted on these synthetic
+datasets, these problems can transfer to the final FL model. To address these challenges, future
+research should focus on integrating LLMs into FL systems in a way that prevents new biases and
+avoids amplifying existing ones. This could involve developing LLMs data augmentation techniques
+guided by fairness principles and applying bias elimination techniques to remove biases from FL
+systems, such as combining LLM-based data augmentation with federated unlearning techniques. Ad-
+ditionally, creating more robust FL aggregation algorithms could effectively prevent the introduction
+of biases into the system.
+Data privacy and copyright issues. When LLM-generated data is used in FL, concerns about
+privacy rights and copyright emerge [ 33]. LLMs gather vast amounts of internet data during pre-
+training, including private and copyrighted information, making it hard to trace the origins of this
+data. Recent studies show that LLMs have strong memory capabilities [ 24,22], suggesting that the
+data they generate could closely resemble the privacy and copyright information encountered during
+training [ 92]. This poses legal risks for FL models trained using these datasets. To address these
+issues, future research should explore how to balance the usefulness of synthetic data from LLMs with
+privacy and copyright protection. Firstly, it is imperative to develop a method for determining whether
+generated data adheres to privacy protection and copyright regulations. Building on this, researchers
+should be able to selectively generate data, ensuring distinct differentiation from the original data.
+Furthermore, exploring the interpretability of model inference within an FL environment is also a
+viable research direction. This will aid in intuitively identifying the sources of generated content that
+do not comply with standards, and accordingly taking appropriate remedial actions.
+Combination of black-box LLMs and FL. Currently, when combining LLMs with FL, researchers
+typically use a white-box approach, where the model’s structure and parameters are fully transparent.
+This allows for a deep understanding of how the models work and enables adjustments to meet FL
+requirements. However, some high-performance LLMs, e.g., GPT-4 [ 1], operate as black-box API
+services in real-world applications [ 65,64], meaning users can’t access the internal workings of the
+model directly but interact with it through an API. To effectively combine black-box LLMs with FL,
+knowledge distillation can be employed [ 67]. For example, pre-trained LLMs act as teacher models,
+guiding the training of student models within the FL system. The teacher model’s output, obtained
+via API calls, serves as pseudo-labels for FL training data. Student models’ predictions are then
+aligned with these pseudo-labels to distill knowledge effectively [145].
+6
+Table 2: Overview of the current state of sub-technologies within FL and their integration with LLMs.
+We list the existing research on the combination of each sub-technology with LLMs and analyze the
+benefits they bring. Subsequently, we provide a brief summary of their methodologies.
+Sub-technologies Advantages of integration Summary of method References
+Distributed computingAssessing computing resources Aggregating computational capacities from multiple sources [199, 73, 176]
+Enhancing LLMs task generalization capabilities Aggregating proprietary data from multi-party devices [69]
+Privacy-preserving computationImproving prompt generation ability Utilizing proprietary specific data to generate targeted prompts [191, 60, 31, 30]
+Assisting with the Selection of CoT prompt Balancing the generality and personalization in the selection of CoT prompts. [182, 42, 169]
+3.2 Integration of Sub-technologies in FL with LLMs
+3.2.1 Current Status
+The training requirements for LLMs demand an immense amount of data and computational resources.
+In FL, distributed computing [ 9] and privacy-preserving computation [ 188] are considered effective
+tools to meet these demands. Existing research integrates these key technologies covered by FL with
+LLMs, aiming to address the practical issues LLMs face (Tabel 2).
+Distributed computing. In FL, distributed computing helps LLMs by combining computing and
+data resources. This eases the workload for individual users during training and inference and boosts
+LLMs’ ability to handle different tasks by merging data from multiple parties.
+Assessing computing resources. Training LLMs demands significant computational power. For
+example, LLaMA needs 2048 NVIDIA A100 GPUs for 21 days [ 158], GPT-3-1.3B requires 64 Tesla
+V100 GPUs for 7 days [ 19], and FLM utilizes 192 NVIDIA A800 GPUs for 22 days [ 95]. Such
+costs are manageable mainly by big tech firms like Microsoft and Google, limiting LLMs’ progress.
+FedML and others combine FL with LLMs to share computing resources among participants, easing
+the burden during training and inference stages [199, 73, 176].
+Enhancing LLMs task generalization capabilities. LLMs are mainly trained on vast centralized
+datasets, e.g., GPT-NeoX-20B on Pile [ 15] and LLaMA on comprehensive data including other
+LLMs’ datasets [ 158]. Yet, these datasets don’t cover all real-world knowledge, hampering mod-
+els’ adaptability. To address this, recent research integrates data from various sources using FL’s
+distributed data processing [ 69], aiming to enhance models’ generalization, including data from
+medium-scale infrastructures and individual mobile devices.
+Privacy-preserving computation. Prompts play a crucial role in helping LLMs process complex
+tasks [ 100]. Public dataset prompts tend to be repetitive, and privacy regulations limit the use of
+private data for prompt generation. To improve this, current studies merge FL’s privacy-preserving
+tech with prompt design in LLMs. This enhances personalized prompt matching, better meeting
+specific requirements.
+Improving prompt generation ability. LLMs improve their ability to understand complex tasks
+through prompt engineering [ 100]. However, to address privacy concerns, prompt designs often rely
+on publicly available data. This approach, while protecting privacy, limits the potential of prompt
+engineering from two aspects [ 196]. Firstly, public datasets may not have access to specific domains
+or individual private information, hindering optimization for specialized fields. Secondly, using public
+datasets can result in generic prompt templates, leading to repetitive or uninspired model responses.
+Recent research integrates FL’s privacy-preserving features with prompt generation [ 191,60,31,30],
+allowing for optimized prompts tailored to specific domains, thus enabling better adaptation to
+particular needs.
+Assisting with the Selection of CoT prompt. CoT reasoning, a method for eliciting quick and accurate
+responses from LLMs, is gaining attention in research [ 88]. However, choosing the best prompts
+poses a challenge. Currently, prompt selection relies on trial and error, where users adjust prompts
+based on LLM responses. To improve the explainability of CoT prompt selection and balance
+universality and personalization across domains while protecting privacy, recent studies combine
+FL with LLMs [ 182,42,169]. They propose the FedLogic framework [ 182], which tackles prompt
+selection as a rule selection problem based on fuzzy scores, using LLMs as rule generators.
+7
+Table 3: Comparison of current FedLLM frameworks. Following [ 192], we adopt the following
+notation definitions. PT: parameter-efficient fine-tuning, IT: instruction-tuning, V A: value alignment-
+tuning, Nagg: number of supported FL aggregation algorithms, Ndata: number of training datasets,
+Neva: number of evaluation metrics.
+Framework Name PT IT V A NaggNdataNeva
+FATE-LLM [45] ✓ × × 1 1 4
+Shepherd [205] ✓ ✓ × 1 1 1
+FederatedScope-LLM [89] ✓ ✓ × 1 3 3
+OpenFedLLM [192] ✓ ✓ ✓ 7 8 30+
+3.2.2 Challenges and Future Directions
+Additional communication overhead. Although FL applied to LLMs can ease computational
+burdens, it introduces extra communication expenses. Due to the large number of LLM parameters,
+communication time might surpass training time significantly. Real-world network instability could
+worsen this issue [ 98]. Additionally, extensive communication can harm the environment by raising
+carbon emissions. Therefore, efficient distributed learning algorithms are crucial. These algorithms
+must tackle communication and computational challenges during LLM training and deployment
+across devices with varying capabilities and network conditions. Presently, training acceleration
+strategies, e.g., Deepspeed [ 125], Megatron [ 136], and BMTrain [ 200], speed up LLM training
+via data parallelism, model parallelism, and pipeline parallelism [ 76]. Applying these strategies
+within an FL environment is relatively straightforward and can, to some extent, address the local
+computational issues associated with FedLLMs. However, these strategies do not fully resolve
+communication challenges. A more effective approach involves employing model pruning [ 147] and
+compression [ 209] techniques to reduce the complexity and size of the model, thereby alleviating
+computational and communication burdens without sacrificing model performance. Additionally,
+extending parameter-efficient fine-tuning methods to FedLLMs is also an effective solution.
+Model property rights issues. Training LLMs relies on vast, domain-specific datasets, making
+resulting models commercially valuable intellectual property. Ensuring ownership of these models
+is crucial, especially in distributed training scenarios like FL, which involve multiple collaborating
+parties [ 82]. This increases the risk of model leaks and intellectual property infringement. To tackle
+these challenges, it’s essential to develop theoretical and methodological frameworks in artificial
+intelligence to identify ownership misappropriation and illegal claims. Authentication technologies
+should provide robust intellectual property protection without compromising model performance.
+Model watermarking is a promising solution [ 156]. It allows collaborative model updating and
+training while safeguarding private data and signatures. Implementing model watermarking in LLMs
+could effectively address intellectual property challenges.
+3.3 Overall Integration of LLMs and FL
+In this section, we discuss the benefits of FedLLMs compared to separate technologies, review current
+FedLLM trends, and examine potential challenges. Finally, we share our insights and suggestions for
+addressing these challenges.
+3.3.1 Current Status
+Compared to simply combining LLMs and FL sub-technologies, FedLLMs present a comprehensive
+framework, marking a new direction in privacy-preserving language model development. Its key
+advantages include: i) ensuring privacy while effectively integrating high-quality data from multiple
+parties for superior model training [ 45], ii) providing solutions for general task adaptation and large
+model training in specific areas [45], and iii) facilitating lifelong learning [197].
+Several recent studies have explored integrating FL with LLMs [ 45,205,89,192]. Among them,
+the earliest studies publish perspective articles about FedLLMs [ 26]. FATE-LLM [ 45] investigates
+fine-tuning strategies within FL to reduce communication overhead, incorporating efficient fine-tuning
+methods [ 207]. However, its application was limited to traditional classification tasks. Subsequent
+works, i.e., FederatedScope-LLMs [ 89] and Shepherd [ 205] expand into federated instruction-tuning
+but lack diverse training datasets. OpenFedLLM [ 192] adds a federated alignment-tuning mechanism,
+8
+enhancing LLMs training. It conducts empirical analysis across datasets and compares FL aggregation
+methods [106, 126]. Please refer to Table 3 for a detailed comparison.
+Although existing FedLLMs frameworks differ in design and implementation, they follow the same
+core design principle: extending the training process of LLMs within an FL system. To construct
+a robust FedLLMs framework, we provide a detailed overview of the architecture of FedLLMs
+based on the aforementioned principle. Refer to Figure 3, we divide the architectural structure of
+FedLLMs into two main phases: training and inference. In the training phase, the framework is
+further subdivided into pre-training, instruction-tuning, and alignment-tuning stages, with each stage
+offering a display of various specific implementation methods in the respective subfigures. During
+the inference phase, we expand the existing FedLLMs framework to allow clients to combine the
+outputs of local and global models when executing inferences, thereby enhancing the accuracy and
+adaptability of inference.
+Benign clientFederated aggregation  &  computation module
+∆𝐖=𝐀𝐠𝐠𝐫𝐞𝐠𝐚𝐭𝐢𝐨𝐧 (∆𝐖𝟏+∆𝐖𝟐+∆𝐖𝟑+∆𝐖𝟒+⋯+∆𝐖𝐧)Central server
+∆𝐖𝟏∆𝐖∆𝐖𝟐 ∆𝐖𝟑 ∆𝐖n∆𝐖 ∆𝐖∆𝐖ⅠTraining phase ⅡInference phase
+Global modelEqual
+Metho done:
+Private dataStart from scratch
+Metho dtwo:
+Private dataPublic checkpointⅠ−ⅠPre-training
+Method one:
+Private dataFull-scale
+Method two:
+Private dataParameter -efficientⅠ−ⅡInstruction -tuning Ⅰ−ⅢAlignment -tuning
+Overview of the method :ⅠTraining phase
+Tunable
+FrozenEqualUpload
+Update
+Contain∆𝐖
+……Structure of the global and local model :
+∆𝐖𝟒
+Benign client Benign client Benign client Benign clientNormal dataLogit vector
+InputNormal data Normal data Normal data Normal data Normal data Normal data
+Logit vector
+Local modelGlobal output
+Local output𝑃1𝑃2…𝑃𝑛−1𝑃𝑛 Composite
+Autoregressive
+Autoregressive
+Supervised
+SupervisedPrivate dataOutput -1
+…
+Output -n
+×
+√
+Preference 
+GuidanceTunable 
+model
+Method one:
+Tunable 
+modelFull-scaleMethod two:
+Tunable 
+modelParameter -efficientReinforcement of feedback
+…Tunable
+part…
+…
+……Backbone
+Figure 3: The current implementation framework of FedLLMs. The use of FedLLM primarily
+includes two phases: training and inference. The training phase further comprises pre-training,
+instruction-tuning, and alignment-tuning. Our subfigures below detail feasible methods for imple-
+menting each part.
+3.3.2 Challenges and Future Directions
+Synchronisation problems due to differences in computing resources. In FL, exchanging gra-
+dient information between devices incurs high communication costs, especially when resources
+vary among participants. This issue is more pronounced in FedLLMs due to their larger parameter
+scales [ 11]. Limited network bandwidth exacerbates the problem, potentially causing the dropout of
+some members and prolonging communication time [ 97]. To mitigate this issue, a naive strategy is
+collaborative computing [ 25], which limits the computational potential of resource-rich clients to
+match the capabilities of weaker clients. However, this approach can lead to a significant waste of
+computational resources. A more rational approach is to implement hierarchical aggregation [ 170]
+within FedLLMs, where all clients do not communicate directly with the central server, but instead
+perform preliminary data aggregation within local groups (or clusters). Each cluster is led by one or
+more clients with superior computational capabilities, responsible for collecting and aggregating data
+within the cluster before exchanging information with the central server or leaders of other clusters.
+Incentive mechanisms for FedLLMs. In the implementation of FedLLMs, creating a fair and
+effective incentive mechanism is crucial to encourage broader participation and collaboration among
+contributors, given the varying data volumes and computational capabilities among participants [ 201].
+This involves balancing data contributions and computational resources, and aligning incentive
+9
+Table 4: Overview of attacks against FedLLMs systems. Based on the work by Usynin et al. [ 160],
+we categorize the potential security and privacy threats faced by FedLLMs. Additionally, we highlight
+the common methods currently employed to defend against these threats. The notation definitions
+corresponding to these defenses are as follows. i: data analysis, ii: update analysis, iii: robust
+aggregation, iv: model pruning, v: adversarial training, vi: DP, vii: knowledge distillation.
+Attack type Attack goal Proposed defenses References
+Security threats
+Untargeted poisoning Degrading utility of the target model i,ii,iii,v [157, 21, 164]
+Backdoor Running an auxiliary learning task i,iii,iv [57, 28, 90, 133]
+Privacy threats
+Membership inference Inferring the presence of an individual record vi,vii [137, 78, 120, 49]
+Attribute inference Inferring sensitive value of a record vi [63, 104, 144]
+Model inversion Reconstruction of training data vi,vii [50, 117]
+strategies with each participant’s investment and derived value. Although incentive mechanisms
+for smaller models in traditional FL environments have been explored [ 202], they are not directly
+applicable to LLMs due to their massive parameter size. Therefore, FedLLMs require specifically
+tailored incentive solutions. Reinforcement learning has been highlighted as effective in designing FL
+incentive mechanisms, especially considering the characteristics of LLMs and their complementarity
+with reinforcement learning [ 115]. Applying RL to FedLLMs and developing specialized incentive
+mechanisms for them seems to be a promising path forward.
+Continuous data stream. During FedLLM training, data streams continuously, unlike centralized
+LLMs where data comes in fixed batches [ 87,53]. Clients join and leave, potentially with data
+distributions different from the global model. Given LLMs’ large size, training from scratch is
+resource-intensive. Integrating new data with minimal resources is a challenge. Federated continual
+learning [ 36] is considered a viable solution. However, most existing methods are parameter-
+based [ 194], which can be resource-intensive and inefficient when dealing with large-scale models.
+In contrast, loss-based approaches may be more suitable for FedLLMs. Furthermore, exploring the
+implementation of LLM model editing [108] techniques in an FL environment, where only a subset
+of parameters is updated with each model iteration, could also help address this issue.
+Personalisation issues in FedLLMs. Current FedLLM frameworks prioritize training a unified
+model collaboratively, often overlooking personalization concerns. In the LLM domain, there are
+two main viewpoints: one advocates for universal LLMs with larger parameters [ 1,29], while the
+other focuses on smaller, proprietary models for practical contexts like mobile devices. Considering
+personalized needs in FedLLMs is essential. A straightforward solution is to integrate existing feder-
+ated personalization methods into the FedLLM framework for enhancement, such as model-agnostic
+personalization [44], hierarchical personalization [178], and cluster-based federated learning [129].
+Additional security and privacy threats. LLMs combined with FL could worsen security and
+privacy risks, creating new challenges. Existing FedLLM frameworks often overlook these issues.
+To the best of our knowledge, we are the first to analyze security and privacy threats in FedLLMs.
+According to Usynin et al. [ 160], we classify threats into utility-focused attacks and privacy-focused
+attacks (Table 4). The former aims to impair model effectiveness, termed security threats, while the
+latter intends to compromise data privacy, termed privacy threats. We analyze these threats and their
+new variants in FedLLMs.
+Security threats. Adversaries take a different approach, aiming to alter the learning protocol or
+undermine the model’s utility [ 160]. In FedLLMs, the main threat to model performance is poisoning
+attacks. These attacks can be divided into untargeted and targeted (backdoor) poisoning attacks based
+on the attackers’ goals [71].
+•Untargeted poisoning attacks. This attack involves minor manipulations of training data, where
+malicious actors introduce altered or distorted data samples into the federated dataset [ 21,157].
+This intentional bias or misguidance aims to disrupt the subsequent model training process. In
+FedLLMs, we incorporate textual data. Introducing harmful noise to textual data, including tag
+inclusion, modification, or omission, is relatively easy to execute [ 164]. While typically used in
+10
+image data, recent studies suggest optimized methods for perturbations on discrete data, i.e., textual
+data, expanding poisoning possibilities [ 23,46]. In FL, a client could cause harm by sending
+corrupted updates, making FedLLMs vulnerable to adversarial perturbations [ 127]. Numerous
+studies suggest that FedLLMs are susceptible to poisoning attacks [ 130,166,148], raising concerns
+about detection difficulty.
+•Backdoor Attacks. This attack covertly manipulates models to exhibit normal behaviors but can
+be triggered by specific inputs to produce the adversary’s desired output [ 57]. Unlike untargeted
+poisoning attacks, backdoor attacks involve the insertion or modification of precise input pat-
+terns [ 133,28,40,107]. Backdoor attacks have extended in new ways within FedLLMs. During
+the instruction fine-tuning stage, LLMs are vulnerable to backdoor attacks. Recent studies have
+acknowledged this risk, emphasizing the potential pathways for attackers to insinuate malicious
+commands [ 183,138] and the concept of untrained vocabulary backdoor attacks on language
+models [ 77]. Moreover, some studies perceive prompt injection attacks [ 165,100] as a unique spin
+on backdoor attacks, with the compliance capabilities of LLMs being the primary target [ 138].
+Apart from novel types of backdoor attacks, the escalating complexity of models in FL settings
+fosters backdoor insertions. This is attributable to the capacity of over-parameterized models to
+learn trigger features, even amidst label noise during training. Furthermore, as models within FL
+are collectively utilized and contributed to by multiple clients, the scope for attacks and origins of
+backdoors inevitably broaden [149, 10], further increasing the risk of backdoor attacks.
+Privacy threats. This attack aims to access a client’s private information. Due to the large number
+of parameters in LLMs, model extraction attacks are very costly. Therefore, this paper focuses on
+Membership Inference Attacks (MIA), attribute inference attacks, and model inversion attacks, and
+will not discuss model extraction attacks.
+•Membership Inference Attacks. This attack aims to predict whether a given data record is a member
+of the training dataset [ 137]. Given the fact that LLMs memorize training data [ 48,24,18,22],
+the risk of MIA increases, especially if the memorized information includes personal or sensitive
+data [ 78,120]. Hence, it is necessary to explore defense mechanisms against membership inference
+attacks in the FL environment. The integration of FL and LLMs could also potentially bring about
+novel manners of inference attacks. Recent research illustrates that the memory facet of LLMs
+significantly increases their susceptibility to privacy violations within the FL framework [ 61]. If the
+server is hypothesized to be dishonest or compromised, the structure of LLMs is prone to inference
+attacks [ 49]. How to defend against this threat is a question that needs to be explored in the future.
+• Attribute inference attacks. This attack aims to recover characteristics of the training data learned
+by the model [ 144,54]. Due to LLMs commonly handling extensive textual data, attribute inference
+attacks carried out on text data are generally accomplished by obtaining the embedding vectors of
+text samples, thereby gaining access to the confidential attributes embedded within these samples.
+Prior research in this field has focused on the adjustment of these embeddings to apprehend
+semantic inter-relations existing between words, thereby predicting confidential data inherent in
+language models [ 63]. Engaging in FL increases the vulnerability to potential attacks, necessitating
+consideration of a broader range of attackers. Concurrently, white-box adversaries stand to benefit
+from unencrypted model updates, with a particular emphasis on gradient data, thereby delivering
+them a competitive edge in the process.
+•Model inversion attacks. In attribute inference, it is crucial to acknowledge that attackers are
+typically required to hold additional information regarding their potential victims, such as personal
+identifiers (e.g., age and race), to exploit the association between this information and the sensitive
+features. On the other hand, model inversion attacks primarily aim to reverse-engineer the internal
+representation produced by the model to reveal training data [ 51,50,66]. In LLMs, this is typically
+done on the embedding rather than directly on the output [ 117,143]. Recent advanced research
+suggests exploring embedding inversion attacks, showing that these attacks pose a higher privacy
+risk than attribute inference attacks [ 56,109]. Considering the FL scenario, the gradient leakage
+issue exacerbates this threat. Studies demonstrate that the embeddings can be reconstructed based
+on leaked gradients [13, 61, 32].
+Outdated defense techniques. Concerning the security and privacy threats discussed, existing
+defense strategies may not seamlessly apply to FedLLMs. We typically classify defense mechanisms
+into security defenses and privacy defenses (Table 5). By analyzing how current defenses might face
+challenges when applied to FedLLMs, we offer our perspectives and insights.
+11
+Table 5: Overview of defense techniques in FedLLMs systems. We enumerate the defense techniques
+currently in widespread use and have identified the types of attacks these defense methods can
+address in FedLLMs. The definitions of the symbols are as follows. i: untargeted poisoning attack, ii:
+backdoor attack, iii: MIA, iv: attribute inference attack, v: inversion attack.
+Mitigation type Summarize Mitigatable attacks References
+Security defences
+Data analysis Analyzing data from other clients i,ii [35]
+Update analysis Analyzing updates from various contributors i [134, 6]
+Robust aggregation Replacing update averaging with aggregation i,ii [193, 180, 121, 16]
+Model prunning Dropping specific neurons/units of the model ii [39, 177, 147]
+Adversarial training Training the model on adversarial examples i [52]
+Privacy defences
+Differential privacy Implementing targeted disturbances for the protocol iii,iv,v [43, 37, 184, 116]
+Knowledge distillation Transferring knowledge from the teacher model to the student model iii,v [67]
+Security defenses. Security defenses aim to alleviate the adverse effects of attacks on model per-
+formance. Our study mainly contemplates widely accepted methods, encompassing data analysis,
+update analysis, robust aggregation, model pruning, and adversarial training.
+•Data and update analysis. Data analysis involves evaluating data from other clients and imple-
+menting subsequent preprocessing [ 35]. However, it is often impractical to apply under privacy-
+preserving conditions due to the need for access to user-specific local data [ 82]. In contrast, update
+analysis reviews parameters from other clients to determine their necessity for aggregation. While
+effective, this technique requires access to client updates, potentially increasing the risk of privacy
+leakage. The analysis often relies on outlier update analysis [ 134,6], which is challenging due to the
+high dimensionality of LLMs model updates. Possible solutions may involve using dimensionality
+reduction techniques such as principal component analysis [ 157] or implementing spectral anomaly
+detection with low-dimensional embeddings [94].
+•Robust aggregation. The aim of robust aggregation is to mitigate the negative impact of adversaries
+on the final model [ 16,193,59,180,121]. Despite their significant potential, implementing
+these methods in deep learning models presents a major challenge [ 16,181]. At the same time,
+it is important to consider the potential unintended consequences of modifying the aggregation
+mechanism, as this could have a negative impact on LLMs architectures. Existing research
+has shown that FedAvg can negatively influence the attention mechanism of LLMs [ 8]. Thus,
+maintaining compatibility with LLMs architecture during this process is crucial.
+•Model pruning. Model pruning assumes that the model’s most weights contain knowledge relevant
+to the original task, while only a small portion is affected by poisoning attacks [ 39]. This assump-
+tion suggests post-training defensive measures involving pruning the globally trained model to
+strengthen it against potential training-based attacks [ 177]. For deep network architectures like
+LLMs, specialized adaptations of model pruning techniques can be developed [ 55], and exploration
+can also be carried out on mainstream LLMs [ 147]. Ultimately, these pruning methods can be
+applied in the federated learning environment, enhancing overall robustness.
+•Adversarial training. This approach trains the model using additional adversarial samples [ 52] to
+enhance the model’s adversarial robustness against attacks. However, there are potentially two
+issues with this approach when applied to FedLLMs. Firstly, generating adversarial examples
+for discrete data types such as text can be considerably more complex than for images, as direct
+perturbations in the embedding space may lead to significant semantic deviations due to minor
+disturbances [ 132]. Secondly, the resource expenditure for generating adversarial samples in
+deep neural networks is substantial when using gradient-based adversarial perturbation methods
+like PGD [ 103]. To address these challenges, a viable approach is to introduce an additional
+LLM that employs prompt engineering techniques to generate semantically similar adversarial
+samples[ 105]. Alternatively, adversarial samples can also be generated through discrete optimiza-
+tion methods [ 159]. To further reduce overhead, updates can be selectively applied based on the
+importance of model parameters [86].
+Privacy defenses. Common privacy protection techniques include DP, knowledge distillation, reg-
+ularization, and model pruning. However, the privacy benefits of regularization are limited, and
+certain techniques have been effectively bypassed, so we are not focusing on this method in this
+paper. Model pruning, which is a combined defense mechanism, has been found useful for privacy
+protection [ 168,160]. However, its use in privacy-sensitive situations may raise concerns as it could
+12
+unintentionally reveal sensitive features of the training data. Therefore, this study categorizes it as a
+performance-focused defense. The main privacy-focused defense measures considered in this study
+are knowledge distillation and DP.
+•Knowledge distillation. Knowledge distillation allows the knowledge of a model to be transferred
+to a simpler model [ 67]. Originally conceived to mitigate overfitting, knowledge distillation has
+evolved, with current research ingeniously combining it with DP principles [ 119,47]. This innova-
+tive approach has given rise to new systems like private aggregation of teacher ensembles [ 118].
+These systems harness publicly available datasets to enable the transfer of knowledge from locally
+trained models to centralized models operating under DP mechanisms. In the federated setting,
+federated distillation is already a mature framework [ 80]. Transferring the distillation technique of
+LLMs [58] to FL is a direction worth exploring.
+•Differential privacy. DP currently stands as the principal paradigm for privacy protection. DP
+methods on language models include gradient perturbation-based approaches and embedding
+vector perturbation-based approaches [ 70]. The former adds noise to the gradients during network
+training, while the latter perturbs the word embeddings, aiming to protect privacy at the sample
+level (i.e., words or sentences). However, in FedLLMs, privacy protection extends beyond the
+sample level to the user privacy level, aiming to safeguard each user’s historical data. Additionally,
+since only gradients are exchanged between clients in FedLLMs, methods based on embedding
+vector perturbation cannot be directly extended to FedLLMs. For gradient perturbation-based
+methods, although existing research provides theoretical privacy guarantees, two significant issues
+arise as the model scales up, and these issues are exacerbated in an FL environment. Firstly,
+the computational and storage overhead of managing gradients increases [ 195]. Secondly, the
+scale of noise required also increases [ 195], which can adversely affect model performance to
+some extent. To address these challenges, a straightforward extension of the improved DP-SGD
+optimizer [ 195,96,20,62] to the FL environment is a viable direction. Additionally, relaxing the
+level of DP to protect only the sensitive parts of samples using SDP-SGD [ 135] is another potential
+approach. Finally, exploring the combination of DP with existing efficient parameter fine-tuning
+methods could also be a feasible strategy[184, 41].
+4. Discussion of Application for Combining LLMs and FL
+The integration of LLMs with FL promises to complement the advantages of both and effectively
+address their respective limitations. The resulting synergistic effect suggests that the amalgamation
+of LLMs with FL could be widely applied to various practical scenarios to tackle specific problems
+in the real world. Given that current research has explored the potential of the fusion of LLMs’ sub-
+technologies with FL, as well as the integration of FL’s sub-technologies with LLMs in application
+scenarios [ 210], this paper will focus on discussing the feasible applications of FedLLMs in practice.
+In light of the inherent distinguished characteristics of FedLLMs, we explore the broad range of
+application fields for FedLLMs. These applications mainly include healthcare, finance, education,
+and son on. Within these scenarios, deploying FedLLMs has the potential to address real industry
+problems, optimize service processes, and enhance overall efficiency and effectiveness. Additionally,
+we also focus on the unique challenges faced by FedLLMs in these scenarios and provide an analysis
+of them.
+Healthcare. The healthcare scenario is one of the application areas that is intimately related to
+human well-being and is of great importance. Since the introduction of ChatGPT and other LLMs,
+numerous studies have applied these technologies in the healthcare field [ 140,141,190]. It has
+been proven that LLMs have the capability to handle a variety of healthcare tasks, including but not
+limited to healthcare consultation recommendations [ 114], simplification of healthcare reports [ 79],
+mental health analysis [ 187], and extraction of biohealthcare information [ 154]. To further tap into
+the potential of large models, recent research focuses on large models specially designed for the
+healthcare field, such as the Med-PaLM model [ 150,141]. In the United States Healthcare Licensing
+Examination, this model demonstrates performance comparable to professionals and gained broader
+recognition from the healthcare community in answering consumer health questions. However, there
+is a risk of privacy breaches when the current LLMs upload patient health information to commercial
+servers that support model training [ 154,79]. This issue urgently needs to be addressed through
+technical means. FedLLMs offer an effective way to help healthcare institutions aggregate data from
+13
+multiple parties to train their own healthcare-specific large models, tackling the aforementioned
+privacy challenges.
+Although FedLLMs exhibit high potential for application in the healthcare scenario, the implementa-
+tion of this technology is still limited by the unique characteristics of healthcare data and its strict
+usage regulations. The specific challenges faced include:
+•Data heterogeneity. Healthcare data often originates from various sources, including elec-
+tronic health records, healthcare imaging, and laboratory results. These data vary signifi-
+cantly in format, quality, and level of detail. In FedLLMs, due to the involvement of multiple
+different participants, the types of data held by each party may also be inconsistent, further
+exacerbating the problem of data heterogeneity.
+•Data incompleteness and imbalance. Healthcare units participating in FedLLMs often face
+issues of missing data or incomplete records, especially in scenarios involving long-term
+monitoring of patients. Additionally, data samples for certain diseases may be much less
+than for others, leading to data imbalance during model training, which can affect the
+model’s generalization ability and accuracy.
+•Model interpretability. The healthcare field has higher requirements for model interpretabil-
+ity compared to other sectors. Healthcare decisions directly affect people’s health, and
+doctors and patients usually need to clearly understand the basis of model predictions. How
+to reflect the interpretability of models within the FedLLMs framework is an urgent issue to
+be addressed.
+Finance. The field of finance is one of the key areas where LLMs demonstrate their vast application
+potential. LLMs have been employed in a variety of financial tasks, including but not limited to
+financial reasoning [ 142], digital claims detection [ 131], financial named entity recognition [ 5], and
+financial sentiment analysis [ 7]. While general-purpose LLMs like ChatGPT have notable perfor-
+mances in the financial industry, they still cannot match the level of large models that are specifically
+trained and fine-tuned for the financial scenario, such as BloombergGPT [ 179], FinGPT [ 186], etc.
+However, LLMs tailored for the financial scenario require access to vast amounts of high-quality
+financial data [ 179], which may exceed the capacities of some organizations. FedLLMs offer an
+innovative path for cultivating financial scenario-specific large models. Moreover, given that content
+generated by financial models could have significant impacts on markets, stringent alignment and
+adjustment of financial models is an indispensable step. The collaborative mechanism of FedLLMs
+can meet more complex and stricter alignment requirements, ensuring that aligned models adequately
+regard and reflect the interests of the majority of participants.
+While FedLLMs introduce unprecedented new opportunities in the financial scenario, they also bring
+a series of new challenges:
+•High dynamism. Data in financial markets is highly dynamic and changes rapidly. For
+instance, stock prices and interest rates can undergo significant changes within very short
+periods. This requires the FedLLMs framework to support participants in rapidly updating
+language models in a short time, rather than relying on periodic retraining.
+•High accuracy and reliability. Financial decisions often have significant financial implica-
+tions, thus the information provided must be extremely accurate and reliable. This poses
+higher accuracy standards for the inference process of the FedLLMs framework.
+•Enhanced contextual understanding. Financial question-answering scenarios often involve
+complex contexts and multi-step logical reasoning. When applying the FedLLMs framework
+for inference, it needs to possess strong contextual understanding capabilities, capable of
+handling coherent dialogue, remembering previous communications, and understanding
+complex query intentions.
+Education. The education scenario is also a key application area significantly influenced by LLMs.
+Recently, several pioneering research papers have explored the diverse applications of LLMs in
+educational settings [ 151,83], including teacher-student interactive collaboration, personalized
+learning experiences, and the automation of assessment processes. However, the application of LLMs
+in education can also bring a range of practical issues, such as homework plagiarism, the intrinsic
+biases of AI-generated content, over-reliance on LLMs, and the inequity in accessing resources for
+14
+non-English-speaking countries [ 85]. Against this backdrop, FedLLMs offer a solution for cultivating
+fair LLMs. The increase in participating parties and the richness of training data contribute to reducing
+biases present in LLMs and expanding their adaptability to multilingual environments. Through
+FedLLMs, it is possible to achieve multi-dimensional data collaboration, driving the creation of
+equitable and inclusive educational LLMs that consider and balance the needs of different languages
+and cultural backgrounds.
+In the application within the educational scenario, the FedLLMs framework also faces several new
+challenges:
+•Complexity of different educational stages and backgrounds. In the FedLLMs framework,
+participant entities serve student groups that vary significantly in age, learning abilities, and
+background knowledge. Therefore, the framework needs to possess the capability to adapt
+to these differences, in order to provide customized learning recommendations and content.
+•Diversity of educational goals. Educational objectives are not limited to improving academic
+performance but also include emotional development, social skills, and growth in other
+non-academic areas. In this context, FedLLMs need to consider these multifaceted factors
+to assess and propose recommendations for the holistic development of students.
+•Strong guidance capability. An ideal educational LLM should guide students gradually
+toward finding the correct answers. In the FedLLMs framework, enhancing the model’s
+CoT reasoning capabilities is a critical issue that requires focused attention.
+•Higher alignment requirements. In the educational field, given the limited discernment
+abilities of students at different age levels, there are higher demands for the alignment of
+models trained via FedLLMs. Furthermore, the model should also be capable of refusing
+unreasonable requests of students.
+5. Conclusion and Future Work
+Creating high-performing and robust LLMs relies on having sufficient high-quality data, which is
+often difficult and costly to obtain. To address the issue of data scarcity, researchers have incorporated
+FL techniques into LLMs, enabling the pooling of data from multiple parties for training while
+ensuring privacy. Additionally, integrating LLMs into FL helps address some specific challenges
+faced by FL, as LLMs possess exceptional task generalization capabilities. Numerous studies
+have demonstrated the complementarity of LLMs and FL in these domains. These studies include
+investigation of non-language foundation models, due to their potential for straightforward extension
+to LLMs, provide a broader perspective for our research. Given this complementarity, the research
+field combining LLMs with FL demonstrates significant potential for development. In this regard,
+this paper explores this research area, proposing a framework to organize ongoing efforts. We analyze
+advantages, challenges, and future directions, including potential applications in healthcare, finance,
+and education. This review aims to guide the development of integration technologies between LLMs
+and FL, emphasizing the need for unified evaluation benchmarks and datasets in future research.
+Acknowledgment
+This work was supported by National Key R&D Program of China 2022YFB4501500, the Funda-
+mental Research Funds for the Central Universities 226-2024-00241, and Ant Group. We thank all
+team members and partners involved in this study for their support and contributions. Additionally,
+we appreciate the valuable comments and suggestions provided by the reviewers of this paper.
+References
+[1]Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman,
+Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, et al. Gpt-4 technical report. arXiv
+preprint arXiv:2303.08774, 2023.
+[2]Kiran Adnan and Rehan Akbar. An analytical study of information extraction from unstructured and
+multidimensional big data. Journal ofBigData, 6(1):1–38, 2019.
+15
+[3]Ankur Agarwal, Mehdi Rezagholizadeh, and Prasanna Parthasarathi. Practical takes on federated learning
+with pretrained language models. In Findings oftheAssociation forComputational Linguistics: EACL
+2023, pages 454–471, 2023.
+[4] Jan Philipp Albrecht. How the gdpr will change the world. Eur. Data Prot. L.Rev., 2:287, 2016.
+[5]Julio Cesar Salinas Alvarado, Karin Verspoor, and Timothy Baldwin. Domain adaption of named entity
+recognition to support credit risk assessment. In Proceedings oftheAustralasian Language Technology
+Association Workshop 2015, pages 84–90, 2015.
+[6]Sebastien Andreina, Giorgia Azzurra Marson, Helen Möllering, and Ghassan Karame. Baffle: Back-
+door detection via feedback-based federated learning. In 2021 IEEE 41st International Conference on
+Distributed Computing Systems (ICDCS), pages 852–863. IEEE, 2021.
+[7]Dogu Araci. Finbert: Financial sentiment analysis with pre-trained language models. arXiv preprint
+arXiv:1908.10063, 2019.
+[8]Tajamul Ashraf, Fuzayil Bin Afzal Mir, and Iqra Altaf Gillani. Transfed: A way to epitomize focal modu-
+lation using transformer-based federated learning. In Proceedings oftheIEEE/CVF Winter Conference
+onApplications ofComputer Vision, pages 554–563, 2024.
+[9]Alvin AuYoung, Brent Chun, Alex Snoeren, and Amin Vahdat. Resource allocation in federated distributed
+computing infrastructures. In Proceedings ofthe1stWorkshop onOperating System andArchitectural
+Support fortheOn-demand ITInfraStructure, volume 9, 2004.
+[10] Eugene Bagdasaryan, Andreas Veit, Yiqing Hua, Deborah Estrin, and Vitaly Shmatikov. How to backdoor
+federated learning. In International conference onartificial intelligence andstatistics , pages 2938–2948.
+PMLR, 2020.
+[11] Jiamu Bai, Daoyuan Chen, Bingchen Qian, Liuyi Yao, and Yaliang Li. Federated fine-tuning of large lan-
+guage models under heterogeneous language tasks and client resources. arXiv preprint arXiv:2402.11505 ,
+2024.
+[12] Sikai Bai, Jie Zhang, Shuaicheng Li, Song Guo, Jingcai Guo, Jun Hou, Tao Han, and Xiaocheng Lu.
+Diprompt: Disentangled prompt tuning for multiple latent domain generalization in federated learning.
+arXiv preprint arXiv:2403.08506, 2024.
+[13] Mislav Balunovic, Dimitar Dimitrov, Nikola Jovanovi ´c, and Martin Vechev. Lamp: Extracting text from
+gradients with language model priors. Advances inNeural Information Processing Systems , 35:7641–
+7654, 2022.
+[14] Emily M Bender, Timnit Gebru, Angelina McMillan-Major, and Shmargaret Shmitchell. On the dangers
+of stochastic parrots: Can language models be too big? In Proceedings ofthe2021 ACM conference on
+fairness, accountability, andtransparency, pages 610–623, 2021.
+[15] Sidney Black, Stella Biderman, Eric Hallahan, Quentin Anthony, Leo Gao, Laurence Golding, Horace
+He, Connor Leahy, Kyle McDonell, Jason Phang, et al. Gpt-neox-20b: An open-source autoregressive
+language model. In Proceedings ofBigScience Episode\# 5–Workshop onChallenges &Perspectives in
+Creating Large Language Models, pages 95–136, 2022.
+[16] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui, and Julien Stainer. Machine learning with
+adversaries: Byzantine tolerant gradient descent. Advances inneural information processing systems ,
+30, 2017.
+[17] Alissa Brauneck, Louisa Schmalhorst, Mohammad Mahdi Kazemi Majdabadi, Mohammad Bakhtiari,
+Uwe Völker, Christina Caroline Saak, Jan Baumbach, Linda Baumbach, and Gabriele Buchholtz. Fed-
+erated machine learning in data-protection-compliant research. Nature Machine Intelligence , 5(1):2–4,
+2023.
+[18] Gavin Brown, Mark Bun, Vitaly Feldman, Adam Smith, and Kunal Talwar. When is memorization of
+irrelevant training data necessary for high-accuracy learning? In Proceedings ofthe53rd annual ACM
+SIGACT symposium ontheory ofcomputing, pages 123–132. ACM, 2021.
+[19] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind
+Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Language models are few-shot learners.
+Advances inneural information processing systems, 33:1877–1901, 2020.
+[20] Zhiqi Bu, Yu-Xiang Wang, Sheng Zha, and George Karypis. Differentially private bias-term only
+fine-tuning of foundation models. 2022.
+[21] Di Cao, Shan Chang, Zhijian Lin, Guohua Liu, and Donghong Sun. Understanding distributed poisoning
+attack in federated learning. In 2019 IEEE 25th international conference onparallel anddistributed
+systems (ICPADS), pages 233–239. IEEE, 2019.
+[22] Nicholas Carlini, Daphne Ippolito, Matthew Jagielski, Katherine Lee, Florian Tramer, and Chiyuan Zhang.
+Quantifying memorization across neural language models. In TheEleventh International Conference on
+Learning Representations, 2023.
+16
+[23] Nicholas Carlini, Milad Nasr, Christopher A Choquette-Choo, Matthew Jagielski, Irena Gao, Anas
+Awadalla, Pang Wei Koh, Daphne Ippolito, Katherine Lee, Florian Tramer, et al. Are aligned neural
+networks adversarially aligned? 2023. Preprint at https://doi.org/10.48550/arXiv.2306.15447 .
+[24] Nicholas Carlini, Florian Tramer, Eric Wallace, Matthew Jagielski, Ariel Herbert-V oss, Katherine Lee,
+Adam Roberts, Tom Brown, Dawn Song, Ulfar Erlingsson, et al. Extracting training data from large
+language models. In 30th USENIX Security Symposium (USENIX Security 21), pages 2633–2650.
+USENIX Association, 2021.
+[25] Li-Wen Chang, Juan Gómez-Luna, Izzat El Hajj, Sitao Huang, Deming Chen, and Wen-mei Hwu.
+Collaborative computing for heterogeneous integrated systems. In Proceedings ofthe8thACM/SPEC
+onInternational Conference onPerformance Engineering, pages 385–388, 2017.
+[26] Chaochao Chen, Xiaohua Feng, Jun Zhou, Jianwei Yin, and Xiaolin Zheng. Federated large language
+model: A position paper. arXiv preprint arXiv:2307.08925, 2023.
+[27] Hong-You Chen, Cheng-Hao Tu, Ziwei Li, Han Wei Shen, and Wei-Lun Chao. On the importance
+and applicability of pre-training for federated learning. In TheEleventh International Conference on
+Learning Representations, 2022.
+[28] Kangjie Chen, Yuxian Meng, Xiaofei Sun, Shangwei Guo, Tianwei Zhang, Jiwei Li, and Chun Fan.
+Badpre: Task-agnostic backdoor attacks to pre-trained nlp foundation models. In TheTenth International
+Conference onLearning Representations, 2022.
+[29] Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de Oliveira Pinto, Jared Kaplan,
+Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, et al. Evaluating large language models
+trained on code. 2021. Preprint at https://arxiv.org/abs/2107.03374 .
+[30] Yu Chen, Tingxin Li, Huiming Liu, and Yang Yu. Hide and seek (has): A lightweight framework for
+prompt privacy protection. arXiv preprint arXiv:2309.03057, 2023.
+[31] Yufan Chen, Arjun Arunasalam, and Z Berkay Celik. Can large language models provide security &
+privacy advice? measuring the ability of llms to refute misconceptions. In Proceedings ofthe39th Annual
+Computer Security Applications Conference, pages 366–378, 2023.
+[32] Hong-Min Chu, Jonas Geiping, Liam H Fowl, Micah Goldblum, and Tom Goldstein. Panning for gold in
+federated learning: Targeted text extraction under arbitrarily large-scale aggregation. In TheEleventh
+International Conference onLearning Representations, 2022.
+[33] Timothy Chu, Zhao Song, and Chiwun Yang. How to protect copyright data in optimization of large
+language models? In Proceedings oftheAAAI Conference onArtificial Intelligence , volume 38, pages
+17871–17879, 2024.
+[34] Ronald Cramer, Ivan Bjerre Damgård, et al. Secure multiparty computation . Cambridge University Press,
+2015.
+[35] Gabriela F Cretu, Angelos Stavrou, Michael E Locasto, Salvatore J Stolfo, and Angelos D Keromytis.
+Casting out demons: Sanitizing training data for anomaly sensors. In 2008 IEEE Symposium onSecurity
+andPrivacy (sp2008), pages 81–95. IEEE, 2008.
+[36] Marcos F Criado, Fernando E Casado, Roberto Iglesias, Carlos V Regueiro, and Senén Barro. Non-iid
+data and continual learning processes in federated learning: A long road ahead. Information Fusion ,
+88:263–280, 2022.
+[37] Yuval Dagan and Vitaly Feldman. Pac learning with stable and private predictions. In Conference on
+Learning Theory, pages 1389–1410. PMLR, 2020.
+[38] Yongfu Dai, Duanyu Feng, Jimin Huang, Haochen Jia, Qianqian Xie, Yifang Zhang, Weiguang Han, Wei
+Tian, and Hao Wang. Laiw: A chinese legal large language models benchmark (a technical report). arXiv
+preprint arXiv:2310.05620, 2023.
+[39] Guneet S Dhillon, Kamyar Azizzadenesheli, Zachary C Lipton, Jeremy Bernstein, Jean Kossaifi, Aran
+Khanna, and Anima Anandkumar. Stochastic activation pruning for robust adversarial defense. In The
+Sixth International Conference onLearning Representations Track, 2018.
+[40] Peiran Dong, Song Guo, and Junxiao Wang. Investigating trojan attacks on pre-trained language model-
+powered database middleware. In Proceedings ofthe29th ACM SIGKDD Conference onKnowledge
+Discovery andData Mining, pages 437–447. ACM, 2023.
+[41] Minxin Du, Xiang Yue, Sherman SM Chow, Tianhao Wang, Chenyu Huang, and Huan Sun. Dp-forward:
+Fine-tuning and inference on language models with differential privacy in forward pass. In Proceedings
+ofthe2023 ACM SIGSAC Conference onComputer andCommunications Security , pages 2665–2679,
+2023.
+[42] Haonan Duan, Adam Dziedzic, Mohammad Yaghini, Nicolas Papernot, and Franziska Boenisch. On the
+privacy risk of in-context learning. In The61st Annual Meeting OfTheAssociation ForComputational
+Linguistics, 2023.
+17
+[43] Cynthia Dwork, Aaron Roth, et al. The algorithmic foundations of differential privacy. Foundations and
+Trends® inTheoretical Computer Science, 9(3–4):211–407, 2014.
+[44] Alireza Fallah, Aryan Mokhtari, and Asuman Ozdaglar. Personalized federated learning with theoretical
+guarantees: A model-agnostic meta-learning approach. Advances inneural information processing
+systems, 33:3557–3568, 2020.
+[45] Tao Fan, Yan Kang, Guoqiang Ma, Weijing Chen, Wenbin Wei, Lixin Fan, and Qiang Yang. Fate-llm: A in-
+dustrial grade federated learning framework for large language models. arXiv preprint arXiv:2310.10049 ,
+2023.
+[46] Xuanjie Fang, Sijie Cheng, Yang Liu, and Wei Wang. Modeling adversarial attack on pre-trained language
+models as sequential decision making. In Findings oftheAssociation forComputational Linguistics:
+ACL 2023, pages 7322–7336. ACL, 2023.
+[47] Dominik Fay, Jens Sjölund, and Tobias J Oechtering. Decentralized differentially private segmentation
+with pate. 2020. Preprint at https://arxiv.org/abs/2004.06567 .
+[48] Vitaly Feldman. Does learning require memorization? a short tale about a long tail. In Proceedings of
+the52nd Annual ACM SIGACT Symposium onTheory ofComputing, pages 954–959. ACM, 2020.
+[49] Liam Fowl, Jonas Geiping, Steven Reich, Yuxin Wen, Wojtek Czaja, Micah Goldblum, and Tom Goldstein.
+Decepticons: Corrupted transformers breach privacy in federated learning for language models. In The
+Eleventh International Conference onLearning Representations, 2023.
+[50] Matt Fredrikson, Somesh Jha, and Thomas Ristenpart. Model inversion attacks that exploit confidence
+information and basic countermeasures. In Proceedings ofthe22nd ACM SIGSAC conference on
+computer andcommunications security, pages 1322–1333. ACM, 2015.
+[51] Matthew Fredrikson, Eric Lantz, Somesh Jha, Simon Lin, David Page, and Thomas Ristenpart. Privacy
+in pharmacogenetics: An {End-to-End }case study of personalized warfarin dosing. In 23rd USENIX
+security symposium (USENIX Security 14), pages 17–32. USENIX Association, 2014.
+[52] Yaroslav Ganin, Evgeniya Ustinova, Hana Ajakan, Pascal Germain, Hugo Larochelle, François Laviolette,
+Mario March, and Victor Lempitsky. Domain-adversarial training of neural networks. Journal ofmachine
+learning research, 17(59):1–35, 2016.
+[53] Xavier Glorot, Antoine Bordes, and Yoshua Bengio. Domain adaptation for large-scale sentiment
+classification: A deep learning approach. In Proceedings ofthe28th international conference onmachine
+learning (ICML-11), pages 513–520, 2011.
+[54] Neil Zhenqiang Gong and Bin Liu. Attribute inference attacks in online social networks. ACM
+Transactions onPrivacy andSecurity (TOPS), 21(1):1–30, 2018.
+[55] Artem M Grachev, Dmitry I Ignatov, and Andrey V Savchenko. Compression of recurrent neural networks
+for efficient language modeling. Applied Soft Computing, 79:354–362, 2019.
+[56] Kang Gu, Ehsanul Kabir, Neha Ramsurrun, Soroush V osoughi, and Shagufta Mehnaz. Towards sen-
+tence level inference attack against pre-trained language models. Proceedings onPrivacy Enhancing
+Technologies, 2023.
+[57] Tianyu Gu, Kang Liu, Brendan Dolan-Gavitt, and Siddharth Garg. Badnets: Evaluating backdooring
+attacks on deep neural networks. IEEE Access, 7:47230–47244, 2019.
+[58] Yuxian Gu, Li Dong, Furu Wei, and Minlie Huang. Knowledge distillation of large language models.
+2023. Preprint at https://doi.org/10.48550/arXiv.2306.08543 .
+[59] Rachid Guerraoui, Sébastien Rouault, et al. The hidden vulnerability of distributed learning in byzantium.
+InInternational Conference onMachine Learning, pages 3521–3530. PMLR, 2018.
+[60] Tao Guo, Song Guo, Junxiao Wang, Xueyang Tang, and Wenchao Xu. Promptfl: Let federated participants
+cooperatively learn prompts instead of models-federated learning in age of foundation model. IEEE
+Transactions onMobile Computing, 2023.
+[61] Samyak Gupta, Yangsibo Huang, Zexuan Zhong, Tianyu Gao, Kai Li, and Danqi Chen. Recovering
+private text in federated learning of language models. Advances inneural information processing systems ,
+35:8130–8143, 2022.
+[62] Umang Gupta, Aram Galstyan, and Greg Ver Steeg. Jointly reparametrized multi-layer adaptation for
+efficient and private tuning. arXiv preprint arXiv:2305.19264, 2023.
+[63] Ishrak Hayet, Zijun Yao, and Bo Luo. Invernet: An inversion attack framework to infer fine-tuning datasets
+through word embeddings. In Findings oftheAssociation forComputational Linguistics: EMNLP 2022 ,
+pages 5009–5018. ACL, 2022.
+[64] Xuanli He, Qiongkai Xu, Lingjuan Lyu, Fangzhao Wu, and Chenguang Wang. Protecting intellectual
+property of language generation apis with lexical watermark. In Proceedings oftheAAAI Conference
+onArtificial Intelligence, volume 36, pages 10758–10766, 2022.
+18
+[65] Xuanli He, Qiongkai Xu, Yi Zeng, Lingjuan Lyu, Fangzhao Wu, Jiwei Li, and Ruoxi Jia. Cater:
+Intellectual property protection on text generation apis via conditional watermarks. Advances inNeural
+Information Processing Systems, 35:5431–5445, 2022.
+[66] Zecheng He, Tianwei Zhang, and Ruby B Lee. Model inversion attacks against collaborative inference.
+InProceedings ofthe35th Annual Computer Security Applications Conference , pages 148–162. ACM,
+2019.
+[67] Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. Distilling the knowledge in a neural network. 2015.
+Preprint at http://arxiv.org/abs/1503.02531 .
+[68] Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor Cai, Eliza Rutherford,
+Diego de Las Casas, Lisa Anne Hendricks, Johannes Welbl, Aidan Clark, et al. Training compute-optimal
+large language models. 2022. Preprint at https://doi.org/10.48550/arXiv.2203.15556 .
+[69] Junyuan Hong, Lingjuan Lyu, Jiayu Zhou, and Michael Spranger. Mecta: Memory-economic continual
+test-time model adaptation. In 2023 International Conference onLearning Representations, 2023.
+[70] Lijie Hu, Ivan Habernal, Lei Shen, and Di Wang. Differentially private natural language models: Recent
+advances and future directions. arXiv preprint arXiv:2301.09112, 2023.
+[71] Ling Huang, Anthony D Joseph, Blaine Nelson, Benjamin IP Rubinstein, and J Doug Tygar. Adversarial
+machine learning. In Proceedings ofthe4thACM workshop onSecurity andartificial intelligence , pages
+43–58. ACM, 2011.
+[72] Quzhe Huang, Mingxu Tao, Zhenwei An, Chen Zhang, Cong Jiang, Zhibin Chen, Zirui Wu, and Yansong
+Feng. Lawyer llama technical report. arXiv preprint arXiv:2305.15062, 2023.
+[73] Wei Huang, Yinggui Wang, Anda Cheng, Aihui Zhou, Chaofan Yu, and Lei Wang. A fast, performant,
+secure distributed training framework for llm. In ICASSP 2024-2024 IEEE International Conference on
+Acoustics, Speech andSignal Processing (ICASSP), pages 4800–4804. IEEE, 2024.
+[74] Wenke Huang, Mang Ye, Zekun Shi, and Bo Du. Generalizable heterogeneous federated cross-correlation
+and instance similarity learning. IEEE Transactions onPattern Analysis andMachine Intelligence , 2023.
+[75] Wenke Huang, Mang Ye, Zekun Shi, He Li, and Bo Du. Rethinking federated learning with domain
+shift: A prototype view. In 2023 IEEE/CVF Conference onComputer Vision andPattern Recognition
+(CVPR), pages 16312–16322. IEEE, 2023.
+[76] Yanping Huang, Youlong Cheng, Ankur Bapna, Orhan Firat, Dehao Chen, Mia Chen, HyoukJoong Lee,
+Jiquan Ngiam, Quoc V Le, Yonghui Wu, et al. Gpipe: Efficient training of giant neural networks using
+pipeline parallelism. Advances inneural information processing systems, 32, 2019.
+[77] Yujin Huang, Terry Yue Zhuo, Qiongkai Xu, Han Hu, Xingliang Yuan, and Chunyang Chen. Training-free
+lexical backdoor attacks on language models. In Proceedings oftheACM Web Conference 2023 , pages
+2198–2208. ACM, 2023.
+[78] Abhyuday Jagannatha, Bhanu Pratap Singh Rawat, and Hong Yu. Membership inference attack suscepti-
+bility of clinical language models. 2021. Preprint at https://arxiv.org/abs/2104.08305 .
+[79] Katharina Jeblick, Balthasar Schachtner, Jakob Dexl, Andreas Mittermeier, Anna Theresa Stüber, Johanna
+Topalis, Tobias Weber, Philipp Wesp, Bastian Oliver Sabel, Jens Ricke, et al. Chatgpt makes medicine
+easy to swallow: an exploratory case study on simplified radiology reports. European radiology , pages
+1–9, 2023.
+[80] Eunjeong Jeong, Seungeun Oh, Hyesung Kim, Jihong Park, Mehdi Bennis, and Seong-Lyun Kim.
+Communication-efficient on-device machine learning: Federated distillation and augmentation under
+non-iid private data. 2018. Preprint at http://arxiv.org/abs/1811.11479 .
+[81] Leslie Pack Kaelbling, Michael L Littman, and Andrew W Moore. Reinforcement learning: A survey.
+Journal ofartificial intelligence research, 4:237–285, 1996.
+[82] Peter Kairouz, H Brendan McMahan, Brendan Avent, Aurélien Bellet, Mehdi Bennis, Arjun Nitin Bhagoji,
+Kallista Bonawitz, Zachary Charles, Graham Cormode, Rachel Cummings, et al. Advances and open
+problems in federated learning. Foundations andtrends® inmachine learning, 14(1–2):1–210, 2021.
+[83] Firuz Kamalov and Ikhlaas Gurrib. A new era of artificial intelligence in education: A multifaceted
+revolution. arXiv preprint arXiv:2305.18303, 2023.
+[84] Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B Brown, Benjamin Chess, Rewon Child, Scott
+Gray, Alec Radford, Jeffrey Wu, and Dario Amodei. Scaling laws for neural language models. 2020.
+Preprint at https://arxiv.org/abs/2001.08361 .
+[85] Enkelejda Kasneci, Kathrin Seßler, Stefan Küchemann, Maria Bannert, Daryna Dementieva, Frank
+Fischer, Urs Gasser, Georg Groh, Stephan Günnemann, Eyke Hüllermeier, et al. Chatgpt for good? on
+opportunities and challenges of large language models for education. Learning andindividual differences ,
+103:102274, 2023.
+19
+[86] Jaehyung Kim, Yuning Mao, Rui Hou, Hanchao Yu, Davis Liang, Pascale Fung, Qifan Wang, Fuli Feng,
+Lifu Huang, and Madian Khabsa. Roast: Robustifying language models via adversarial perturbation with
+selective training. In Findings oftheAssociation forComputational Linguistics: EMNLP 2023 , pages
+3412–3444, 2023.
+[87] James Kirkpatrick, Razvan Pascanu, Neil Rabinowitz, Joel Veness, Guillaume Desjardins, Andrei A Rusu,
+Kieran Milan, John Quan, Tiago Ramalho, Agnieszka Grabska-Barwinska, et al. Overcoming catastrophic
+forgetting in neural networks. Proceedings ofthenational academy ofsciences , 114(13):3521–3526,
+2017.
+[88] Takeshi Kojima, Shixiang Shane Gu, Machel Reid, Yutaka Matsuo, and Yusuke Iwasawa. Large language
+models are zero-shot reasoners. Advances inneural information processing systems , 35:22199–22213,
+2022.
+[89] Weirui Kuang, Bingchen Qian, Zitao Li, Daoyuan Chen, Dawei Gao, Xuchen Pan, Yuexiang Xie, Yaliang
+Li, Bolin Ding, and Jingren Zhou. Federatedscope-llm: A comprehensive package for fine-tuning large
+language models in federated learning. arXiv preprint arXiv:2309.00363, 2023.
+[90] Keita Kurita, Paul Michel, and Graham Neubig. Weight poisoning attacks on pre-trained models. 2020.
+Preprint at https://arxiv.org/abs/2004.06660 .
+[91] Guanghao Li, Wansen Wu, Yan Sun, Li Shen, Baoyuan Wu, and Dacheng Tao. Visual prompt based
+personalized federated learning. Transactions onMachine Learning Research, 2023.
+[92] Haodong Li, Gelei Deng, Yi Liu, Kailong Wang, Yuekang Li, Tianwei Zhang, Yang Liu, Guoai Xu,
+Guosheng Xu, and Haoyu Wang. Digger: Detecting copyright content mis-usage in large language model
+training. arXiv preprint arXiv:2401.00676, 2024.
+[93] Raymond Li, Loubna Ben Allal, Yangtian Zi, Niklas Muennighoff, Denis Kocetkov, Chenghao Mou,
+Marc Marone, Christopher Akiki, Jia Li, Jenny Chim, et al. Starcoder: may the source be with you! arXiv
+preprint arXiv:2305.06161, 2023.
+[94] Suyi Li, Yong Cheng, Wei Wang, Yang Liu, and Tianjian Chen. Learning to detect malicious clients for
+robust federated learning. 2020. Preprint at https://arxiv.org/abs/2002.00211 .
+[95] Xiang Li, Yiqun Yao, Xin Jiang, Xuezhi Fang, Xuying Meng, Siqi Fan, Peng Han, Jing Li, Li Du,
+Bowen Qin, et al. Flm-101b: An open llm and how to train it with $100 k budget. arXiv preprint
+arXiv:2309.03852, 2023.
+[96] Yansong Li, Zhixing Tan, and Yang Liu. Privacy-preserving prompt tuning for large language model
+services. arXiv preprint arXiv:2305.06212, 2023.
+[97] Yanyu Li, Huan Wang, Qing Jin, Ju Hu, Pavlo Chemerys, Yun Fu, Yanzhi Wang, Sergey Tulyakov, and
+Jian Ren. Snapfusion: Text-to-image diffusion model on mobile devices within two seconds. Advances
+inNeural Information Processing Systems, 36, 2024.
+[98] Wei Yang Bryan Lim, Nguyen Cong Luong, Dinh Thai Hoang, Yutao Jiao, Ying-Chang Liang, Qiang
+Yang, Dusit Niyato, and Chunyan Miao. Federated learning in mobile edge networks: A comprehensive
+survey. IEEE Communications Surveys &Tutorials, 22(3):2031–2063, 2020.
+[99] I-Jieh Liu, Ci-Siang Lin, Fu-En Yang, and Yu-Chiang Frank Wang. Language-guided transformer for
+federated multi-label classification. In Proceedings oftheAAAI Conference onArtificial Intelligence ,
+volume 38, pages 13882–13890, 2024.
+[100] Yi Liu, Gelei Deng, Yuekang Li, Kailong Wang, Tianwei Zhang, Yepang Liu, Haoyu Wang, Yan
+Zheng, and Yang Liu. Prompt injection attack against llm-integrated applications. 2023. Preprint at
+https://doi.org/10.48550/arXiv.2306.05499 .
+[101] Mingsheng Long, Yue Cao, Jianmin Wang, and Michael Jordan. Learning transferable features with deep
+adaptation networks. In International conference onmachine learning, pages 97–105. PMLR, 2015.
+[102] Dieuwertje Luitse and Wiebke Denkena. The great transformer: Examining the role of large language
+models in the political economy of ai. BigData &Society, 8(2):20539517211047734, 2021.
+[103] Aleksander Madry, Aleksandar Makelov, Ludwig Schmidt, Dimitris Tsipras, and Adrian Vladu. Towards
+deep learning models resistant to adversarial attacks. arXiv preprint arXiv:1706.06083, 2017.
+[104] Saeed Mahloujifar, Huseyin A Inan, Melissa Chase, Esha Ghosh, and Marcello Hasegawa. Membership
+inference on word embedding and beyond. 2021. Preprint at https://arxiv.org/abs/2106.11384 .
+[105] Justus Mattern, Fatemehsadat Mireshghallah, Zhijing Jin, Bernhard Schölkopf, Mrinmaya Sachan, and
+Taylor Berg-Kirkpatrick. Membership inference attacks against language models via neighbourhood
+comparison. arXiv preprint arXiv:2305.18462, 2023.
+[106] Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas.
+Communication-efficient learning of deep networks from decentralized data. In Artificial intelligence
+andstatistics, pages 1273–1282. PMLR, 2017.
+20
+[107] Kai Mei, Zheng Li, Zhenting Wang, Yang Zhang, and Shiqing Ma. NOTABLE: transferable backdoor
+attacks against prompt-based NLP models. In Proceedings ofthe61st Annual Meeting oftheAssociation
+forComputational Linguistics (V olume 1:Long Papers), pages 15551–15565. ACL, 2023.
+[108] Eric Mitchell, Charles Lin, Antoine Bosselut, Christopher D Manning, and Chelsea Finn. Memory-based
+model editing at scale. In International Conference onMachine Learning , pages 15817–15831. PMLR,
+2022.
+[109] John X Morris, V olodymyr Kuleshov, Vitaly Shmatikov, and Alexander M Rush. Text embeddings
+reveal (almost) as much as text. In Proceedings ofthe2023 Conference onEmpirical Methods inNatural
+Language Processing, pages 12448–12460. ACL, 2023.
+[110] Moin Nadeem, Anna Bethke, and Siva Reddy. Stereoset: Measuring stereotypical bias in pretrained
+language models. arXiv preprint arXiv:2004.09456, 2020.
+[111] Ha-Thanh Nguyen. A brief report on lawgpt 1.0: A virtual legal assistant based on gpt-3. arXiv preprint
+arXiv:2302.05729, 2023.
+[112] John Nguyen, Jianyu Wang, Kshitiz Malik, Maziar Sanjabi, and Michael Rabbat. Where to begin? on the
+impact of pre-training and initialization in federated learning. In TheEleventh International Conference
+onLearning Representations, 2022.
+[113] Erik Nijkamp, Bo Pang, Hiroaki Hayashi, Lifu Tu, Huan Wang, Yingbo Zhou, Silvio Savarese, and
+Caiming Xiong. Codegen: An open large language model for code with multi-turn program synthesis.
+arXiv preprint arXiv:2203.13474, 2022.
+[114] Oded Nov, Nina Singh, and Devin Mann. Putting chatgpt’s medical advice to the (turing) test: survey
+study. JMIR Medical Education, 9:e46939, 2023.
+[115] Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang,
+Sandhini Agarwal, Katarina Slama, Alex Ray, et al. Training language models to follow instructions with
+human feedback. Advances inneural information processing systems, 35:27730–27744, 2022.
+[116] Mustafa Safa Ozdayi, Charith Peris, Jack Fitzgerald, Christophe Dupuy, Jimit Majmudar, Haidar Khan,
+Rahil Parikh, and Rahul Gupta. Controlling the extraction of memorized data from large language models
+via prompt-tuning. In Proceedings ofthe61st Annual Meeting oftheAssociation forComputational
+Linguistics (V olume 2:Short Papers), pages 1512–1521. ACL, 2023.
+[117] Xudong Pan, Mi Zhang, Shouling Ji, and Min Yang. Privacy risks of general-purpose language models.
+In2020 IEEE Symposium onSecurity andPrivacy (SP), pages 1314–1331. IEEE, 2020.
+[118] Nicolas Papernot, Martín Abadi, Ulfar Erlingsson, Ian Goodfellow, and Kunal Talwar. Semi-supervised
+knowledge transfer for deep learning from private training data. In TheFiveth International Conference
+onLearning Representations, 2017.
+[119] Nicolas Papernot, Shuang Song, Ilya Mironov, Ananth Raghunathan, Kunal Talwar, and Úlfar Erlingsson.
+Scalable private learning with pate. In TheSixth International Conference onLearning Representations
+Track, 2018.
+[120] Fábio Perez and Ian Ribeiro. Ignore previous prompt: Attack techniques for language models. 2022.
+Preprint at https://doi.org/10.48550/arXiv.2211.09527 .
+[121] Krishna Pillutla, Sham M Kakade, and Zaid Harchaoui. Robust aggregation for federated learning. IEEE
+Transactions onSignal Processing, 70:1142–1154, 2022.
+[122] Alec Radford, Karthik Narasimhan, Tim Salimans, Ilya Sutskever, et al. Improving language understand-
+ing by generative pre-training. 2018.
+[123] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya Sutskever, et al. Language
+models are unsupervised multitask learners. OpenAI blog, 1(8):9, 2019.
+[124] Colin Raffel, Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael Matena, Yanqi Zhou,
+Wei Li, and Peter J Liu. Exploring the limits of transfer learning with a unified text-to-text transformer.
+Journal ofmachine learning research, 21(140):1–67, 2020.
+[125] Jeff Rasley, Samyam Rajbhandari, Olatunji Ruwase, and Yuxiong He. Deepspeed: System optimizations
+enable training deep learning models with over 100 billion parameters. In Proceedings ofthe26th ACM
+SIGKDD International Conference onKnowledge Discovery &Data Mining, pages 3505–3506, 2020.
+[126] Sashank Reddi, Zachary Charles, Manzil Zaheer, Zachary Garrett, Keith Rush, Jakub Kone ˇcn`y, Sanjiv
+Kumar, and H Brendan McMahan. Adaptive federated optimization. arXiv preprint arXiv:2003.00295 ,
+2020.
+[127] Nuria Rodríguez-Barroso, Daniel Jiménez-López, M Victoria Luzón, Francisco Herrera, and Eugenio
+Martínez-Cámara. Survey on federated learning threats: Concepts, taxonomy on attacks and defences,
+experimental study and challenges. Information Fusion, 90:148–173, 2023.
+21
+[128] Mohamed Sabt, Mohammed Achemlal, and Abdelmadjid Bouabdallah. Trusted execution environment:
+What it is, and what it is not. In 2015 IEEE Trustcom/BigDataSE/Ispa, pages 57–64. IEEE, 2015.
+[129] Felix Sattler, Klaus-Robert Müller, and Wojciech Samek. Clustered federated learning: Model-agnostic
+distributed multitask optimization under privacy constraints. IEEE transactions onneural networks and
+learning systems, 32(8):3710–3722, 2020.
+[130] Roei Schuster, Congzheng Song, Eran Tromer, and Vitaly Shmatikov. You autocomplete me: Poisoning
+vulnerabilities in neural code completion. In 30th USENIX Security Symposium (USENIX Security 21),
+pages 1559–1575. USENIX Association, 2021.
+[131] Agam Shah and Sudheer Chava. Zero is not hero yet: Benchmarking zero-shot performance of llms for
+financial tasks. arXiv preprint arXiv:2305.16633, 2023.
+[132] Erfan Shayegani, Md Abdullah Al Mamun, Yu Fu, Pedram Zaree, Yue Dong, and Nael Abu-Ghazaleh.
+Survey of vulnerabilities in large language models revealed by adversarial attacks. arXiv preprint
+arXiv:2310.10844, 2023.
+[133] Lujia Shen, Shouling Ji, Xuhong Zhang, Jinfeng Li, Jing Chen, Jie Shi, Chengfang Fang, Jianwei Yin,
+and Ting Wang. Backdoor pre-trained models can transfer to all. In CCS ’21: 2021 ACM SIGSAC
+Conference onComputer andCommunications Security, pages 3141–3158. ACM, 2021.
+[134] Shiqi Shen, Shruti Tople, and Prateek Saxena. Auror: Defending against poisoning attacks in collaborative
+deep learning systems. In Proceedings ofthe32nd annual conference oncomputer security applications ,
+pages 508–519. ACM, 2016.
+[135] Weiyan Shi, Ryan Shea, Si Chen, Chiyuan Zhang, Ruoxi Jia, and Zhou Yu. Just fine-tune twice: Selective
+differential privacy for large language models. In Proceedings ofthe2022 Conference onEmpirical
+Methods inNatural Language Processing, pages 6327–6340, 2022.
+[136] Mohammad Shoeybi, Mostofa Patwary, Raul Puri, Patrick LeGresley, Jared Casper, and Bryan Catanzaro.
+Megatron-lm: Training multi-billion parameter language models using model parallelism. arXiv preprint
+arXiv:1909.08053, 2019.
+[137] Reza Shokri, Marco Stronati, Congzheng Song, and Vitaly Shmatikov. Membership inference attacks
+against machine learning models. In 2017 IEEE symposium onsecurity andprivacy (SP), pages 3–18.
+IEEE, 2017.
+[138] Manli Shu, Jiongxiao Wang, Chen Zhu, Jonas Geiping, Chaowei Xiao, and Tom Goldstein. On the
+exploitability of instruction tuning. 2023. Preprint at https://doi.org/10.48550/arXiv.2306.
+17194 .
+[139] Chandan Singh, Armin Askari, Rich Caruana, and Jianfeng Gao. Augmenting interpretable models with
+large language models during training. Nature Communications, 14(1):7913, 2023.
+[140] Karan Singhal, Shekoofeh Azizi, Tao Tu, S Sara Mahdavi, Jason Wei, Hyung Won Chung, Nathan
+Scales, Ajay Tanwani, Heather Cole-Lewis, Stephen Pfohl, et al. Large language models encode clinical
+knowledge. Nature, 620(7972):172–180, 2023.
+[141] Karan Singhal, Tao Tu, Juraj Gottweis, Rory Sayres, Ellery Wulczyn, Le Hou, Kevin Clark, Stephen
+Pfohl, Heather Cole-Lewis, Darlene Neal, et al. Towards expert-level medical question answering with
+large language models. arXiv preprint arXiv:2305.09617, 2023.
+[142] Guijin Son, Hanearl Jung, Moonjeong Hahm, Keonju Na, and Sol Jin. Beyond classification: Financial
+reasoning in state-of-the-art language models. arXiv preprint arXiv:2305.01505, 2023.
+[143] Congzheng Song and Ananth Raghunathan. Information leakage in embedding models. In Proceedings of
+the2020 ACM SIGSAC conference oncomputer andcommunications security , pages 377–390. ACM,
+2020.
+[144] Congzheng Song and Vitaly Shmatikov. Overlearning reveals sensitive attributes. In The Eighth
+International Conference onLearning Representations, 2020.
+[145] Jingwei Sun, Ziyue Xu, Hongxu Yin, Dong Yang, Daguang Xu, Yiran Chen, and Holger R Roth. Fedbpt:
+Efficient federated black-box prompt tuning for large language models. arXiv preprint arXiv:2310.01467 ,
+2023.
+[146] Lichao Sun, Yue Huang, Haoran Wang, Siyuan Wu, Qihui Zhang, Chujie Gao, Yixin Huang, Wenhan
+Lyu, Yixuan Zhang, Xiner Li, et al. Trustllm: Trustworthiness in large language models. arXiv preprint
+arXiv:2401.05561, 2024.
+[147] Mingjie Sun, Zhuang Liu, Anna Bair, and J Zico Kolter. A simple and effective pruning approach for
+large language models. 2023. Preprint at https://doi.org/10.48550/arXiv.2306.11695 .
+[148] Weisong Sun, Yuchen Chen, Guanhong Tao, Chunrong Fang, Xiangyu Zhang, Quanjun Zhang, and Bin
+Luo. Backdooring neural code search. In Proceedings ofthe61st Annual Meeting oftheAssociation for
+Computational Linguistics (V olume 1:Long Papers), pages 9692–9708. ACL, 2023.
+22
+[149] Ziteng Sun, Peter Kairouz, Ananda Theertha Suresh, and H Brendan McMahan. Can you really backdoor
+federated learning? 2019. Preprint at http://arxiv.org/abs/1911.07963 .
+[150] Mirac Suzgun, Nathan Scales, Nathanael Schärli, Sebastian Gehrmann, Yi Tay, Hyung Won Chung,
+Aakanksha Chowdhery, Quoc V Le, Ed H Chi, Denny Zhou, et al. Challenging big-bench tasks and
+whether chain-of-thought can solve them. arXiv preprint arXiv:2210.09261, 2022.
+[151] Kehui Tan, Tianqi Pang, Chenyou Fan, and Song Yu. Towards applying powerful large ai models in
+classroom teaching: Opportunities, challenges and prospects. arXiv preprint arXiv:2305.03433, 2023.
+[152] Yue Tan, Chen Chen, Weiming Zhuang, Xin Dong, Lingjuan Lyu, and Guodong Long. Is heterogeneity
+notorious? taming heterogeneity to handle test-time shift in federated learning. Advances inNeural
+Information Processing Systems, 36, 2024.
+[153] Yue Tan, Guodong Long, Jie Ma, Lu Liu, Tianyi Zhou, and Jing Jiang. Federated learning from pre-
+trained models: A contrastive learning approach. Advances inneural information processing systems ,
+35:19332–19344, 2022.
+[154] Ruixiang Tang, Xiaotian Han, Xiaoqian Jiang, and Xia Hu. Does synthetic data generation of llms help
+clinical text mining? arXiv preprint arXiv:2303.04360, 2023.
+[155] Ross Taylor, Marcin Kardas, Guillem Cucurull, Thomas Scialom, Anthony Hartshorn, Elvis Saravia,
+Andrew Poulton, Viktor Kerkez, and Robert Stojnic. Galactica: A large language model for science.
+arXiv preprint arXiv:2211.09085, 2022.
+[156] Buse GA Tekgul, Yuxi Xia, Samuel Marchal, and N Asokan. Waffle: Watermarking in federated learning.
+In2021 40th International Symposium onReliable Distributed Systems (SRDS) , pages 310–320. IEEE,
+2021.
+[157] Vale Tolpegin, Stacey Truex, Mehmet Emre Gursoy, and Ling Liu. Data poisoning attacks against
+federated learning systems. In Computer Security–ESORICS 2020: 25th European Symposium on
+Research inComputer Security, ESORICS 2020, Guildford, UK, September 14–18, 2020, Proceedings,
+PartI25, pages 480–501. Springer, 2020.
+[158] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix,
+Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al. Llama: Open and efficient foundation
+language models. 2023. Preprint at https://doi.org/10.48550/arXiv.2302.13971 .
+[159] Olga Tsymboi, Danil Malaev, Andrei Petrovskii, and Ivan Oseledets. Layerwise universal adversarial
+attack on nlp models. In Findings oftheAssociation forComputational Linguistics: ACL 2023 , pages
+129–143, 2023.
+[160] Dmitrii Usynin, Alexander Ziller, Marcus Makowski, Rickmer Braren, Daniel Rueckert, Ben Glocker,
+Georgios Kaissis, and Jonathan Passerat-Palmbach. Adversarial interference and its mitigations in
+privacy-preserving collaborative machine learning. Nature Machine Intelligence, 3(9):749–758, 2021.
+[161] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz
+Kaiser, and Illia Polosukhin. Attention is all you need. Advances inneural information processing
+systems, 30, 2017.
+[162] Sanh Victor, Webson Albert, Raffel Colin, Bach Stephen, Sutawika Lintang, Alyafeai Zaid, Chaffin
+Antoine, Stiegler Arnaud, Raja Arun, Dey Manan, et al. Multitask prompted training enables zero-shot
+task generalization. In International Conference onLearning Representations, 2022.
+[163] Pablo Villalobos, Jaime Sevilla, Lennart Heim, Tamay Besiroglu, Marius Hobbhahn, and Anson Ho. Will
+we run out of data? an analysis of the limits of scaling datasets in machine learning. 2022. Preprint at
+https://doi.org/10.48550/arXiv.2211.04325 .
+[164] Eric Wallace, Tony Z Zhao, Shi Feng, and Sameer Singh. Concealed data poisoning attacks on nlp
+models. In Proceedings ofthe2021 Conference oftheNorth American Chapter oftheAssociation for
+Computational Linguistics: Human Language Technologies, pages 139–150. ACL, 2021.
+[165] Alexander Wan, Eric Wallace, Sheng Shen, and Dan Klein. Poisoning language models during instruction
+tuning. In International Conference onMachine Learning, pages 35413–35425. PMLR, 2023.
+[166] Yao Wan, Shijie Zhang, Hongyu Zhang, Yulei Sui, Guandong Xu, Dezhong Yao, Hai Jin, and Lichao
+Sun. You see what i want you to see: poisoning vulnerabilities in neural code search. In Proceedings of
+the30th ACM Joint European Software Engineering Conference andSymposium ontheFoundations of
+Software Engineering, pages 1233–1245. ACM, 2022.
+[167] Haochun Wang, Chi Liu, Nuwa Xi, Zewen Qiang, Sendong Zhao, Bing Qin, and Ting Liu. Huatuo:
+Tuning llama model with chinese medical knowledge. arXiv preprint arXiv:2304.06975, 2023.
+[168] Yijue Wang, Chenghong Wang, Zigeng Wang, Shanglin Zhou, Hang Liu, Jinbo Bi, Caiwen Ding, and
+Sanguthevar Rajasekaran. Against membership inference attack: Pruning is all you need. In Proceedings
+oftheThirtieth International Joint Conference onArtificial Intelligence , pages 3141–3147. IJCAI, 2021.
+23
+[169] Yuntao Wang, Yanghe Pan, Miao Yan, Zhou Su, and Tom H Luan. A survey on chatgpt: Ai-generated
+contents, challenges, and solutions. IEEE Open Journal oftheComputer Society, 2023.
+[170] Zhiyuan Wang, Hongli Xu, Jianchun Liu, He Huang, Chunming Qiao, and Yangming Zhao. Resource-
+efficient federated learning with hierarchical aggregation in edge computing. In IEEE INFOCOM
+2021-IEEE conference oncomputer communications, pages 1–10. IEEE, 2021.
+[171] Guoyizhe Wei, Feng Wang, Anshul Shah, and Rama Chellappa. Dual prompt tuning for domain-aware
+federated learning. arXiv preprint arXiv:2310.03103, 2023.
+[172] Jason Wei, Maarten Bosma, Vincent Y Zhao, Kelvin Guu, Adams Wei Yu, Brian Lester, Nan Du,
+Andrew M Dai, and Quoc V Le. Finetuned language models are zero-shot learners. In The Tenth
+International Conference onLearning Representations, 2022.
+[173] Jason Wei, Yi Tay, Rishi Bommasani, Colin Raffel, Barret Zoph, Sebastian Borgeaud, Dani Yogatama,
+Maarten Bosma, Denny Zhou, Donald Metzler, et al. Emergent abilities of large language models.
+Preprint atarXiv, https://arxiv.org/abs/2206.07682, 2022.
+[174] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny
+Zhou, et al. Chain-of-thought prompting elicits reasoning in large language models. Advances inneural
+information processing systems, 35:24824–24837, 2022.
+[175] Laura Weidinger, John Mellor, Maribeth Rauh, Conor Griffin, Jonathan Uesato, Po-Sen Huang, Myra
+Cheng, Mia Glaese, Borja Balle, Atoosa Kasirzadeh, et al. Ethical and social risks of harm from language
+models. arXiv preprint arXiv:2112.04359, 2021.
+[176] Bingyang Wu, Yinmin Zhong, Zili Zhang, Gang Huang, Xuanzhe Liu, and Xin Jin. Fast distributed
+inference serving for large language models. arXiv preprint arXiv:2305.05920, 2023.
+[177] Chen Wu, Xian Yang, Sencun Zhu, and Prasenjit Mitra. Mitigating backdoor attacks in federated learning.
+2020. Preprint at https://arxiv.org/abs/2011.01767 .
+[178] Jinze Wu, Qi Liu, Zhenya Huang, Yuting Ning, Hao Wang, Enhong Chen, Jinfeng Yi, and Bowen Zhou.
+Hierarchical personalized federated learning for user modeling. In Proceedings oftheWeb Conference
+2021, pages 957–968, 2021.
+[179] Shijie Wu, Ozan Irsoy, Steven Lu, Vadim Dabravolski, Mark Dredze, Sebastian Gehrmann, Prabhanjan
+Kambadur, David Rosenberg, and Gideon Mann. Bloomberggpt: A large language model for finance.
+arXiv preprint arXiv:2303.17564, 2023.
+[180] Zhaoxian Wu, Qing Ling, Tianyi Chen, and Georgios B Giannakis. Federated variance-reduced stochastic
+gradient descent with robustness to byzantine attacks. IEEE Transactions onSignal Processing , 68:4583–
+4596, 2020.
+[181] Cong Xie, Sanmi Koyejo, and Indranil Gupta. Zeno: Distributed stochastic gradient descent with
+suspicion-based fault-tolerance. In International Conference onMachine Learning , pages 6893–6901.
+PMLR, 2019.
+[182] Pengwei Xing, Songtao Lu, and Han Yu. Fedlogic: Interpretable federated multi-domain chain-of-thought
+prompt selection for large language models. arXiv preprint arXiv:2308.15324, 2023.
+[183] Albert Xu, Eshaan Pathak, Eric Wallace, Suchin Gururangan, Maarten Sap, and Dan Klein. Detoxifying
+language models risks marginalizing minority voices. In Proceedings ofthe2021 Conference oftheNorth
+American Chapter oftheAssociation forComputational Linguistics: Human Language Technologies ,
+pages 2390–2397. ACL, 2021.
+[184] Mingbin Xu, Congzheng Song, Ye Tian, Neha Agrawal, Filip Granqvist, Rogier van Dalen, Xiao Zhang,
+Arturo Argueta, Shiyi Han, Yaqiao Deng, et al. Training large-vocabulary neural language models by
+private federated learning for resource-constrained devices. In ICASSP 2023-2023 IEEE International
+Conference onAcoustics, Speech andSignal Processing (ICASSP), pages 1–5. IEEE, 2023.
+[185] Fu-En Yang, Chien-Yi Wang, and Yu-Chiang Frank Wang. Efficient model personalization in federated
+learning via client-specific prompt generation. In Proceedings oftheIEEE/CVF International Conference
+onComputer Vision, pages 19159–19168, 2023.
+[186] Hongyang Yang, Xiao-Yang Liu, and Christina Dan Wang. Fingpt: Open-source financial large language
+models. arXiv preprint arXiv:2306.06031, 2023.
+[187] Kailai Yang, Shaoxiong Ji, Tianlin Zhang, Qianqian Xie, and Sophia Ananiadou. On the evaluations of
+chatgpt and emotion-enhanced prompting for mental health analysis. arXiv preprint arXiv:2304.03347 ,
+2023.
+[188] Qiang Yang. Toward responsible ai: An overview of federated learning for user-centered privacy-
+preserving computing. ACM Transactions onInteractive Intelligent Systems (TiiS) , 11(3-4):1–22, 2021.
+[189] Qiang Yang, Yang Liu, Tianjian Chen, and Yongxin Tong. Federated machine learning: Concept and
+applications. ACM Transactions onIntelligent Systems andTechnology (TIST), 10(2):1–19, 2019.
+24
+[190] Songhua Yang, Hanjie Zhao, Senbin Zhu, Guangyu Zhou, Hongfei Xu, Yuxiang Jia, and Hongying Zan.
+Zhongjing: Enhancing the chinese medical capabilities of large language model through expert feedback
+and real-world multi-turn dialogue. In Proceedings oftheAAAI Conference onArtificial Intelligence ,
+volume 38, pages 19368–19376, 2024.
+[191] Yifan Yao, Jinhao Duan, Kaidi Xu, Yuanfang Cai, Zhibo Sun, and Yue Zhang. A survey on large language
+model (llm) security and privacy: The good, the bad, and the ugly. High-Confidence Computing , page
+100211, 2024.
+[192] Rui Ye, Wenhao Wang, Jingyi Chai, Dihan Li, Zexi Li, Yinda Xu, Yaxin Du, Yanfeng Wang, and Siheng
+Chen. Openfedllm: Training large language models on decentralized private data via federated learning.
+arXiv preprint arXiv:2402.06954, 2024.
+[193] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter Bartlett. Byzantine-robust distributed learning:
+Towards optimal statistical rates. In International Conference onMachine Learning , pages 5650–5659.
+PMLR, 2018.
+[194] Jaehong Yoon, Wonyong Jeong, Giwoong Lee, Eunho Yang, and Sung Ju Hwang. Federated continual
+learning with weighted inter-client transfer. In International Conference onMachine Learning , pages
+12073–12086. PMLR, 2021.
+[195] Da Yu, Huishuai Zhang, Wei Chen, Jian Yin, and Tie-Yan Liu. Large scale private learning via low-rank
+reparametrization. In International Conference onMachine Learning , pages 12208–12218. PMLR, 2021.
+[196] Sixing Yu, J Pablo Muñoz, and Ali Jannesari. Federated foundation models: Privacy-preserving and
+collaborative learning for large models. arXiv preprint arXiv:2305.11414, 2023.
+[197] Xianjia Yu, Jorge Pena Queralta, and Tomi Westerlund. Towards lifelong federated learning in autonomous
+mobile robots with continuous sim-to-real transfer. Procedia Computer Science, 210:86–93, 2022.
+[198] YangMu Yu. Cornucopia-llama-fin-chinese. https://github.com/jerry1993-tech/
+Cornucopia-LLaMA-Fin-Chinese , 2023.
+[199] Fanlong Zeng, Wensheng Gan, Yongheng Wang, and S Yu Philip. Distributed training of large language
+models. In 2023 IEEE 29th International Conference onParallel andDistributed Systems (ICPADS) ,
+pages 840–847. IEEE, 2023.
+[200] Guoyang Zeng, Xu Han, Zhengyan Zhang, Zhiyuan Liu, Yankai Lin, and Maosong Sun. Openbmb: Big
+model systems for large-scale representation learning. In Representation Learning forNatural Language
+Processing, pages 463–489. Springer Nature Singapore Singapore, 2023.
+[201] Yufeng Zhan, Peng Li, Zhihao Qu, Deze Zeng, and Song Guo. A learning-based incentive mechanism for
+federated learning. IEEE Internet ofThings Journal, 7(7):6360–6368, 2020.
+[202] Yufeng Zhan, Jie Zhang, Zicong Hong, Leijie Wu, Peng Li, and Song Guo. A survey of incentive mecha-
+nism design for federated learning. IEEE Transactions onEmerging Topics inComputing , 10(2):1035–
+1044, 2021.
+[203] Ao Zhang, Liming Zhao, Chen-Wei Xie, Yun Zheng, Wei Ji, and Tat-Seng Chua. Next-chat: An lmm for
+chat, detection and segmentation. arXiv preprint arXiv:2311.04498, 2023.
+[204] Biao Zhang, Behrooz Ghorbani, Ankur Bapna, Yong Cheng, Xavier Garcia, Jonathan Shen, and Orhan
+Firat. Examining scaling and transfer of language model architectures for machine translation. In
+International Conference onMachine Learning, pages 26176–26192. PMLR, 2022.
+[205] Jianyi Zhang, Saeed Vahidian, Martin Kuo, Chunyuan Li, Ruiyi Zhang, Tong Yu, Guoyin Wang, and
+Yiran Chen. Towards building the federatedgpt: Federated instruction tuning. In ICASSP 2024-2024
+IEEE International Conference onAcoustics, Speech andSignal Processing (ICASSP) , pages 6915–6919.
+IEEE, 2024.
+[206] Xuechen Zhang, Mingchen Li, Xiangyu Chang, Jiasi Chen, Amit K Roy-Chowdhury, Ananda Theertha
+Suresh, and Samet Oymak. Fedyolo: Augmenting federated learning with pretrained transformers. arXiv
+preprint arXiv:2307.04905, 2023.
+[207] Wayne Xin Zhao, Kun Zhou, Junyi Li, Tianyi Tang, Xiaolei Wang, Yupeng Hou, Yingqian Min, Be-
+ichen Zhang, Junjie Zhang, Zican Dong, et al. A survey of large language models. arXiv preprint
+arXiv:2303.18223, 2023.
+[208] Denny Zhou, Nathanael Schärli, Le Hou, Jason Wei, Nathan Scales, Xuezhi Wang, Dale Schuurmans,
+Claire Cui, Olivier Bousquet, Quoc Le, et al. Least-to-most prompting enables complex reasoning in
+large language models. In TheEleventh International Conference onLearning Representations, 2023.
+[209] Xunyu Zhu, Jian Li, Yong Liu, Can Ma, and Weiping Wang. A survey on model compression for large
+language models. arXiv preprint arXiv:2308.07633, 2023.
+[210] Weiming Zhuang, Chen Chen, and Lingjuan Lyu. When foundation model meets federated learning:
+Motivations, challenges, and future directions. arXiv preprint arXiv:2306.15546, 2023.
+25
+[211] Weiming Zhuang, Yonggang Wen, Lingjuan Lyu, and Shuai Zhang. Mas: Towards resource-efficient
+federated multiple-task learning. In Proceedings oftheIEEE/CVF International Conference onComputer
+Vision, pages 23414–23424, 2023.
+26

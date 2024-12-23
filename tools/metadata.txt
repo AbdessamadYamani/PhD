@@ -1,0 +1,8 @@
+ArXiv Paper Metadata
+==============================
+Title: AI Governance and Ethics Framework for Sustainable AI and Sustainability
+Authors: Mahendra Samarawickrama
+DOI: N/A
+URL: http://arxiv.org/abs/2210.08984v1
+Journal Reference: N/A
+==============================

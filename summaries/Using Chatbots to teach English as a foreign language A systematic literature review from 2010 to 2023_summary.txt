@@ -1,0 +1,23 @@
+Okay, here's the summary of the paper:
+
+**Author(s):** Xinran Xu, Yuxuan Wang, Zeyue Shang, Ling Jiang, and Heng Luo
+**Title:** Using Chatbots to teach English as a foreign language: A systematic literature review from 2010 to 2023
+**Journal:** 2024 International Symposium on Educational Technology (ISET)
+**Pages:** 97-101
+**Year:** 2024
+**DOI:** 10.1109/ISET61814.2024.00028
+**Url:** https://ieeexplore.ieee.org/document/10468784
+
+**Relevance to the Subject:** 
+This paper is highly relevant to the broader topic of integrating technology into education, specifically the use of AI-powered language learning tools. While the paper focuses on chatbots for English as a Foreign Language (EFL), its findings on instructional contexts, design, technical features, and application effects can provide insights into the potential and limitations of using LLMs in Serious Games and language learning in general. The paper's investigation into the different applications and effectiveness of various chatbot features and teaching methods could inform the design and integration of LLMs into serious games to enhance learning experiences.
+
+**Key Points:**
+This paper is a systematic literature review, [Using Chatbots to teach English as a foreign language A systematic literature review from 2010 to 2023] (Systematic Literature Review), focusing on the use of chatbots for EFL instruction from 2010 to 2023.  The researchers followed the PRISMA methodology, analyzing 42 empirical studies from Web of Science, Scopus, and IEEE Xplore.  Their analysis centered on four aspects: instructional context, instructional design, technical features, and application effects.  Key findings include:
+
+*   **Instructional Context:** Most studies were conducted in Asia, primarily in South Korea, Taiwan and China, with the number of empirical studies increasing significantly from 2019, with a major spike in 2023, related to the release of ChatGPT. Higher education settings dominated the research compared to K-12, and most students were at an intermediate proficiency level.  Teaching took place in a combination of in-class and out-of-class settings.
+*   **Instructional Design:** Chatbots were primarily used to improve speaking skills, followed by listening, vocabulary, grammar, writing, and reading. Chatbots were also seen to reduce anxiety, enhance engagement, and promote learner autonomy. Teacher-guided and self-study were the most commonly used pedagogies. Flipped classrooms and gamification were also explored.
+*   **Technical Features:** The study found that widely used chatbot brands, such as Google Assistant, ChatGPT, and Amazon Alexa, were frequently utilized, along with custom-built chatbots. Most interactions were speech-based, aligning with a focus on improving oral skills. Visual or physical robots were rarely used.
+*   **Application Effects:** Data collection methods included questionnaires, interviews, and tests.  Limitations included technical issues, difficulties in understanding non-native speech, and a preference for human interaction. The authors concluded that chatbots show potential for language learning but also have limitations in replicating human interaction.
+
+**Citation:**
+[Using Chatbots to teach English as a foreign language A systematic literature review from 2010 to 2023] (Systematic Literature Review)

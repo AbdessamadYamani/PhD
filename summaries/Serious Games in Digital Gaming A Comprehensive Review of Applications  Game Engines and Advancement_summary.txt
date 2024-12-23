@@ -1,0 +1,24 @@
+Okay, here's the summary:
+
+**Author:** Alexandros Gazis, Eleftheria Katsiri
+**Title:** Serious Games in Digital Gaming: A Comprehensive Review of Applications, Game Engines and Advancements
+**Journal:** WSEAS TRANSACTIONS on COMPUTER RESEARCH
+**Pages:** 10-22
+**Year:** 2023
+**DOI:** 10.37394/232018.2023.11.2
+**URL:** [Not provided, needs to be extracted from the document source if you have it]
+
+**Relevance to the subject:** This review paper is highly relevant to the integration of Large Language Models (LLMs) in serious games as it provides a foundational understanding of the serious games landscape, their applications, and the dominant technologies used in their development. It lays the groundwork for understanding what aspects of serious games could be enhanced or transformed by LLMs. By detailing existing game engines and development paradigms, it helps to contextualize where LLMs could be most effectively introduced in the serious game design process.
+
+**Key Points:**
+*This is a review paper*  The paper defines serious games as applications that focus on the "gamification" of experiences outside of pure entertainment, such as learning and training. It notes their growing popularity due to their ability to educate and entertain.
+*   It differentiates between core and casual gamers based on gameplay preferences.
+*   The authors then categorize digital games into various genres like strategy, role-playing, massively multiplayer, simulation, and government simulation games.
+*   The paper contrasts commercial and serious games, noting that serious games are designed primarily for learning. They also divide serious games based on design focus: specific didactic approach, design without educational purpose but learning possibility, and design without specific approach but aligned with learning theories.
+*   It highlights a wide variety of serious games applications, including corporate training, language learning, cultural heritage, health, and military training.
+*   The authors explore the concept of game engines as middleware solutions, contrasting traditional development with the use of frameworks. They then define game engines that assist in the game development including: OpenSimulator, Unreal Engine, CryEngine, and Unity.
+*   The paper discusses Unity in depth, including its components such as Unity Editor and Hub, and the core structures of Projects, Assets, Objects, and Components. Also emphasizes on its ability of event-driven programming.
+*   It compares Unity and Unreal Engine and justifies the selection of Unity for this paper.
+*   The authors conclude with a discussion on the future of serious games, suggesting further research on the effectiveness of serious games in various fields and the impact of virtual reality and cloud gaming. They believe that Unity is the more suitable platform for supporting these future technologies due to its widespread community support and ease of deployment on cloud-based infrastructures.
+    
+**Citations:** This summary references the paper "[Serious Games in Digital Gaming A Comprehensive Review of Applications Game Engines and Advancement]" as a systematic literature review.

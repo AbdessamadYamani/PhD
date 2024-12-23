@@ -1,0 +1,129 @@
+PROCEDURAL CONTENT GENERATION VIA GENERATIVE
+ARTIFICIAL INTELLIGENCE
+Xinyu Mao
+Graduate School of Information Sciences
+Tohoku University
+Wanli Yu
+Graduate School of Information Sciences
+Tohoku University
+Kazunori D Yamada
+Graduate School of Information Sciences
+Tohoku University
+Unprecedented-scale Data Analytics Center
+Tohoku University
+Michael R. Zielewski
+Graduate School of Information Sciences
+Tohoku University
+July 15, 2024
+ABSTRACT
+The attempt to utilize machine learning in PCG has been made in the past. In this survey paper, we
+investigate how generative artificial intelligence (AI), which saw a significant increase in interest
+in the mid-2010s, is being used for PCG. We review applications of generative AI for the creation
+of various types of content, including terrains, items, and even storylines. While generative AI
+is effective for PCG, one significant issues it faces is that building high-performance generative
+AI requires vast amounts of training data. Because content generally highly customized, domainspecific training data is scarce, and straightforward approaches to generative AI models may not
+work well. For PCG research to advance further, issues related to limited training data must be
+overcome. Thus, we also give special consideration to research that addresses the challenges posed
+by limited training data.
+1 Introduction
+Video games have been continuously advancing technologically from their inception to the present day. From the
+early pixel-based games to modern high-resolution, physics-based rendering, the evolution of games has been remarkable. Amidst these technological revolutions, the approach to game content generation has also undergone significant
+changes. The emergence of PCG has played a major role in this transformation.
+PCG is a technology that dynamically generates game content using algorithm-based methods Togelius et al. (2011a).
+By “content” here, we refer to everything within the game, including terrain, characters, items, stories, music, and so
+on. This technology is useful in reducing development costs by automatically generating content that would otherwise
+require a significant amount of human effort. For example, PCG is especially useful for small development teams,
+which may not have developers dedicated to generating content, and for large-scale open-world games, which require
+vast amounts of content. Moreover, it is an essential technique for roguelike games that offer different experiences,
+through unique and new content, with each playthrough.
+Initial approaches to PCG relied on simple randomization algorithms and fixed rule sets, but over time, PCG has
+become more sophisticated. Amidst this evolution, the 2000s saw a boom in artificial intelligence, spurred by advancements in deep neural networks. While most developments have been in the realms of computer vision and natural
+language processing, the applications of AI have expanded and it is now utilized in many fields. Notably, recent advancements in AI, especially in machine learning, have further expanded the potential of PCG. Deep neural networks
+contribute to the generation of diverse game content, from game environments and character behaviors to narrative creation. In the mid-2010s, generative AI gained significant attention due to highly influential developments in the field.A PREPRINT - JULY 15, 2024
+through PCG may contain elements that prevent progression. Detecting these aesthetic and functional flaws, and validating desired properties, is a difficult task. One automated approach to this is the use of metrics, which attempt to
+measure quality on a continuous scale. These are convenient because they can be calculated automatically, reducing
+unnecessary developer interaction, but should not be used alone as they lack detail. Another approach specific to
+game levels is the use of gameplaying agents, commonly pathfinding algorithms or other hand-crafted AI, to determine playability. While these are effective, they come at a high computational cost and usually only provide binary
+indicators as to whether a level has the desired property or not.
+Finally, the computational cost of generative AI itself is a significant, yet not often discussed, challenge. Many
+generative AI models use deep neural networks, which utilize GPUs. While players are expected to have GPUs in order
+to play games, they typically use these for graphical purposes. Allocating a certain amount of resources to generative
+AI may necessitate the use of lower graphical settings, detracting from the overall user experience. Furthermore, if
+generative AI is to be used in real-time, then the computational demand of generation must also be considered to
+ensure a consistent experience across a range of devices with varying computational capabilities.
+5.2 Current Approaches to Procedural Content Generation With Generative AI
+The works that we focus on use different techniques for generation, and there is a clear pattern in their usage over time.
+Initially, GANs were popular as they were a breakthrough in generative neural networks. Later, when diffusion models
+and transformers were proposed, they demonstrated significant improvements and gained popularity. Compared to
+GANs, diffusion models often exhibit more stable training, fewer problems with convergence, and higher quality
+results. For transformer models, the primary advantage is being able to query a model in natural language. This
+trend indicates that breakthroughs in neural network technologies result in rapid changes to state-of-the-art methods,
+suggesting that developers must be flexible when using generative AI methods.
+One common factor among many papers is a combination of techniques and algorithms to produce a generative AI
+system. For example, a standard GAN alone may not produce desired output every time the generator is used to
+generate content. This may be improved through the use of a cGAN, in which output can be influenced. However,
+repeating the generation process is still not guaranteed to produce output with specific features. To address this, the
+latent space can be searched with an optimization method, resulting in in a guided search that gradually becomes
+closer to the desired output (Volz et al., 2018). This work demonstrates that a combination of effective techniques,
+algorithms, and models is key to high quality generative AI.
+It is worth noting that generative AI is typically constructed using supervised or unsupervised machine learning methods, which differ from reinforcement learning. Generative AI is built by learning rules encapsulated within vast
+amounts of data, while reinforcement learning involves providing predefined rules and constructing AI that can operate in accordance with those rules. In the context of PCG, if one can generate vast amounts of data, it seems beneficial
+to use generative AI. On the other hand, if there is not an abundance of learnable data available, it might be more
+appropriate to utilize reinforcement learning. This distinction offers a potential guideline for choosing between the
+two methods based on the data at hand.
+5.3 Potential of Generative Artificial Intelligence as Game Mechanics
+The potential of procedural content generation is not just limited to increasing the efficiency of game development, but
+also includes using it as game mechanics to enhance the experience or even create brand new types of gameplay.
+Generative AI shows great capability in narrative creation, where non-player characters (NPCs) can be set with diverse
+characteristics and speak as their personalities dictate. With recent advancements in nature language processing,
+similar ideas have been gradually applied to games such as Treacherous Waters Online and The Portopia Serial Murder
+Case. In the former, every NPC in the main town is given a unique personality and uses the ChatGPT pre-trained model
+to converse with players in real time. In the latter, the boundaries of text adventure games are broken, allowing players
+to gather information and solve cases by “conversing” with related characters, rather than selecting predetermined
+dialogue options. These attempts represent the frontier of transforming narrative interaction in games, and are worthy
+of deep exploration by game designers.
+User-Generated Content (UGC) refers to any form of content, such as text, images, videos, and reviews, that is created
+and shared by users of a platform or service rather than by its official administrators(Kasapakis and Gavalas, 2017).
+The concept of UGC has garnered significant attention in recent years due to its success in party games like Eggy
+Party. The technology of generating game content through Generative AI can play a special role in the development
+and design of UGC editors. While traditional UGC editors provide game users with crafted assets for tasks such as
+11A PREPRINT - JULY 15, 2024
+level creation, generative UGC editors can offer users textures, images, or even 3D models based on specific needs,
+helping users create more stylized game content with less effort.
+5.4 Future Developments for Generative AI in Procedural Content Generation
+Considering recent developments in generative AI for PCG, we expect that future developments will be focused on
+higher quality content and ease of use. Higher quality content, while an important and natural direction, is not necessarily easily achievable and is attempted through different approaches. Equally important is ease of use. Generative
+AI that is hard to implement, train, or use, will not see widespread adoption in industry.
+One approach to improving the quality of generated content is to combine multiple technologies. Indeed, this is
+already common to some extent in existing papers. For example, exploring the latent space of a GAN with search
+algorithms is used to find content that matches strict criteria. Another example is combining multiple types of neural
+networks to create generative AI that takes multi-modal input influencing generated content. These examples show
+that combinations of technologies are necessary for creating content with specific details. We expect there will be
+future research focusing on combining state-of-the-art techniques from various fields.
+Another factor that influences the quality of content is the size and amount of training data. While many applications
+of PCG in games note the challenges faced by limited training data, this is not a challenge that is unique to games.
+For example, AI in medicine frequently faces limited data, especially for rare diseases. A solution that is commonly
+applied during training is data augmentation, which slightly transforms training data. These augmentations are key to
+improving performance and preventing overfitting. Despite being frequently used in other fields, few papers mention
+data augmentation when training models for PCG. One reason for this may be the lack of meaningful transforms for
+game data. As an example, a vertical flip is a basic data augmentation in image classification. However, vertically
+flipping images, such as game levels, may not be appropriate for games as it can transform data into a form that is
+unnatural and would never be encountered otherwise. Therefore, because data augmentation has shown promise in
+other fields, we expect more researches to address the limits of training data size by evaluating the effectiveness of
+data augmentation and developing unique transformations for game data.
+Lastly, ease of use is an important practical concern that significantly affects the usage of techniques by practitioners.
+Models that require significant training or interaction may offset the time saved from using PCG techniques, potentially
+discouraging developers. One significant breakthrough in this area is transformers and LLMs, which allow developers
+to prompt a model, in natural language, for desired content. Generative AI using these models not only understand
+specific details conveyed through language, but are also easy to use. In the future, we expect more models to include
+text input and feedback mechanisms.
+6 Conclusion
+This paper explores the application of generative AI to Procedural Content Generation, focusing on three primary methods: Generative Adversarial Networks, Transformers, and Diffusion Networks. The application of these generative
+models in various PCG scenarios is summarized, offering insights for game developers and researchers.
+GANs demonstrate a wide range of applications in generating high-quality game environments, characters, and sounds.
+However, they continue to face challenges with result instability and noise, necessitating further optimization. Transformers excel in handling long sequential data due to their self-attention mechanism, making them particularly suitable
+for tasks such as movie production, game level generation, and human action generation. Their ability to produce coherent and logical content is a significant advantage in these contexts. Diffusion modeling, an emerging technique that
+generates high-quality data through gradual noise addition, shows remarkable capabilities in human action generation,
+material creation, and game level design. Its potential in PCG applications is becoming increasingly evident.
+Generative AI provides diverse methods for PCG, showing potentials and research gaps for researchers or game developers to dig deeper into. Future research should focus on not only improving the models, but also other parts like
+validating the content, training the dataset and balancing the demand for computing resources and the user experience

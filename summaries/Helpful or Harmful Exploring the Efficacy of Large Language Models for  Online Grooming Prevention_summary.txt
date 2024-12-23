@@ -1,0 +1,32 @@
+Okay, here's the summary of the paper:
+
+**Author:** Ellie Prosser and Matthew Edwards
+**Title:** Helpful or Harmful? Exploring the Efficacy of Large Language Models for Online Grooming Prevention
+**Journal:** Proceedings of European Interdisciplinary Cybersecurity Conference (EICC ’24)
+**Pages:** 10
+**Year:** 2024
+**DOI:** https://doi.org/XXXXXXX.XXXXXXX (This needs to be updated with the actual DOI)
+**Url:**  (The URL provided leads to the arXiv version of the paper https://arxiv.org/abs/2403.09795)  
+
+**Relevance to the SLR:**  This paper is highly relevant to an SLR exploring the impact of Large Language Models (LLMs) on Serious Games as it highlights a very important area where LLM can be harmful to a vulnarable population such as children. It also highlights the need for safety in design and implementations of LLM in application for children or where children may be using them. Furthermore, by assessing the performance and limitations of LLMs in detecting and preventing online grooming, this research provides a crucial use-case of LLM for a serious real world issue that can be extended to other similar real world serious issues that serious games are focused on.
+
+**Key Points (as written in the paper) :**
+
+*   The paper investigates the efficacy of six popular LLMs (ChatGPT 3.5 and 4, Google Bard, Claude 2, LLaMA 2, and Mistral) for online grooming prevention. This includes their ability to provide general online safety advice, identify online grooming in conversations, and generate context-specific advice.
+*   Over 6,000 LLM interactions were analyzed, with variations in prompt design, including:
+    *   **Given context vs. described context:** Presenting the LLM with raw chat transcripts versus a summary.
+    *   **Direct vs. indirect Point-of-View (POV):** Asking the question from the perspective of a bystander or directly from a child.
+    *  **Prompt specificity:** Explicitly mentioning online grooming or posing more general advice questions.
+*   **Findings:**
+    *   **No models were clearly appropriate for online grooming prevention.** All LLMs showed shortcomings.
+    *   **Closed-source models** (ChatGPT, Bard, Claude) were more cautious but could still make harmful mistakes. They were sometimes overly cautious, hesitant to provide definitive answers, and sometimes blocked content.
+    *    **Open-source models** (LLaMA 2, Mistral) were less consistent and showed a higher likelihood of generating harmful answers, and often hallucinated information. Mistral demonstrated particularly concerning and inconsistent behaviors, even blaming the child in some cases.
+    *   **Prompt design significantly impacted model performance.** Combinations of prompt variations were more influential than individual variations. Using descriptions (summary) of conversations often helped the LLMs perform better at extracting key features, while also demonstrating that direct prompts (from the child's POV) often resulted in lower-quality answers.
+    *   **Inconsistency in responses:** models would sometimes contradict themselves in different runs of the same prompt and scenario.
+ *   **Harmful behaviours:** Some models provided harmful reasoning, false information or irrelevant answers. Open-source models showed much more potential overall for harmful answers in more variations of the prompts.
+*   **Lack of answers** Closed-source models sometimes blocked conversations or refused to answer high-risk queries. This is unhelpful in this application, and a safe but helpful template text would improve the usability of these models in cases where help is most needed.
+*   **Prompt additions** : models added to the prompt without generating any answer. The addition to the prompts could bias answers, sometimes creating orthogonal narratives, resulting in irrelevant answers.
+*   The authors conclude that current LLMs are not yet safe for use by children in online grooming prevention scenarios, and point towards the need for further development and a focus on user safety.
+
+**Citation:** 
+Prosser, E., & Edwards, M. (2024). Helpful or Harmful? Exploring the Efficacy of Large Language Models for Online Grooming Prevention. *Proceedings of European Interdisciplinary Cybersecurity Conference (EICC ’24)*, 10 pages. [SLR paper type]

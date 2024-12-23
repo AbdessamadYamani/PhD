@@ -1,0 +1,1437 @@
+LLM-TS Integrator:
+Integrating LLM for Enhanced Time Series Modeling
+Can (Sam) Chen*, Gabriel L. Oliveira, Hossein Sharifi-Noghabi, Tristan Sylvain
+Borealis AI
+Abstract
+Time series (TS) modeling is essential in dynamic systems like
+weather prediction and anomaly detection. Recent studies uti-
+lize Large Language Models (LLMs) for TS modeling, lever-
+aging their powerful pattern recognition capabilities. These
+methods primarily position LLMs as the predictive backbone,
+often omitting the mathematical modeling within traditional
+TS models, such as periodicity. However, disregarding the
+potential of LLMs also overlooks their pattern recognition
+capabilities. To address this gap, we introduce LLM-TS In-
+tegrator , a novel framework that effectively integrates the
+capabilities of LLMs into traditional TS modeling. Central to
+this integration is our mutual information module. The core
+of this mutual information module is a traditional TS model
+enhanced with LLM-derived insights for improved predic-
+tive abilities. This enhancement is achieved by maximizing
+the mutual information between traditional model’s TS rep-
+resentations and LLM’s textual representation counterparts,
+bridging the two modalities. Moreover, we recognize that sam-
+ples vary in importance for two losses: traditional prediction
+and mutual information maximization. To address this variabil-
+ity, we introduce the sample reweighting module to improve
+information utilization. This module assigns dual weights to
+each sample: one for prediction loss and another for mutual
+information loss, dynamically optimizing these weights via
+bi-level optimization. Our method achieves state-of-the-art
+or comparable performance across five mainstream TS tasks,
+including short-term and long-term forecasting, imputation,
+classification, and anomaly detection.
+1 Introduction
+Time series (TS) modeling, as emphasized in (Hyndman and
+Athanasopoulos 2018), is crucial for a variety of real-world
+applications. It is instrumental in forecasting meteorologi-
+cal factors for weather prediction (Wu et al. 2021), imput-
+ing missing data in economic TS (Friedman 1962), detect-
+ing anomalies in industrial monitoring data for maintenance
+(Gao et al. 2020), and classifying trajectories for action recog-
+nition (Franceschi, Dieuleveut, and Jaggi 2019). Given its
+significant practical impact, TS analysis continues to attract
+substantial attention (Lim and Zohren 2021; Wen et al. 2022).
+Recent efforts in TS modeling have increasingly adopted
+Large Language Models (LLMs) to leverage their exceptional
+*Work done during an internship at Borealis AI.
+Preprint. Under review.pattern recognition capabilities (Jiang et al. 2024; Zhou et al.
+2024b; Jin et al. 2024; Sun et al. 2023; Gruver et al. 2024; Cao
+et al. 2024). While these innovative approaches validate the
+potential of LLMs in TS modeling, they primarily position
+LLMs as the core predictive model. Consequently, they often
+omit the mathematical modeling tailored specifically for TS
+models, such as employing the Fourier Transform to capture
+periodic patterns (Wu et al. 2023).
+On the other hand, fully disregarding the potential of LLMs
+also overlooks their powerful pattern recognition capabilities.
+It is important to recognize the balance between leveraging
+LLMs for their advanced capabilities and utilizing traditional
+TS models for their mathematical modeling, to enhance the
+overall performance and accuracy of TS predictions. In re-
+sponse, we propose LLM-TS Integrator , a novel framework
+that effectively integrates the capabilities of LLMs into tradi-
+tional TS modeling.
+Central to our framework is a mutual information module,
+as depicted in Figure 1(a). The core of this module is a tra-
+ditional predictive model, which we enhance with insights
+derived from LLMs to improve its predictive abilities. In
+this work, we primarily utilize TimesNet (Wu et al. 2023) as
+the traditional predictive model due to its exceptional perfor-
+mance and insight into periodic modeling, and our framework
+is also applicable to other traditional TS models (see in Sec-
+tion 4.6). We achieve this enhancement by maximizing the
+mutual information (Sun et al. 2019) between the TS rep-
+resentations from traditional models and their textual coun-
+terparts from LLMs, thereby bridging these two modalities.
+Despite its established use, mutual information maximization
+has not been previously applied to the intersection of TS and
+text domain. With textual descriptions often missing from TS
+data, we propose generating such descriptions via a carefully
+designed template. This template is enriched with essential
+background and statistical details pertinent to the TS, thereby
+enriching the LLM’s comprehension of the TS context.
+Our first module introduces a dual loss framework: tradi-
+tional prediction and mutual information, and we recognize
+that the importance of samples differs between the two losses.
+For instance, a large prediction loss for a sample highlights
+its learning potential, emphasizing the need to focus on its
+prediction loss. This scenario also implies that the model’s
+learning for this sample is inadequate and its hidden repre-
+sentation is suboptimal for mutual information computation.arXiv:2410.16489v1  [cs.LG]  21 Oct 2024
+Figure 1: Illustration of LLM-TS Integrator . Module (a) enhances the traditional TS model (TimesNet) with LLM-derived insights
+by mutual information maximization. Module (b) optimizes sample importance for both prediction loss and mutual information
+loss to improve information utilization.
+Consequently, the sample’s contribution to the mutual in-
+formation calculation should be reduced. To manage this
+variability, we have introduced a novel sample reweighting
+module powered by a simple MLP (multilayer perceptron)
+network, as depicted in Figure 1(b). This module processes
+the sample prediction loss to produce dual weights for each
+sample, one for the prediction loss and another for the mu-
+tual information loss. These weights are optimized through
+bi-level optimization, thereby enhancing the efficacy of infor-
+mation utilization.
+Our primary contributions are as follows:
+•We introduce LLM-TS Integrator , which consists of mu-
+tual information andsample reweighting . The first module
+enhances traditional TS modeling with capabilities from
+LLMs through mutual information maximization.
+•The second module optimizes sample importance for both
+prediction loss and mutual information loss, which im-
+proves information utilization.
+•Extensive experiments across five mainstream TS
+tasks—short-term and long-term forecasting, imputation,
+classification, and anomaly detection—demonstrate the
+effectiveness of our framework.
+2 Preliminaries
+TimesNet. In this paper, we mainly choose TimesNet as the
+traditional predictive model due to its exceptional perfor-
+mance (Wu et al. 2023) and also explore other additional
+traditional models including ETSformer (Woo et al. 2022),
+Stationary (Liu et al. 2022), and FreTS (Yi et al. 2024) in
+Section 4.6. Previous studies to modeling temporal variations
+in 1D time series often struggle with complex temporal pat-
+terns. TimesNet addresses this challenge by decomposing
+these complex variations into multiple intra-period and inter-
+period variations. This is achieved by transforming the 1D
+time series into a series of 2D tensors, each corresponding todifferent periods. For the time series x, we derive its repre-
+sentation hm
+θ(x)using the TimesNet model parameterized
+byθwhere mrepresents model .
+Large Language Models. Language models are trained on
+extensive collections of natural language sequences, with
+each sequence consisting of multiple tokens. Notable large
+language models such as GPT-3 (Brown et al. 2020) and
+Llama2 (Touvron et al. 2023) aim to predict the next to-
+ken based on preceding tokens, demonstrating their capabili-
+ties through improvements in model parameter size and the
+amount of training data. Each language model uses a tok-
+enizer that breaks down an input string into a sequence of
+recognizable tokens. However, the training of current large
+language models is solely focused on natural language, not
+encompassing time series data. This limitation presents chal-
+lenges for the direct application of large language models to
+time series analysis.
+3 Method
+In this section, we present the LLM-TS Integrator frame-
+work, which effectively integrates the capabilities of LLMs
+into traditional TS modeling. This framework consists of
+two modules: mutual information andsample reweighting .
+The first module enhances a traditional TS model with LLM-
+derived insights for improved predictive abilities, as explored
+in Section 3.1. The second module optimizes weights for
+prediction loss and mutual information loss via bi-level op-
+timization, improving information utilization, as covered in
+Section 3.2. The overall algorithm is shown in Algorithm 1.
+3.1 Mutual Information
+Previous studies (Zhou et al. 2024b; Jin et al. 2023) have
+predominantly highlighted the use of Large Language Models
+(LLMs) as the core predictive model in the TS analysis, often
+omitting the mathematical modeling within traditional TS
+models, such as periodicity.
+Algorithm 1: LLM-TS Integrator
+Input : The TS dataset D, number of training iterations T.
+Output : Trained TS model parameterized by θ∗.
+1:/*Mutual Information Module */
+2:Train a traditional TS model (e.g., TimesNet) parameter-
+ized by θusingD.
+3:Generate text description tfor TS sample xvia a de-
+signed template.
+4:Derive hidden representations hm
+θ(x)from the TS model
+andhl(t)from the LLM.
+5:while τ <=T−1do
+6: Sample x,t,yfromD, where yare the labels.
+7: Optimize a discriminator model Tβto estimate mutual
+information as per Eq .(2).
+8:/*Sample Reweighting Module */
+9: Process sample loss lOwith the weighting net to pro-
+duce dual weights as per Eq. (3), (4).
+10: Adopt bi-level optimization to update the weighting
+net following Eq. (6), (7).
+11: Re-calculate dual weights using the updated weighting
+net per Eq. (3), (4).
+12: Calculate the overall loss to update the TS model as
+per Eq. (5).
+13:end while
+14:Return the trained TS model parameterized by θ∗.
+In contrast, our framework utilizes a traditional TS model
+as the predictive backbone, enhanced by the advanced ca-
+pabilities of LLMs. In this paper, we employ TimesNet, as
+outlined in Section 2, as the traditional predictive model, and
+we further examine other models in Section 4.6. This hybrid
+methodology combines the advantages of both traditional
+TS models and modern LLMs. We achieve this integration
+via a mutual information module, which maximizes the mu-
+tual information between the TS data representations derived
+from the traditional model and their corresponding textual
+representations derived from LLMs.
+Mutual Information Estimation. Estimating the mutual
+information between hidden representations of a time series
+(TS) sample xand its corresponding textual description tis
+essential. For the TS sample x, we derive its representation
+hm
+θ(x)using TimesNet, a model parameterized by θ. For
+the text t, its representation hl(t)is extracted using a pre-
+trained Large Language Model (LLM), where ldenotes the
+language model. In this study, we employ the LLaMA-3b
+model (Touvron et al. 2023) as our primary LLM, while also
+evaluating other LLMs as detailed in Section 4.6.
+We estimate mutual information using the Jensen-Shannon
+MI estimator (Sun et al. 2019; Nowozin, Cseke, and Tomioka
+2016) and additionally explore the MINE estimator (Hjelm
+et al. 2018) as detailed in Appendix B.12. Specifically, let
+(x,t)represent a sample from the TS set S, and (˜x,˜t)denote
+a sample from ˜S=Swhere (x,t)̸= (˜x,˜t). Within this con-
+text,Sdenotes the TS training distribution while the product
+S×˜Srepresents pairs of distinct samples within S. Then thelower bound of mutual information can be estimated as:
+I(θ,β) =ES[−sp(−Tβ(hm
+θ(x),hl(t))]−
+ES×˜S[sp(Tβ(hm
+θ(x),hl(˜t))],(1)
+where Tβdenotes the discriminator parameterized by βand
+spis the softplus function. For the details of Tβ, we feed
+the positive and negative examples into a 1-layered fully-
+connected network, and then output the dotproduct of the two
+representations. The mutual information estimation begins
+by fixing the model parameters θ, followed by training βas
+the estimator. Specifically, we optimize βvia the following:
+ˆβ=β−η0·∂I(θ,β)
+∂β(2)
+where η0denotes the learning rate. Subsequently, we refine
+the model parameters θto maximize mutual information,
+thereby enriching the traditional TS model with insights de-
+rived from LLMs. This alternating optimization procedure
+between model and discriminator is repeated each epoch.
+Text Description for Time Series. In our approach, we
+assume each time series (TS) sample xis paired with a corre-
+sponding textual description, t. However, textual descriptions
+are frequently unavailable for many TS datasets. To bridge
+this gap, we introduce a methodology for generating textual
+descriptions of TS data. We propose creating textual repre-
+sentations that capture essential background and statistical
+details of the TS inspired by (Jin et al. 2023). This process can
+be systematically implemented using the following carefully
+designed template template:
+template = (
+"{task_description}. The content is: {TS}. "
+"Input statistics:
+min value {min(TS)}, max value {max(TS)}, "
+"median value {median(TS)},
+top 5 lags {compute_lags(TS)}."
+)
+3.2 Sample Reweighting
+Ourmutual information module introduces two distinct loss
+functions: (1) the original sample prediction loss, lO(x,y),
+hereafter referred to as lO, which corresponds to the pre-
+diction loss for a TS sample xand its label y, and (2) the
+mutual information maximization loss, denoted as −I(θ,β).
+We acknowledge that the significance of samples varies be-
+tween these two losses. Specifically, a large prediction loss
+lOindicates a sample’s substantial learning potential, thereby
+justifying a higher weight ωOfor its prediction loss. Con-
+versely, this suggests that the sample’s representation may be
+suboptimal for mutual information computation, warranting
+a lower weight ωI.
+To address this disparity, we have developed a novel sam-
+ple reweighting module, described as follows.
+Weighting Network. To automate weight assignment, our
+module employs a two-layer MLP network parameterized by
+α, which processes the sample prediction loss to produce a
+pair of weights:
+ωO(α), ωI(α) =MLP α(lO) (3)
+This process involves converting the sample loss lOinto
+a latent code zthrough a hidden layer. The network then
+outputs dual weights:
+ωO(α), ωI(α) =σ(mO·z), σ(mI·z) (4)
+where mO>0andmI<0to ensure a negative correlation
+between ωOandωI. The function σ(·)denotes sigmoid.
+For a batch of Nsamples, the weight vector ωO(α)∈RN
+is directly applied to the original prediction loss vector
+lO∈RN, resulting in the weighted average loss calcu-
+lated as mean (ωO(α)·lO). Similarly, the weight vector
+ωI(α)∈RNnot only reflects the overall significance
+of the mutual information but also each sample’s individ-
+ual contribution to this metric. The mean of these weights
+mean (ωI(α))represents the overall importance. For mutual
+information computations, ωI(α)is transformed into a prob-
+ability distribution pi
+I=ωi
+IPN
+i=1ωi
+I. This adjustment affects the
+distribution used in mutual information calculations, neces-
+sitating a recalculation of mutual information as I(θ,β,α),
+with details provided in Appendix B.1. As a result, the overall
+loss is formulated as:
+L(θ,α) =mean (ωO(α)·lO)
++mean (ωI(α))·[−I(θ,β,ωI(α))](5)
+Bi-level Optimization. The ensuing challenge is optimiz-
+ing the weighting network α. We achieve this by leveraging
+the supervision signals from a small validation dataset (Chen
+et al. 2022). If the weighting network is properly optimized,
+the model trained with these weights is expected to show
+improved performance on the validation dataset in terms of
+the validation loss LV(θ) =1
+MPM
+jlj
+O(xj,yj), where M
+denotes the size of the validation set. This constitutes a bi-
+level optimization problem. At the inner level, model training
+is conducted through gradient descent:
+ˆθ(α) =θ−η1·∂L(θ,α)
+∂θ(6)
+The objective is to ensure that the model performs optimally
+on the validation dataset:
+ˆα=α−η2·∂LV(θ(α))
+∂α(7)
+Bothη1andη2represent the learning rates for the respective
+optimization steps. Through the minimization of the valida-
+tion loss, we aim to optimize the weighting network α.
+4 Experimental Results
+To demonstrate the versatility of our LLM-TS Integrator , we
+conduct extensive experiments across five main tasks: short-
+and long-term forecasting, imputation, classification, and
+anomaly detection. To maintain experimental integrity, our
+methodology adheres to the setup in (Wu et al. 2023). We
+detail the experimental setting in Appendix B.2.
+Baselines. Our evaluation employs a comprehensive ar-
+ray of baseline models across several architectural designs
+(1)CNN-based models, specifically TimesNet (Wu et al.
+2023); (2)MLP-based models, including LightTS (Zhanget al. 2022) and DLinear (Zeng et al. 2023); (3)Transformer-
+based models, such as Reformer (Kitaev, Kaiser, and Lev-
+skaya 2020), Informer (Zhou et al. 2021a), Autoformer (Wu
+et al. 2021), FEDformer (Zhou et al. 2022), Nonstationary
+Transformer (Liu et al. 2022), ETSformer (Woo et al. 2022),
+and PatchTST (Nie et al. 2022); (4)LLM-based models, rep-
+resented by GPT4TS (Zhou et al. 2024b). While we assess
+a wide range of models, we focus our discussion on the top-
+performing ones as highlighted in (Zhou et al. 2024b).
+Additional comparisons for forecasting tasks include LLM-
+based models like Time-LLM (Jin et al. 2023) and TEST (Sun
+et al. 2023). For short-term forecasting, models like N-
+HiTS (Challu et al. 2023) and N-BEATS (Oreshkin et al.
+2019) are included. Anomaly detection tasks are assessed
+using Anomaly Transformer (Xu et al. 2021), and for classi-
+fication tasks, models such as XGBoost (Chen and Guestrin
+2016), Rocket (Dempster, Petitjean, and Webb 2020), LST-
+Net (Lai et al. 2018), LSSL (Gu, Goel, and Ré 2021),
+Pyraformer (Liu et al. 2021), TCN (Franceschi, Dieuleveut,
+and Jaggi 2019), and Flowformer (Huang et al. 2022) are
+considered. This broad selection of baselines enables a rig-
+orous and fair comparison across various tasks, highlighting
+the capabilities of our method.
+4.1 Main Results
+Short-term ForecastingLong-term Forecasting
+Imputation
+Classification Anomaly DetectionLLM-TS
+TimesNet
+GPT4TS
+PatchTST
+FEDformer
+Figure 2: Model performance across different tasks.
+Figure 2 demonstrates that our LLM-TS Integrator consis-
+tently outperforms other methods in various tasks, underscor-
+ing its efficacy. We will refer to our method as LLM-TS in the
+tables for brevity. Unless otherwise indicated, we cite results
+from TimesNet (Wu et al. 2023). We reproduce TimesNet
+and GPT4TS (Zhou et al. 2024b) experiments for all tasks.
+All results are averages from three runs with different seeds.
+Standard deviations for ablation studies are detailed in Ap-
+pendix 8. The best results are highlighted in bold, with the
+second-best underlined. We also (1) present several show-
+cases of our method in Appendix B.4 and (2) discuss the
+model efficiency in Appendix B.6
+4.2 Short- and Long- Term Forecasting
+Setup. To comprehensively assess our framework’s fore-
+casting capabilities, we engage it in both short- and long-
+term forecasting settings. In the realm of short-term forecast-
+ing, we utilize the M4 dataset (Spyros Makridakis 2018),
+which aggregates univariate marketing data on a yearly, quar-
+terly, and monthly basis. For long-term forecasting, we exam-
+ine five datasets following (Zhou et al. 2024b): ETT (Zhou
+et al. 2021b), Electricity (UCI 2015), Traffic (PeMS 2024),
+Weather (Wetterstation 2024), and ILI (CDC 2024). We ad-
+here to the TimesNet setting with an input length of 96. For
+LLM-based methods like GPT4TS and Time-LLM, which
+use different input lengths, we rerun the experiments using
+their code. For PatchTST, we cite the results from (Wang
+et al. 2023), as the original PatchTST uses an input length of
+512. Due to shorter input lengths in this study compared to
+the original, the reported performance is lower.
+Results. As shown in Tables 1 and 2, our LLM-TS
+performs exceptionally well in both short- and long-term
+settings. It consistently surpasses TimesNet, highlighting
+the effectiveness of incorporating LLM-derived insights.
+Furthermore, it generally outperforms other LLM-based
+methods such as GPT4TS, TIME-LLM, and TEST, under-
+scoring the advantages of integrating traditional TS modeling.
+4.3 Imputation
+Setup. To assess our method’s imputation capabilities, we
+employ three datasets: ETT (Zhou et al. 2021b), Electricity
+(UCI 2015), and Weather (Wetterstation 2024), serving as
+our benchmarks. To simulate various degrees of missing
+data, we randomly obscure time points at proportions of
+{12.5%,25%,37.5%,50%}following (Wu et al. 2023).
+Results. Table 3 illustrates that our method achieves perfor-
+mance comparable to GPT4TS and surpasses other baselines,
+highlighting its effectiveness. We attribute the robust perfor-
+mance of GPT4TS primarily to its backbone feature extractor:
+the pre-trained language model, which excels at capturing
+time series patterns, enhancing its imputation proficiency.
+4.4 Classification
+Setup. We focus on the application of our method to
+sequence-level time series classification tasks, a crucial test
+of its ability to learn high-level representations from data.
+Specifically, we employ 10diverse multivariate datasets
+sourced from the UEA Time Series Classification reposi-
+tory (Bagnall et al. 2018). These datasets encompass a wide
+range of real-world applications, including gesture and ac-
+tion recognition, audio processing, medical diagnosis, among
+other practical domains. We reproduce the results of TEST
+based on their code (Sun et al. 2023).
+Results. As depicted in Figure 3, our LLM-TS Integrator
+achieves superior performance with an average accuracy of
+73.4%. As detailed in Appendix B.10, it consistently outper-
+forms other LLM-based methods across most tasks, including
+GPT4TS and TEST. We attribute this enhanced capability
+to the traditional TS modeling techniques in our framework,
+which effectively capture classification characteristics more
+adeptly than LLMs.
+60 62 64 66 68 70 72 74
+Average Accuracy (%)TESTXGBoostDLinearGPT4TSTCNLightTSFEDformerPyraformerLSSLESTformerAutoformerReformerLSTNetTransformerInformerRocketTimesNetStationaryFlowformerLLM-TS
+61.2066.0067.5069.5070.3070.4070.7070.8070.9071.0071.1071.5071.8071.9072.1072.5072.7072.7073.0073.40Figure 3: Model comparison in classification.
+Anomaly Detection Forecasting Imputation Classification
+Tasks0.50.60.70.80.9CKA Similarity ScoresOurs
+w/o templatew/o mutual
+TimesNet
+Figure 4: CKA by Task.
+4.5 Anomaly Detection
+Setup. Our study concentrates on unsupervised time series
+anomaly detection, aiming to identify aberrant time points
+indicative of potential issues. We benchmark our method
+against five established anomaly detection datasets: SMD (Su
+et al. 2019), MSL (Hundman et al. 2018), SMAP (Hundman
+et al. 2018), SWaT (Mathur and Tippenhauer 2016), and PSM
+(Abdulaal, Liu, and Lancewicki 2021). These datasets span a
+variety of applications, including service monitoring, space
+and earth exploration, and water treatment processes. For a
+consistent evaluation framework across all experiments, we
+employ the classical reconstruction error metric to determine
+anomalies following (Wu et al. 2023).
+Results. As indicated in Table 4, our LLM-TS Integrator
+exhibits superior performance with an average F1-score of
+85.17%. This result underscores the versatility of LLM-TS ,
+demonstrating its capability not only in classifying complete
+sequences, as discussed previously, but also in effectively
+detecting anomalies in time series data.
+4.6 Ablations
+In this section, we first verify the effectiveness of our frame-
+work by sequentially removing key components: (1) mutual
+information module and (2) sample reweighting module. Ad-
+ditionally, for mutual information , we explore the impact of
+removing the template while retaining the raw time series
+data inputs to the LLM. We denote these variants as w/o
+Table 1: Short-term M4 forecasting. The prediction lengths are in [ 6,48] and results are obtained by weighting averages across multiple
+datasets with varying sampling intervals. Full results are in Appendix B.7.
+Methods LLM-TS TimesNet GPT4TS TIME-LLM TEST PatchTST N-HiTS N-BEATS FEDformer Stationary Autoformer
+SMAPE 11.819 11.908 11 .991 11 .983 11 .927 12 .059 11 .927 11 .851 12.840 12 .780 12 .909
+MASE 1.588 1.612 1 .600 1 .595 1.613 1 .623 1 .613 1 .599 1 .701 1 .756 1 .771
+OWA 0.851 0.860 0 .861 0 .859 0 .861 0 .869 0 .861 0 .855 0.918 0 .930 0 .939
+Table 2: Long-term forecasting: Averages over 4lengths: 24,36,48,60for ILI, and 96,192,336,720for others. Full results in Appendix B.8.
+MethodsLLM-TS TimesNet TIME-LLM DLinear PatchTST GPT4TS FEDformer TEST Stationary ETSformer
+MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MAE MSE MAE MSE
+Weather 0.257 0 .285 0.265 0.290 0.279 0 .296 0.265 0.317 0.265 0.285 0.275 0 .292 0.309 0 .360 0.291 0 .315 0.288 0 .314 0.271 0 .334
+ETTh1 0.454 0.451 0.470 0 .462 0.474 0 .459 0.456 0 .452 0.516 0 .484 0.473 0.451 0.440 0.4600.440 0.460 0.570 0 .537 0.542 0 .510
+ETTh2 0.396 0 .413 0.413 0 .426 0.398 0 .415 0.559 0 .515 0.391 0.411 0.383 0.410 0.437 0 .449 0.414 0 .432 0.526 0 .516 0.439 0 .452
+ETTm1 0.401 0.409 0.414 0 .418 0.437 0 .421 0.403 0 .407 0.406 0 .407 0.408 0.400 0.448 0 .452 0.402 0.411 0.481 0 .456 0.429 0 .425
+ETTm2 0.295 0.331 0.2940.331 0.298 0 .342 0.350 0 .4010.290 0.334 0.290 0.335 0.305 0 .349 0.323 0 .359 0.306 0 .347 0.293 0 .342
+ILI 1.973 0 .894 2.266 0 .974 2.726 1 .098 2.616 1 .090 2.184 0 .906 5.117 1 .650 2.847 1 .144 3.324 1 .232 2.077 0.914 2.497 1 .004
+ECL 0.194 0.299 0.198 0 .298 0.229 0 .315 0.212 0 .300 0.216 0 .318 0.206 0.285 0.214 0 .327 0.237 0 .3240.193 0.296 0.208 0 .323
+Traffic 0.618 0.333 0.627 0 .335 0.606 0 .395 0.625 0 .3830.529 0.341 0.561 0.373 0.610 0 .376 0.581 0 .388 0.624 0 .340 0.621 0 .396
+Average 0.574 0 .427 0.618 0 .442 0.681 0 .468 0.686 0 .483 0.600 0.436 0.964 0 .525 0.701 0 .489 0.756 0 .491 0.633 0 .465 0.662 0 .473
+mutual ,w/o reweight andw/o template . Our experiments
+span long-term forecasting tasks including Weather, ETTh1,
+ETTm1 and ILI. As detailed in Table 5, the removal of any
+component leads to a decrease in performance, confirming
+the value of each design element. Additionally, we explore
+the use of the MINE estimator (Hjelm et al. 2018) instead of
+the Jensen-Shannon MI estimator in our main paper, with fur-
+ther details provided in Appendix B.12. Lastly, we showcase
+various case studies to demonstrate the enhancements facili-
+tated by our method in Appendix B.4 and explore template
+variations in Appendix B.5.
+Mutual Information. We further explore the mutual infor-
+mation module from a representation learning perspective,
+following the findings in (Wu et al. 2023). They adopt a
+CKA (Centered Kernel Alignment) metric which measures
+similarity between representations obtained from the first
+and last layer of a model and they find that forecasting and
+anomaly detection benefits from high CKA similarity, con-
+trasting with that imputation and classification tasks benefits
+from lower CKA similarity.
+Experiments are conducted using the MSL dataset for the
+anomaly detection task, the Weather dataset for forecasting,
+the ETTh1 dataset for imputation, and the PEMS-SF dataset
+for classification. As depicted in Figure 4, the removal of com-
+ponents in our method results in decreased CKA similarity in
+anomaly detection and forecasting tasks, but an increase in
+imputation and classification tasks. This observation further
+substantiates the effectiveness of our components.
+Sample Reweighting. Regarding the sample reweighting
+module, we illustrate the behavior of the learned weighting
+network in Appendix B.12. The trend confirms our hypoth-
+esis: sample weight ωOincreases with the prediction loss
+lO, and weight ωIdecreases as lOincreases. This pattern
+validates our sample reweighting module. Further discus-
+sion comparing this module to a fixed weight scheme are
+presented in Appendix B.12.
+To verify the effectiveness of our method, we conduct
+ablation studies focusing on (1) traditional time series (TS)
+models and (2) language models.Traditional Models. Although we utilize TimesNet as our
+primary model, our framework is applicable to other tradi-
+tional models. We explored additional traditional models
+including ETSformer (Woo et al. 2022), Stationary (Liu et al.
+2022), and FreTS (Yi et al. 2024). As shown in Table 6, inte-
+grating LLM-TS generally enhances performance across all
+traditional models, underscoring the benefits of our method.
+Language Models. In the main paper, the LLaMA-3b
+model (Touvron et al. 2023) is used to generate embed-
+dings for the TS language description. We compare it with
+GPT2 (Radford et al. 2019) and BERT (Devlin et al. 2018)
+to assess different embeddings’ performance. Table 7 reveals
+that LLaMA-3b generally outperforms the alternatives, and
+all LMs improve results compared to non-LLM approaches,
+validating the effectiveness of LLM-TS Integrator .
+5 Related Work
+LLM for TS Modeling. FPT (Zhou et al. 2024b) suggests
+utilizing pre-trained language models to extract features from
+time series for improved predictions. TIME-LLM (Jin et al.
+2024) and TEST (Sun et al. 2023) adapt LLMs for general
+time series forecasting by maintaining the original language
+model structure while reprogramming the input to fit time se-
+ries data (Zhou et al. 2024a). LLMTIME (Gruver et al. 2024)
+interprets time series as sequences of numbers, treating fore-
+casting as a next-token prediction task akin to text processing,
+applying pre-trained LLMs for this purpose. Given that it is
+not a state-of-the-art method and primarily targets zero-shot
+forecasting, it has not been incorporated into our experimen-
+tal framework. TEMPO (Cao et al. 2024) utilizes essential
+inductive biases of the TS task for generative pre-trained
+transformer models.
+Time Series to Text. PromptCast (Xue and Salim 2023)
+proposes to transform the numerical input and output into
+prompts, which enables forecasting in a sentence-to-sentence
+manner. Time-LLM (Jin et al. 2024) incorporates background,
+instruction and statistical information of the time series data
+via natural language to facilitate time series forecasting in
+LLM. LLMTIME (Gruver et al. 2023) converts time series
+Table 3: Imputation task: Randomly masked { 12.5%,25%,37.5%,50%} of points in 96-length series, averaging results over 4mask ratios.
+Full results are in Appendix B.9.
+MethodsLLM-TS TimesNet GPT4TS PatchTST LightTS DLinear FEDformer Stationary Autoformer Reformer
+MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE
+ETTm1 0.025 0 .103 0.028 0.109 0.028 0.108 0.047 0 .140 0.104 0 .218 0.093 0 .206 0.062 0 .177 0.036 0 .126 0.051 0 .150 0.055 0 .166
+ETTm2 0.021 0 .087 0.022 0.089 0.023 0 .088 0.029 0 .102 0.046 0 .151 0.096 0 .208 0.101 0 .215 0.026 0 .099 0.029 0 .105 0.157 0 .280
+ETTh1 0.087 0.198 0.090 0 .1990.069 0 .174 0.115 0 .224 0.284 0 .373 0.201 0 .306 0.117 0 .246 0.094 0 .201 0.103 0 .214 0.122 0 .245
+ETTh2 0.050 0.148 0.051 0 .1500.050 0 .144 0.065 0 .163 0.119 0 .250 0.142 0 .259 0.163 0 .279 0.053 0 .152 0.055 0 .156 0.234 0 .352
+ECL 0.094 0 .211 0.095 0 .212 0.091 0.207 0.072 0 .183 0.131 0 .262 0.132 0 .260 0.130 0 .259 0.100 0 .218 0.101 0 .225 0.200 0 .313
+Weather 0.030 0.056 0.031 0.059 0.032 0 .058 0.034 0.055 0.055 0 .117 0.052 0 .110 0.099 0 .203 0.032 0 .059 0.031 0.057 0.038 0 .087
+Average 0.051 0.134 0.053 0 .1360.049 0 .130 0.060 0 .144 0.123 0 .228 0.119 0 .224 0.112 0 .229 0.056 0 .142 0.061 0 .151 0.134 0 .240
+Table 4: Anomaly detection task. F1-score (as %). ∗. in the Transformers represents the name of ∗former. Full results are in Appendix B.11.
+Methods LLM-TS TimesNet GPT4TS PatchTS. ETS. FED. LightTS DLinear Stationary Auto. Pyra. Anomaly.**In. Re. Trans.
+SMD 84.69 84 .57 84 .32 84 .62 83 .13 85 .08 82 .53 77 .10 84 .72 85 .11 83 .04 85 .49 81 .65 75 .32 79 .56
+MSL 81.11 80 .34 81 .73 78 .70 85 .03 78 .57 78 .95 84 .88 77 .50 79 .05 84 .86 83 .31 84 .06 84 .40 78 .68
+SMAP 69.41 69 .18 68 .86 68 .82 69 .50 70 .76 69 .21 69 .26 71 .09 71 .12 71 .09 71 .18 69 .92 70 .40 69 .70
+SWaT 93.23 93 .12 92 .59 85 .72 84 .91 93 .19 93 .33 87 .52 79 .88 92 .74 91 .78 83 .10 81 .43 82 .80 80 .37
+PSM 97.43 97 .27 97 .34 96 .08 91 .76 97 .23 97 .15 93 .55 97 .29 93 .29 82 .08 79 .40 77 .10 73 .61 76 .07
+Average 85.17 84.90 84 .97 82.79 82 .87 84 .97 84 .23 82 .46 82 .08 84 .26 82 .57 80 .50 78 .83 77 .31 76 .88
+Table 5: Results averaged over 4prediction lengths.
+Methods Ours w/o mutual w/o template w/o reweight TimesNet
+Metric MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE
+Weather 0.257 0 .285 0.264 0 .290 0.263 0 .288 0.264 0 .291 0.265 0 .290
+ETTh1 0.454 0 .451 0.467 0 .460 0.465 0 .460 0.464 0 .463 0.470 0 .462
+ETTm1 0.401 0 .409 0.411 0 .417 0.406 0 .415 0.403 0 .411 0.414 0 .418
+ILI 1.973 0 .894 2.221 0 .942 2.173 0 .950 2.173 0 .947 2.266 0 .974
+Table 6: Ablation results on different traditional models. Full
+results are in Appendix B.12.
+Methods ETSformer ETS LLM-TS Stationary Stat LLM-TS FreTS FreTS LLM-TS
+Metric MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE
+Weather 0.313 0.382 0.307 0.375 0.282 0.307 0.284 0.309 0.262 0.306 0.255 0.302
+ETTh 10.799 0.684 0.791 0.678 0.667 0.582 0.653 0.572 0.484 0.473 0.478 0.466
+ETTm 10.638 0.583 0.555 0.528 0.527 0.477 0.522 0.471 0.415 0.422 0.407 0.415
+ILI 3.922 1.367 3.740 1.320 2.722 1.041 2.205 0.935 3.449 1.279 3.158 1.211
+data into a string of numbers and predicts future values as if
+completing a text.
+Mutual Information The Infomax principle (Linsker 1988;
+Bell and Sejnowski 1995), applied in the context of neu-
+ral networks, advocates for maximizing mutual information
+between the inputs and outputs of a network. Tradition-
+ally, quantifying mutual information was challenging out-
+side a few specific probability distributions, as discussed
+in (Shwartz-Ziv and Tishby 2017). This complexity led
+to the development of various heuristics and approxima-
+tions (Tishby, Pereira, and Bialek 2000). More recently, a
+breakthrough came with MINE (Belghazi et al. 2021), which
+introduced a neural estimator capable of assessing mutual
+information between two arbitrary quantities with a precision
+that depends on the capacity of the encoding network. This
+Table 7: Ablation results on different LLM embeddings. Full
+results are in Appendix B.12.
+Methods LLM-TS (LLaMA) LLaMA w/o template GPT2 BERT No LLM
+Metric MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE
+Weather 0.257 0 .285 0.263 0 .288 0.261 0 .287 0.260 0 .287 0.264 0 .290
+ETTh 10.454 0 .451 0.465 0 .460 0.464 0 .458 0.467 0 .460 0.467 0 .460
+ETTm 10.401 0 .409 0.406 0 .415 0.406 0 .413 0.406 0 .412 0.411 0 .417
+ILI 1.973 0 .894 2.173 0 .950 2.169 0 .936 2.193 0 .952 2.221 0 .942innovative approach has spearheaded advancements in the
+field of representation learning (Hjelm et al. 2019; Sylvain,
+Petrini, and Hjelm 2019). The estimator we utilize is based on
+the Jensen-Shannon divergence variant of the MINE mutual
+information estimator.
+Sample Reweighting. Sample reweighting is commonly
+used to improve training efficacy (Fang et al. 2024; Wang
+et al. 2024; Yuan et al. 2024a; Zhang et al. 2024; Yuan et al.
+2024b). Traditional approaches (Freund and Schapire 1997;
+Sun et al. 2007) assign larger weights to samples with higher
+loss values, as these hard samples have greater learning po-
+tential. Recent studies (Ren et al. 2018) suggest using a val-
+idation set to guide the learning of sample weights, which
+can enhance model training. Notably, meta-weight-net (Shu
+et al. 2019) proposes learning a mapping from sample loss
+to sample weight. In this work, we adopt an MLP network
+that takes sample prediction loss as input and outputs dual
+weights for prediction loss and mutual information loss.
+6 Conclusion and Discussion
+In conclusion, the LLM-TS Integrator framework offers a
+promising approach to integrating Large Language Models
+(LLMs) with traditional TS methods. This work extends our
+prior findings from the workshop (Chen et al. 2024). By en-
+couraging high mutual information between textual and TS
+data, our method aims to maintain the distinct characteristics
+of TS while benefiting from the advanced pattern recognition
+capabilities of LLMs. The introduced sample reweighting
+module enhances performance by dynamically adjusting the
+relevance of each sample based on its predictive and informa-
+tional contributions. Comprehensive empirical evaluations
+suggest that this framework improves accuracy across vari-
+ous TS tasks, including forecasting, anomaly detection, and
+classification. However, further research is necessary to con-
+firm these results across more diverse datasets and to explore
+additional LLM features that could further enrich our model.
+Additionally, it is important to acknowledge current limita-
+tions, such as the need for computational resources and the
+potential challenges in aligning the two modalities effectively.
+References
+Abdulaal, A.; Liu, Z.; and Lancewicki, T. 2021. Practical Ap-
+proach to Asynchronous Multivariate Time Series Anomaly
+Detection and Localization. KDD .
+Bagnall, A.; Dau, H. A.; Lines, J.; Flynn, M.; Large, J.;
+Bostrom, A.; Southam, P.; and Keogh, E. 2018. The UEA
+multivariate time series classification archive, 2018. arXiv
+preprint arXiv:1811.00075 .
+Belghazi, M. I.; Baratin, A.; Rajeswar, S.; Ozair, S.; Bengio,
+Y .; Courville, A.; and Hjelm, R. D. 2021. MINE: Mutual
+Information Neural Estimation. arXiv:1801.04062.
+Bell, A. J.; and Sejnowski, T. J. 1995. An information-
+maximization approach to blind separation and blind decon-
+volution. Neural computation , 7(6): 1129–1159.
+Brown, T.; Mann, B.; Ryder, N.; Subbiah, M.; Kaplan, J. D.;
+Dhariwal, P.; Neelakantan, A.; Shyam, P.; Sastry, G.; Askell,
+A.; et al. 2020. Language models are few-shot learners.
+Advances in neural information processing systems , 33: 1877–
+1901.
+Cao, D.; Jia, F.; Arik, S. O.; Pfister, T.; Zheng, Y .; Ye, W.; and
+Liu, Y . 2024. Tempo: Prompt-based generative pre-trained
+transformer for time series forecasting. ICLR .
+CDC. 2024. Illness. https://gis.cdc.gov/grasp/fluview/
+fluportaldashboard.html. Online; accessed 10 August 2024.
+Challu, C.; Olivares, K. G.; Oreshkin, B. N.; Ramirez, F. G.;
+Canseco, M. M.; and Dubrawski, A. 2023. Nhits: Neural
+hierarchical interpolation for time series forecasting. In Pro-
+ceedings of the AAAI Conference on Artificial Intelligence .
+Chen, C.; Chen, X.; Ma, C.; Liu, Z.; and Liu, X. 2022.
+Gradient-based bi-level optimization for deep learning: A
+survey. arXiv preprint arXiv:2207.11719 .
+Chen, C.; Oliveira, G. L.; Sharifi-Noghabi, H.; and Sylvain,
+T. 2024. Enhance Time Series Modeling by Integrating LLM.
+InNeurIPS Workshop on Time Series in the Age of Large
+Models .
+Chen, T.; and Guestrin, C. 2016. Xgboost: A scalable tree
+boosting system. In Proceedings of the 22nd acm sigkdd
+international conference on knowledge discovery and data
+mining , 785–794.
+Dempster, A.; Petitjean, F.; and Webb, G. I. 2020. ROCKET:
+exceptionally fast and accurate time series classification using
+random convolutional kernels. Data Mining and Knowledge
+Discovery , 34(5): 1454–1495.
+Devlin, J.; Chang, M.-W.; Lee, K.; and Toutanova, K. 2018.
+Bert: Pre-training of deep bidirectional transformers for lan-
+guage understanding. arXiv preprint arXiv:1810.04805 .
+Fang, T.; Lu, N.; Niu, G.; and Sugiyama, M. 2024. Gen-
+eralizing Importance Weighting to A Universal Solver for
+Distribution Shift Problems. Proc. Adv. Neur. Inf. Proc. Syst
+(NeurIPS) .
+Franceschi, J.-Y .; Dieuleveut, A.; and Jaggi, M. 2019. Un-
+supervised scalable representation learning for multivariate
+time series. Advances in neural information processing sys-
+tems, 32.Freund, Y .; and Schapire, R. E. 1997. A decision-theoretic
+generalization of on-line learning and an application to boost-
+ing. Journal of computer and system sciences .
+Friedman, M. 1962. The interpolation of time series by re-
+lated series. Journal of the American Statistical Association .
+Gao, J.; Song, X.; Wen, Q.; Wang, P.; Sun, L.; and Xu, H.
+2020. Robusttad: Robust time series anomaly detection via
+decomposition and convolutional neural networks. arXiv
+preprint arXiv:2002.09545 .
+Gruver, N.; Finzi, M.; Qiu, S.; and Wilson, A. G. 2024. Large
+language models are zero-shot time series forecasters. Ad-
+vances in Neural Information Processing Systems , 36.
+Gruver, N.; Finzi, M. A.; Qiu, S.; and Wilson, A. G. 2023.
+Large Language Models Are Zero-Shot Time Series Fore-
+casters. In Thirty-seventh Conference on Neural Information
+Processing Systems .
+Gu, A.; Goel, K.; and Ré, C. 2021. Efficiently modeling
+long sequences with structured state spaces. arXiv preprint
+arXiv:2111.00396 .
+Hjelm, R. D.; Fedorov, A.; Lavoie-Marchildon, S.; Grewal,
+K.; Bachman, P.; Trischler, A.; and Bengio, Y . 2018. Learning
+deep representations by mutual information estimation and
+maximization. arXiv preprint arXiv:1808.06670 .
+Hjelm, R. D.; Fedorov, A.; Lavoie-Marchildon, S.; Grewal,
+K.; Bachman, P.; Trischler, A.; and Bengio, Y . 2019. Learning
+deep representations by mutual information estimation and
+maximization. arXiv:1808.06670.
+Huang, Z.; Shi, X.; Zhang, C.; Wang, Q.; Cheung, K. C.;
+Qin, H.; Dai, J.; and Li, H. 2022. Flowformer: A transformer
+architecture for optical flow. In European conference on
+computer vision , 668–685. Springer.
+Hundman, K.; Constantinou, V .; Laporte, C.; Colwell, I.; and
+Söderström, T. 2018. Detecting Spacecraft Anomalies Using
+LSTMs and Nonparametric Dynamic Thresholding. KDD .
+Hyndman, R. J.; and Athanasopoulos, G. 2018. Forecasting:
+principles and practice . OTexts.
+Jiang, Y .; Pan, Z.; Zhang, X.; Garg, S.; Schneider, A.; Nevmy-
+vaka, Y .; and Song, D. 2024. Empowering Time Series Anal-
+ysis with Large Language Models: A Survey. arXiv preprint
+arXiv:2402.03182 .
+Jin, M.; Wang, S.; Ma, L.; Chu, Z.; Zhang, J. Y .; Shi, X.; Chen,
+P.-Y .; Liang, Y .; Li, Y .-F.; Pan, S.; and Wen, Q. 2024. Time-
+LLM: Time Series Forecasting by Reprogramming Large
+Language Models. In The Twelfth International Conference
+on Learning Representations .
+Jin, M.; Wang, S.; Ma, L.; Chu, Z.; Zhang, J. Y .; Shi, X.; Chen,
+P.-Y .; Liang, Y .; Li, Y .-F.; Pan, S.; et al. 2023. Time-llm: Time
+series forecasting by reprogramming large language models.
+arXiv preprint arXiv:2310.01728 .
+Kitaev, N.; Kaiser, L.; and Levskaya, A. 2020. Reformer:
+The Efficient Transformer. In ICLR .
+Lai, G.; Chang, W.-C.; Yang, Y .; and Liu, H. 2018. Model-
+ing long-and short-term temporal patterns with deep neural
+networks. In The 41st international ACM SIGIR conference
+on research & development in information retrieval , 95–104.
+Lim, B.; and Zohren, S. 2021. Time-series forecasting with
+deep learning: a survey. Philos. Trans. Royal Soc. A .
+Linsker, R. 1988. Self-organization in a perceptual network.
+Computer , 21: 105–117.
+Liu, S.; Yu, H.; Liao, C.; Li, J.; Lin, W.; Liu, A. X.; and
+Dustdar, S. 2021. Pyraformer: Low-complexity pyramidal
+attention for long-range time series modeling and forecasting.
+InICLR .
+Liu, Y .; Wu, H.; Wang, J.; and Long, M. 2022. Non-stationary
+transformers: Exploring the stationarity in time series fore-
+casting. Advances in Neural Information Processing Systems ,
+35: 9881–9893.
+Mathur, A. P.; and Tippenhauer, N. O. 2016. SWaT: a water
+treatment testbed for research and training on ICS security.
+InCySWATER .
+Nie, Y .; Nguyen, N. H.; Sinthong, P.; and Kalagnanam, J.
+2022. A time series is worth 64 words: Long-term forecasting
+with transformers. arXiv preprint arXiv:2211.14730 .
+Nowozin, S.; Cseke, B.; and Tomioka, R. 2016. f-gan: Train-
+ing generative neural samplers using variational divergence
+minimization. Advances in neural information processing
+systems , 29.
+Oreshkin, B. N.; Carpov, D.; Chapados, N.; and Bengio,
+Y . 2019. N-BEATS: Neural basis expansion analysis for
+interpretable time series forecasting. ICLR .
+PeMS. 2024. Traffic. http://pems.dot.ca.gov/. Online; ac-
+cessed 10 August 2024.
+Radford, A.; Wu, J.; Child, R.; Luan, D.; Amodei, D.;
+Sutskever, I.; et al. 2019. Language models are unsupervised
+multitask learners. OpenAI blog .
+Ren, M.; Zeng, W.; Yang, B.; and Urtasun, R. 2018. Learning
+to reweight examples for robust deep learning. In Proc. Int.
+Conf. Machine Lea. (ICML) .
+Shu, J.; Xie, Q.; Yi, L.; Zhao, Q.; Zhou, S.; Xu, Z.; and Meng,
+D. 2019. Meta-weight-net: Learning an explicit mapping for
+sample weighting. Proc. Adv. Neur. Inf. Proc. Syst (NeurIPS) .
+Shwartz-Ziv, R.; and Tishby, N. 2017. Opening the
+Black Box of Deep Neural Networks via Information.
+arXiv:1703.00810.
+Spyros Makridakis. 2018. M4 dataset.
+Su, Y .; Zhao, Y .; Niu, C.; Liu, R.; Sun, W.; and Pei, D.
+2019. Robust Anomaly Detection for Multivariate Time
+Series through Stochastic Recurrent Neural Network. KDD .
+Sun, C.; Li, Y .; Li, H.; and Hong, S. 2023. TEST: Text
+prototype aligned embedding to activate LLM’s ability for
+time series. arXiv preprint arXiv:2308.08241 .
+Sun, F.-Y .; Hoffmann, J.; Verma, V .; and Tang, J. 2019. In-
+fograph: Unsupervised and semi-supervised graph-level rep-
+resentation learning via mutual information maximization.
+arXiv preprint arXiv:1908.01000 .
+Sun, Y .; Kamel, M. S.; Wong, A. K.; and Wang, Y . 2007.
+Cost-sensitive boosting for classification of imbalanced data.
+Pattern recognition .
+Sylvain, T.; Petrini, L.; and Hjelm, D. 2019. Locality and
+Compositionality in Zero-Shot Learning. In International
+Conference on Learning Representations .Tishby, N.; Pereira, F. C.; and Bialek, W. 2000. The informa-
+tion bottleneck method. arXiv:physics/0004057.
+Touvron, H.; Martin, L.; Stone, K.; Albert, P.; Almahairi, A.;
+Babaei, Y .; Bashlykov, N.; Batra, S.; Bhargava, P.; Bhosale,
+S.; et al. 2023. Llama 2: Open foundation and fine-tuned chat
+models. arXiv preprint arXiv:2307.09288 .
+UCI. 2015. Electricity. https://archive.ics.uci.edu/ml/
+datasets/ElectricityLoadDiagrams20112014. Online; ac-
+cessed 10 August 2024.
+Wang, S.; Wu, H.; Shi, X.; Hu, T.; Luo, H.; Ma, L.; Zhang,
+J. Y .; and ZHOU, J. 2023. TimeMixer: Decomposable Multi-
+scale Mixing for Time Series Forecasting. In ICLR .
+Wang, Z.; Xu, Q.; Yang, Z.; He, Y .; Cao, X.; and Huang, Q.
+2024. A Unified Generalization Analysis of Re-Weighting
+and Logit-Adjustment for Imbalanced Learning. Proc. Adv.
+Neur. Inf. Proc. Syst (NeurIPS) .
+Wen, Q.; Yang, L.; Zhou, T.; and Sun, L. 2022. Robust time
+series analysis and applications: An industrial perspective. In
+KDD .
+Wetterstation. 2024. Weather. https://www.bgc-jena.mpg.de/
+wetter/. Online; accessed 10 August 2024.
+Woo, G.; Liu, C.; Sahoo, D.; Kumar, A.; and Hoi, S. C. H.
+2022. ETSformer: Exponential Smoothing Transformers for
+Time-series Forecasting. arXiv preprint arXiv:2202.01381 .
+Wu, H.; Hu, T.; Liu, Y .; Zhou, H.; Wang, J.; and Long, M.
+2023. TimesNet: Temporal 2D-Variation Modeling for Gen-
+eral Time Series Analysis. In The Eleventh International
+Conference on Learning Representations .
+Wu, H.; Xu, J.; Wang, J.; and Long, M. 2021. Auto-
+former: Decomposition Transformers with Auto-Correlation
+for Long-Term Series Forecasting. In NeurIPS .
+Xu, J.; Wu, H.; Wang, J.; and Long, M. 2021. Anomaly Trans-
+former: Time Series Anomaly Detection with Association
+Discrepancy. In ICLR .
+Xue, H.; and Salim, F. D. 2023. Promptcast: A new prompt-
+based learning paradigm for time series forecasting. IEEE
+Transactions on Knowledge and Data Engineering .
+Yi, K.; Zhang, Q.; Fan, W.; Wang, S.; Wang, P.; He, H.; An,
+N.; Lian, D.; Cao, L.; and Niu, Z. 2024. Frequency-domain
+MLPs are more effective learners in time series forecasting.
+Proc. Adv. Neur. Inf. Proc. Syst (NeurIPS) .
+Yuan, H.; Dou, H.; Jiang, X.; and Deng, Y . 2024a. Task-
+aware world model learning with meta weighting via bi-level
+optimization. Proc. Adv. Neur. Inf. Proc. Syst (NeurIPS) .
+Yuan, Y .; Chen, C. S.; Liu, Z.; Neiswanger, W.; and Liu, X. S.
+2024b. Importance-aware co-teaching for offline model-
+based optimization. Advances in Neural Information Pro-
+cessing Systems .
+Zeng, A.; Chen, M.; Zhang, L.; and Xu, Q. 2023. Are trans-
+formers effective for time series forecasting? In Proceedings
+of the AAAI conference on artificial intelligence .
+Zhang, T.; Zhang, Y .; Cao, W.; Bian, J.; Yi, X.; Zheng, S.; and
+Li, J. 2022. Less is more: Fast multivariate time series fore-
+casting with light sampling-oriented mlp structures. arXiv
+preprint arXiv:2207.01186 .
+Zhang, X.; Chen, J.; Wang, H.; Xie, H.; Liu, Y .; Lui, J.; and
+Li, H. 2024. Uncertainty-aware instance reweighting for off-
+policy learning. Proc. Adv. Neur. Inf. Proc. Syst (NeurIPS) .
+Zhou, H.; Hu, C.; Yuan, Y .; Cui, Y .; Jin, Y .; Chen, C.; Wu,
+H.; Yuan, D.; Jiang, L.; Wu, D.; et al. 2024a. Large language
+model (llm) for telecommunications: A comprehensive sur-
+vey on principles, key techniques, and opportunities. arXiv
+preprint arXiv:2405.10825 .
+Zhou, H.; Zhang, S.; Peng, J.; Zhang, S.; Li, J.; Xiong, H.;
+and Zhang, W. 2021a. Informer: Beyond efficient transformer
+for long sequence time-series forecasting. In Proceedings of
+the AAAI conference on artificial intelligence .
+Zhou, H.; Zhang, S.; Peng, J.; Zhang, S.; Li, J.; Xiong, H.; and
+Zhang, W. 2021b. Informer: Beyond Efficient Transformer
+for Long Sequence Time-Series Forecasting. In AAAI .
+Zhou, T.; Ma, Z.; Wen, Q.; Wang, X.; Sun, L.; and Jin, R.
+2022. FEDformer: Frequency enhanced decomposed trans-
+former for long-term series forecasting. In ICML .
+Zhou, T.; Niu, P.; Sun, L.; Jin, R.; et al. 2024b. One fits
+all: Power general time series analysis by pretrained lm. Ad-
+vances in neural information processing systems , 36.
+A Reproducibility Checklist
+This paper:
+•Includes a conceptual outline and/or pseudocode descrip-
+tion of AI methods introduced (yes/partial/no/NA) YES
+•Clearly delineates statements that are opinions, hypoth-
+esis, and speculation from objective facts and results
+(yes/no) YES
+•Provides well marked pedagogical references for less-
+familiare readers to gain background necessary to repli-
+cate the paper (yes/no) YES
+Does this paper make theoretical contributions? (yes/no) NO
+Does this paper rely on one or more datasets? (yes/no) YES
+If yes, please complete the list below.
+•A motivation is given for why the experiments are con-
+ducted on the selected datasets (yes/partial/no/NA) YES
+•All novel datasets introduced in this paper are included in
+a data appendix. (yes/partial/no/NA) NA
+•All novel datasets introduced in this paper will be made
+publicly available upon publication of the paper with a
+license that allows free usage for research purposes. (yes/-
+partial/no/NA) NA
+•All datasets drawn from the existing literature (potentially
+including authors’ own previously published work) are
+accompanied by appropriate citations. (yes/no/NA) YES
+•All datasets drawn from the existing literature (potentially
+including authors’ own previously published work) are
+publicly available. (yes/partial/no/NA) YES
+•All datasets that are not publicly available are described
+in detail, with explanation why publicly available alterna-
+tives are not scientifically satisficing. (yes/partial/no/NA)
+NADoes this paper include computational experiments? (yes/no)
+YES
+If yes, please complete the list below.
+•Any code required for pre-processing data is included in
+the appendix. (yes/partial/no). YES. The code is available
+at https://anonymous.4open.science/r/llm_ts_anonymous-
+F07D/README.MD
+•All source code required for conducting and analyzing
+the experiments is included in a code appendix. (yes/par-
+tial/no) YES
+•All source code required for conducting and analyzing
+the experiments will be made publicly available upon
+publication of the paper with a license that allows free
+usage for research purposes. (yes/partial/no) YES
+•All source code implementing new methods have com-
+ments detailing the implementation, with references to the
+paper where each step comes from (yes/partial/no) YES
+•If an algorithm depends on randomness, then the method
+used for setting seeds is described in a way sufficient to
+allow replication of results. (yes/partial/no/NA) YES
+•This paper specifies the computing infrastructure used for
+running experiments (hardware and software), including
+GPU/CPU models; amount of memory; operating system;
+names and versions of relevant software libraries and
+frameworks. (yes/partial/no) YES
+•This paper formally describes evaluation metrics used
+and explains the motivation for choosing these metrics.
+(yes/partial/no) YES
+•This paper states the number of algorithm runs used to
+compute each reported result. (yes/no) YES
+•Analysis of experiments goes beyond single-dimensional
+summaries of performance (e.g., average; median) to in-
+clude measures of variation, confidence, or other distribu-
+tional information. (yes/no) YES
+•The significance of any improvement or decrease in per-
+formance is judged using appropriate statistical tests (e.g.,
+Wilcoxon signed-rank). (yes/partial/no) NA
+•This paper lists all final (hyper-)parameters used for each
+model/algorithm in the paper’s experiments. (yes/par-
+tial/no/NA) YES
+•This paper states the number and range of values tried per
+(hyper-) parameter during development of the paper, along
+with the criterion used for selecting the final parameter
+setting. (yes/partial/no/NA) YES
+B Appendix
+B.1 Mutual Information Recalculation
+Recall that mutual information can be calculated using the
+equation:
+I(θ,β) =ES[−sp(−Tβ(hm
+θ(x),hl(t))]−
+ES×˜S[sp(Tβ(hm
+θ(x),hl(˜t))],(8)
+where Tβsignifies the discriminator characterized by pa-
+rameters β, and spdenotes the softplus function. Notably,
+(x,t)symbolizes a sample from the dataset S, while (˜x,˜t)
+represents a different sample from the dataset ˜S=S.
+This formulation presumes a uniform distribution of sam-
+ples. However, we have already computed probabilities pi
+I
+for each sample, which introduces a non-uniform distribution.
+For a batch of Nsamples, the expected value is computed as
+ES[−sp(−Tβ(hm
+θ(x),hl(t))] =
+−NX
+i=1pi
+Isp(−Tβ(hm
+θ(xi),hl(ti)).(9)
+ES×˜S[sp(Tβ(hm
+θ(x),hl(˜t))] =
+X
+iX
+i̸=jˆpijsp(Tβ(hm
+θ(xi),hl(˜tj)).(10)
+Here, ˆpijis defined aspi
+I·pj
+IP
+iP
+i ̸=jpi
+I·pj
+I, adjusting for the non-
+uniform distribution of sample probabilities. As pi
+Iis pro-
+duced from the weighting network α, we can also write
+I(θ,β)asI(θ,β,α).
+B.2 Experimental Settings
+following (Shu et al. 2019), the weighting network comprises
+a two-layer MLP with a hidden size of 100, and we set the
+learning rate η2for this network at 0.001. The learning rate
+η0of the discriminator is set as 0.001at the first epoch and
+then decreases to 0.0001 for the rest of epochs.
+B.3 Standard Deviation Results
+Table 8 presents the results along with standard deviations
+to underscore the consistency and reliability of our method’s
+performance.
+B.4 Showcases
+To provide a clear comparison among different models, we
+showcase the forecasting task results on ETTh1 ( 96-96) and
+ETTm1 ( 96-336) using three models: LLM-TS , TimesNet,
+and GPT4TS. As shown in Figures 5 and 6, our LLM-
+TS model produces significantly more accurate predictions,
+demonstrating its effectiveness.
+To illustrate the performance improvements achieved by
+the LLM-TS Integrator framework, we introduce a case study.
+We created a training set with a weighted sine function:
+4X
+i=1ωisin(fit+pi) +ϵN(0,1) (11)where w1= 0.1,w2= 0.2,w3= 0.3,w4= 0.4;f1=1
+40,
+f2=1
+45,f3=1
+50,f4=1
+55;p1= 0,p2= 1,p3= 2,
+p4= 3; and ϵ= 0.1is the noise level. We generated a long
+sequence of length 10,000and then sampled a batch of size
+64with a sequence length of 96and a prediction length of
+336to train GPT4TS, TimesNet, and LLM-TS on this data
+for1,000iterations. For testing, we created a test set with
+frequency f=1
+20, which is greater than max( f1, f2, f3, f4),
+and used p= 2.5,w= 1andϵ= 0.1.
+As shown in Figure 7, Figure 8 an Figure 9, we can know:
+•GPT4TS fails to accurately capture periodic information
+as it relies solely on a language model without incorporat-
+ing traditional mathematical modelling.
+•TimesNet generally captures periodic information due to
+the use of the FFT mathematical operator, but it still does
+not perfectly match the ground truth.
+•LLM-TS captures periodic information and better
+matches the ground truth by integrating rich language
+model insights into the traditional TimesNet model.
+This case study highlights how the LLM-TS Integrator
+framework benefits from both inherent properties of tradi-
+tional TS models and pattern recognition abilities of LLMs,
+demonstrating the effectiveness of our approach.
+B.5 Template Variation
+We conducted additional experiments on the ETTh1 dataset
+for long-term forecasting with GPT2. The original template
+achieves a Mean Squared Error (MSE) of 0.464 and a Mean
+Absolute Error (MAE) of 0.458. We tested variations of the
+template by changing the original context from "The Electric-
+ity Transformer Temperature is a crucial indicator in electric
+power long-term deployment." to:
+•Variation 1: "The temperature of the electricity trans-
+former is a vital metric for long-term electric power de-
+ployment."
+•Variation 2: "Monitoring the temperature of electricity
+transformers is essential for the long-term deployment of
+electric power."
+•Variation 3: "The temperature of electricity transformers
+serves as a key indicator in the long-term deployment of
+electric power."
+• Variation 4: No template.
+Besides, we also consider the following changes:
+•w/o Input Statistics: excluding input statistical data from
+our analysis.
+•w/o Mean, Max, Median: remove mean, max and median
+informatino.
+• w/o Lags: remove lags information.
+The performance of these variations is summarized in
+Table 9. These results indicate that the performance is quite
+similar across different variations, supporting the robustness
+of our approach regardless of minor template modifications.
+For further details on the template implementation, refer to
+our code repository at https://anonymous.4open.science/r/
+llm_ts_anonymous-F07D/utils/tools.py.
+0 50 100 1502.0
+1.5
+1.0
+0.5
+0.00.51.0LLM-TS
+Prediction
+GroundTruth
+0 50 100 1502.0
+1.5
+1.0
+0.5
+0.00.51.0TimesNet
+Prediction
+GroundTruth
+0 50 100 1502.0
+1.5
+1.0
+0.5
+0.00.51.0GPT4TS
+Prediction
+GroundTruthFigure 5: ETTh1
+0 100 200 300 4002
+1
+0123LLM-TS
+Prediction
+GroundTruth
+0 100 200 300 4002
+1
+0123TimesNet
+Prediction
+GroundTruth
+0 100 200 300 4002
+1
+0123GPT4TS
+Prediction
+GroundTruth
+Figure 6: ETTm1
+Table 8: Ablation results with standard deviation.
+Methods Ours w/o mutual w/o reweight TimesNet
+Metric MSE MAE MSE MAE MSE MAE MSE MAEWeather96 0.166±0.002 0 .217±0.002 0.168±0.003 0 .218±0.005 0.181±0.003 0 .232±0.001 0.174±0.003 0 .224±0.002
+192 0.229±0.003 0 .269±0.003 0.227±0.004 0 .268±0.003 0.230±0.002 0 .270±0.004 0.235±0.001 0 .272±0.003
+336 0.278±0.002 0 .302±0.003 0.298±0.004 0 .318±0.003 0.283±0.004 0 .306±0.002 0.285±0.002 0 .307±0.002
+720 0.354±0.001 0 .351±0.001 0.361±0.002 0 .356±0.001 0.361±0.002 0 .355±0.001 0.365±0.001 0 .358±0.000ETTh 196 0.403±0.005 0 .420±0.003 0.402±0.004 0 .422±0.002 0.408±0.003 0 .428±0.002 0.414±0.006 0 .431±0.004
+192 0.440±0.009 0 .441±0.004 0.459±0.006 0 .455±0.005 0.469±0.005 0 .460±0.003 0.463±0.010 0 .456±0.006
+336 0.471±0.006 0 .457±0.004 0.471±0.005 0 .457±0.004 0.492±0.004 0 .474±0.004 0.487±0.007 0 .466±0.005
+720 0.503±0.005 0 .487±0.004 0.535±0.003 0 .507±0.003 0.485±0.006 0 .478±0.007 0.517±0.004 0 .494±0.004ETTm 196 0.329±0.014 0 .371±0.006 0.341±0.010 0 .377±0.008 0.350±0.011 0 .387±0.005 0.340±0.011 0 .377±0.007
+192 0.380±0.009 0 .398±0.004 0.404±0.010 0 .413±0.005 0.383±0.010 0 .397±0.005 0.406±0.012 0 .408±0.004
+336 0.418±0.004 0 .425±0.004 0.432±0.005 0 .428±0.002 0.410±0.004 0 .411±0.003 0.424±0.006 0 .425±0.003
+720 0.476±0.008 0 .440±0.005 0.468±0.009 0 .449±0.004 0.467±0.007 0 .448±0.003 0.485±0.010 0 .461±0.006ILI24 1.921±0.201 0 .898±0.033 2.170±0.174 0 .947±0.039 1.934±0.170 0 .925±0.034 2.072±0.211 0 .948±0.026
+36 2.151±0.061 0 .933±0.035 2.093±0.119 0 .889±0.041 2.505±0.179 1 .020±0.017 2.494±0.125 1 .019±0.007
+48 2.062±0.090 0 .892±0.019 2.418±0.058 0 .959±0.014 2.325±0.201 0 .948±0.062 2.298±0.066 0 .964±0.011
+60 1.759±0.214 0 .853±0.061 2.203±0.181 0 .971±0.048 1.926±0.152 0 .896±0.039 2.198±0.070 0 .963±0.017
+0 100 200 300 400
+Time Steps1.0
+0.5
+0.00.51.0ValuesGPT4TS
+Input
+Ground Truth
+Prediction
+Figure 7: GPT4TS on synthetic data
+0 100 200 300 400
+Time Steps1.0
+0.5
+0.00.51.0ValuesTimesNet
+Input
+Ground Truth
+Prediction
+Figure 8: TimesNet on synthetic data
+0 100 200 300 400
+Time Steps1.0
+0.5
+0.00.51.0ValuesLLM-TS
+Input
+Ground Truth
+Prediction
+Figure 9: LLM-TS on synthetic dataTable 9: Performance across different template variations
+Template Variation MSE MAE
+Original Template 0.464±0.004 0 .458±0.005
+Variation 1 0.460±0.005 0 .456±0.003
+Variation 2 0.465±0.006 0 .460±0.005
+Variation 3 0.464±0.004 0 .459±0.003
+Variation 4 (No template) 0.466±0.005 0 .460±0.005
+w/o Input Statistics 0.468±0.004 0 .462±0.004
+w/o Mean/Max/Median 0.465±0.004 0 .459±0.003
+w/o Lags 0.467±0.003 0 .460±0.005
+B.6 Model Efficiency Analysis
+Compared to TimesNet, our LLM-TS integrator introduces
+additional costs due to the mutual information and sample
+weighting modules. However, after training, the inference
+cost of our method is the same as TimesNet. We detail the
+time cost of each component for ETTh1 and ETTm1 tasks,
+using a batch size of 32on a 32G V100 GPU. As shown in
+Table 10, the training cost of our method is reasonable, given
+that it achieves the best performance across most tasks.
+It is important to note that we use the pre-trained LLM to
+obtain the text embeddings only once. These embeddings can
+then be used throughout the training process. For instance,
+obtaining the embeddings for the ETTh1 dataset using the
+llama-3b model on an A100 GPU takes approximately 1hour.
+After this, the embeddings are utilized in our framework to
+train the model, and in the final output of the TimesNet model.
+This ensures that the inference time of our method is identical
+to that of the TimesNet model.
+As detailed in the TimesNet paper, our backbone model
+TimesNet is relatively small with 0.067MB parameters. For
+comparison, other models have the following sizes: Non-
+stationary Transformer has 1.884MB, Autoformer has 1.848
+MB, FEDformer has 2.9MB, LightTS has 0.163MB, DLin-
+ear has 0.296MB, ETSformer has 1.123MB, Informer has
+1.903MB, Reformer has 1.157MB, and Pyraformer has
+1.308MB. The introduced mutual information network con-
+sists of only two linear layers of size 64x64and64x4096 ,
+which is negligible in terms of additional parameters. Sim-
+ilarly, the introduced MLP network consists of four layers:
+1×100,100×1,1×1, and 1×1, and the number of param-
+eters is also negligible.
+Thus, our model remains very small and efficient, with in-
+ference time identical to TimesNet (as the mutual information
+component is only used during training). Given that many
+TS models are primarily used for inference, our approach
+offers effective performance gains with minimal additional
+computational cost.
+B.7 Full Results of Short-term Forecasting
+Table 11 displays the comprehensive results for short-term
+forecasting.
+B.8 Full Results of Long-Term Forecasting
+Full results for long-term forecasting are presented in Ta-
+ble 12.
+B.9 Full Results of Imputation.
+Table 13 contains the detailed results of our imputation tasks.
+B.10 Full Results of Classification
+Table 14 contains the comprehensive results for classification.
+B.11 Full Results of Anamoly Detection
+Full results for anamoly detection are detailed in Table 15.
+B.12 Further Ablation Studies
+Mutual Information Estimator. In the main paper, we uti-
+lize the Jensen-Shannon mutual information (MI) estimator.
+Additionally, we explore the Mutual Information Neural Esti-
+mator (MINE) (Hjelm et al. 2018). We evaluate both estima-
+tors on two tasks, ETTh1 and ETTm1, with results averaged
+over four prediction lengths. For ETTh1, the MSE and MAE
+using the original Jensen-Shannon estimator are 0.454and
+0.451, respectively, compared to 0.460and0.457with MINE.
+For ETTm1, the MSE and MAE are 0.401and0.409with the
+original estimator, and 0.402and0.410with MINE. These
+comparisons highlight the robustness of our method across
+different mutual information estimators.
+Sample Reweighting Illustration. Figures 11, 10, 12, and
+13 display the learned weighting network applied to various
+datasets: MSL for anomaly detection, Weather for forecast-
+ing, ETTh1 for imputation, and PEMS-SF for classification.
+These visualizations corroborate our hypothesis: the sample
+weight ωOincreases with the prediction loss lO, while the
+weight ωIdecreases as lOincreases. This observed pattern
+supports the efficacy of our reweighting strategy.
+Static Weighting Scheme. We also explore a static weight-
+ing scheme as a contrast to the dynamic weighting used in
+our sample reweighting module. This scheme balances the
+prediction loss and mutual information loss, with a ratio
+of0.0representing pure prediction loss and 1.0represent-
+ing pure mutual information loss. As shown in Table 18, thestatic approach underperforms relative to our dynamic sample
+weighting module, demonstrating the superior effectiveness
+of our method.
+Comprehensive Results. The detailed performance of vari-
+ous traditional TS models and LLMs is presented in Table 16
+and Table 17.
+Table 10: Cost Comparison per step(s).
+Methods Overall TimesNet Mutual Information Sample Reweighting
+ETTh1 3.177 0 .126 0 .577 2 .474
+Weather 5.563 0 .436 1 .094 4 .033
+Table 11: Full results of short-term forecasting.
+Methods LLM-TS TimesNet GPT4TS TIME-LLM PatchTST N-HiTS N-BEATS FEDformer Stationary AutoformerY earlySMAPE 13.369 13 .512 13 .531 13 .419 13 .477 13 .418 13 .436 13 .728 13 .717 13 .974
+MASE 3.021 3 .065 3 .015 3 .0050 3 .019 3 .045 3 .043 3 .048 3 .078 3 .134
+OWA 0.789 0 .799 0 .793 0 .789 0 .792 0 .793 0 .794 0 .803 0 .807 0 .822QuarterlySMAPE 10.020 10 .069 10 .177 10 .110 10 .38 10 .202 10 .124 10 .792 10 .958 11 .338
+MASE 1.162 1 .178 1 .194 1 .178 1 .233 1 .194 1 .169 1 .283 1 .325 1 .365
+OWA 0.878 0 .887 0 .898 0 .889 0 .921 0 .899 0 .886 0 .958 0 .981 1 .012MonthlySMAPE 12.696 12 .783 12 .894 12 .980 12 .959 12 .791 12 .677 14 .260 13 .917 13 .958
+MASE 0.936 0 .949 0 .956 0 .963 0 .970 0 .969 0 .937 1 .102 1 .097 1 .103
+OWA 0.880 0 .889 0 .897 0 .903 0 .905 0 .899 0 .880 1 .012 0 .998 1 .002OthersSMAPE 4.916 4 .954 4 .940 4 .795 4 .952 5 .061 4 .925 4 .954 6 .302 5 .485
+MASE 3.310 3 .364 3 .228 3 .178 3 .347 3 .216 3 .391 3 .264 4 .064 3 .865
+OWA 1.039 1 .052 1 .029 1 .006 1 .049 1 .040 1 .053 1 .036 1 .304 1 .187AverageSMAPE 11.819 11 .908 11 .991 11 .983 12 .059 11 .927 11 .851 12 .840 12 .780 12 .909
+MASE 1.588 1 .612 1 .600 1 .595 1 .623 1 .613 1 .599 1 .701 1 .756 1 .771
+OWA 0.851 0 .860 0 .861 0 .859 0 .869 0 .861 0 .855 0 .918 0 .930 0 .939
+2
+ 1
+ 0 1 2
+Prediction loss lo0.0050.0100.0150.0200.025Weight O
+0.024900.024950.025000.025050.02510
+Weight I
+Figure 10: Forecasting.
+2
+ 1
+ 0 1 2
+Prediction loss lo0.000.010.020.030.040.050.060.07Weight O
+0.02460.02480.02500.02520.0254
+Weight I
+ Figure 11: Anomaly detection
+Table 12: Full results for long-term forecasting. We use prediction length O∈ {96,192,336,720}except for ILI and O∈
+{24,36,48,60}for ILI. A lower MSE indicates better performance.
+Methods LLM-TS TimesNet TIME-LLM DLinear PatchTST GPT4TS FEDformer TEST Stationary ETSformer
+Metric MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAEWeather96 0.166 0 .217 0.174 0 .224 0.202 0 .239 0.196 0 .255 0.186 0 .227 0.196 0 .234 0.217 0 .296 0.214 0 .264 0.173 0 .223 0.197 0 .281
+192 0.229 0 .269 0.235 0 .272 0.245 0 .277 0.237 0 .296 0.234 0 .265 0.241 0 .271 0.276 0 .336 0.262 0 .298 0.245 0 .285 0.237 0 .312
+336 0.278 0 .302 0.235 0 .272 0.300 0 .313 0.283 0 .335 0.284 0 .301 0.296 0 .308 0.339 0 .380 0.310 0 .329 0.321 0 .338 0.298 0 .353
+720 0.354 0 .351 0.365 0 .358 0.369 0 .356 0.345 0 .381 0.356 0 .349 0.367 0 .354 0.403 0 .428 0.378 0 .370 0.414 0 .410 0.352 0 .288
+Avg 0.257 0 .285 0.265 0 .290 0.279 0 .296 0.265 0 .317 0.265 0 .285 0.275 0 .292 0.309 0 .360 0.291 0 .315 0.288 0 .314 0.271 0 .334ETTh 196 0.403 0 .420 0.414 0 .431 0.414 0 .422 0.386 0 .400 0.460 0 .447 0.409 0 .415 0.376 0 .419 0.411 0 .426 0.513 0 .491 0.494 0 .479
+192 0.440 0 .441 0.463 0 .456 0.466 0 .450 0.437 0 .432 0.512 0 .477 0.468 0 .446 0.420 0 .448 0.475 0 .461 0.534 0 .504 0.538 0 .504
+336 0.471 0 .457 0.487 0 .466 0.515 0 .475 0.481 0 .459 0.546 0 .496 0.503 0 .461 0.459 0 .465 0.508 0 .482 0.588 0 .535 0.574 0 .521
+720 0.503 0 .487 0.517 0 .494 0.503 0 .487 0.519 0 .516 0.544 0 .517 0.510 0 .482 0.506 0 .507 0.504 0 .494 0.643 0 .616 0.562 0 .535
+Avg 0.454 0 .451 0.470 0 .462 0.474 0 .459 0.456 0 .452 0.516 0 .484 0.473 0 .451 0.440 0 .460 0.475 0 .466 0.570 0 .537 0.542 0 .510ETTh 296 0.322 0 .366 0.340 0 .374 0.306 0 .353 0.333 0 .387 0.308 0 .355 0.298 0 .350 0.358 0 .397 0.328 0 .374 0.476 0 .458 0.340 0 .391
+192 0.400 0 .409 0.399 0 .410 0.386 0 .399 0.477 0 .476 0.393 0 .405 0.376 0 .399 0.429 0 .439 0.403 0 .418 0.512 0 .493 0.430 0 .439
+336 0.432 0 .435 0.452 0 .452 0.460 0 .458 0.594 0 .541 0.427 0 .436 0.430 0 .439 0.496 0 .487 0.455 0 .458 0.552 0 .551 0.485 0 .479
+720 0.430 0 .442 0.462 0 .468 0.442 0 .451 0.831 0 .657 0.436 0 .450 0.428 0 .451 0.463 0 .474 0.470 0 .477 0.562 0 .560 0.500 0 .497
+Avg 0.396 0 .413 0.413 0 .426 0.398 0 .415 0.559 0 .515 0.391 0 .411 0.383 0 .410 0.437 0 .449 0.414 0 .432 0.526 0 .516 0.439 0 .452ETTm 196 0.329 0 .371 0.340 0 .377 0.393 0 .398 0.345 0 .372 0.352 0 .374 0.350 0 .369 0.379 0 .419 0.336 0 .373 0.386 0 .398 0.375 0 .398
+192 0.380 0 .398 0.406 0 .408 0.412 0 .405 0.380 0 .389 0.390 0 .393 0.387 0 .387 0.426 0 .441 0.381 0 .399 0.459 0 .444 0.408 0 .410
+336 0.418 0 .425 0.424 0 .425 0.442 0 .425 0.413 0 .413 0.421 0 .414 0.418 0 .407 0.445 0 .459 0.411 0 .418 0.495 0 .464 0.435 0 .428
+720 0.476 0 .440 0.485 0 .461 0.502 0 .457 0.474 0 .453 0.462 0 .449 0.477 0 .437 0.543 0 .490 0.478 0 .454 0.585 0 .516 0.499 0 .462
+Avg 0.401 0 .409 0.414 0 .418 0.437 0 .421 0.403 0 .407 0.406 0 .407 0.408 0 .400 0.448 0 .452 0.402 0 .411 0.481 0 .456 0.429 0 .425ETTm 296 0.189 0 .266 0.185 0 .264 0.193 0 .281 0.193 0 .292 0.183 0 .270 0.185 0 .271 0.203 0 .287 0.230 0 .307 0.192 0 .274 0.189 0 .280
+192 0.253 0 .307 0.252 0 .306 0.254 0 .315 0.284 0 .363 0.255 0 .314 0.250 0 .312 0.269 0 .328 0.284 0 .338 0.280 0 .339 0.253 0 .319
+336 0.315 0 .345 0.323 0 .350 0.320 0 .355 0.369 0 .427 0.309 0 .347 0.314 0 .351 0.325 0 .366 0.340 0 .370 0.334 0 .361 0.314 0 .357
+720 0.421 0 .408 0.415 0 .403 0.426 0 .416 0.554 0 .522 0.412 0 .404 0.410 0 .408 0.421 0 .415 0.436 0 .420 0.417 0 .413 0.414 0 .413
+Avg 0.295 0 .331 0.294 0 .331 0.298 0 .342 0.350 0 .401 0.290 0 .334 0.290 0 .335 0.305 0 .349 0.323 0 .359 0.306 0 .347 0.293 0 .342ILI24 1.921 0 .898 2.072 0 .948 2.589 1 .054 2.398 1 .040 2.229 0 .894 5.259 1 .689 3.228 1 .260 3.371 1 .231 2.294 0 .945 2.527 1 .020
+36 2.151 0 .933 2.494 1 .019 2.996 1 .194 2.646 1 .088 2.330 0 .925 6.136 1 .831 2.679 1 .080 3.725 1 .322 1.825 0 .848 2.615 1 .007
+48 2.062 0 .892 2.298 0 .964 2.714 1 .095 2.614 1 .086 2.140 0 .894 4.670 1 .562 2.622 1 .078 3.291 1 .237 2.010 0 .900 2.359 0 .972
+60 1.759 0 .853 2.198 0 .963 2.605 1 .050 2.804 1 .146 2.037 0 .912 4.402 1 .517 2.857 1 .157 2.907 1 .136 2.178 0 .963 2.487 1 .016
+Avg 1.973 0 .894 2.266 0 .974 2.726 1 .098 2.616 1 .090 2.184 0 .906 5.117 1 .650 2.847 1 .144 3.324 1 .232 2.077 0 .914 2.497 1 .004ECL96 0.167 0 .271 0.169 0 .273 0.207 0 .292 0.197 0 .282 0.190 0 .296 0.186 0 .273 0.193 0 .308 0.218 0 .309 0.169 0 .273 0.187 0 .304
+192 0.178 0 .280 0.186 0 .288 0.209 0 .297 0.196 0 .285 0.199 0 .304 0.190 0 .278 0.201 0 .315 0.220 0 .311 0.182 0 .286 0.199 0 .315
+336 0.198 0 .302 0.206 0 .305 0.224 0 .312 0.209 0 .301 0.217 0 .319 0.204 0 .291 0.214 0 .329 0.234 0 .323 0.200 0 .304 0.212 0 .329
+720 0.233 0 .344 0.231 0 .327 0.277 0 .359 0.245 0 .333 0.258 0 .352 0.245 0 .297 0.325 0 .355 0.276 0 .354 0.222 0 .321 0.233 0 .345
+Avg 0.194 0 .299 0.198 0 .298 0.229 0 .315 0.212 0 .300 0.216 0 .318 0.206 0 .285 0.214 0 .327 0.237 0 .324 0.193 0 .296 0.208 0 .323Traffic96 0.587 0 .315 0.589 0 .313 0.609 0 .402 0.650 0 .396 0.526 0 .347 0.563 0 .378 0.587 0 .366 0.589 0 .390 0.612 0 .338 0.607 0 .392
+192 0.612 0 .326 0.627 0 .337 0.586 0 .382 0.598 0 .370 0.522 0 .332 0.549 0 .367 0.604 0 .373 0.567 0 .380 0.613 0 .340 0.621 0 .399
+336 0.634 0 .338 0.635 0 .341 0.593 0 .390 0.605 0 .373 0.517 0 .334 0.566 0 .376 0.621 0 .383 0.583 0 .389 0.618 0 .328 0.622 0 .396
+720 0.640 0 .351 0.658 0 .349 0.636 0 .405 0.645 0 .394 0.552 0 .352 0.567 0 .372 0.626 0 .382 0.585 0 .391 0.653 0 .355 0.632 0 .396
+Avg 0.618 0 .333 0.627 0 .335 0.606 0 .395 0.625 0 .383 0.529 0 .341 0.561 0 .373 0.610 0 .376 0.581 0 .388 0.624 0 .340 0.621 0 .396
+Average 0.574 0 .427 0.618 0 .442 0.681 0 .468 0.686 0 .483 0.600 0 .436 0.964 0 .525 0.701 0 .489 0.756 0 .491 0.633 0 .465 0.662 0 .473
+2
+ 1
+ 0 1 2
+Prediction loss lo0.000.010.020.030.040.05Weight O
+0.0200.0220.0240.0260.0280.0300.032
+Weight I
+Figure 12: imputation.
+2
+ 1
+ 0 1 2
+Prediction loss lo0.0220.0230.0240.0250.0260.027Weight O
+0.000.010.020.030.040.050.060.07
+Weight I
+ Figure 13: classification
+Table 13: Full results for the imputation task. Randomly masked { 12.5%,25%,37.5%,50%} of points in 96-length series,
+averaging results over 4mask ratios.
+Methods LLM-TS TimesNet GPT4TS PatchTST LightTS DLinear FEDformer Stationary Autoformer Reformer
+Mask Ratio MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAEETTm 112.5% 0.018 0 .088 0.023 0 .101 0.018 0 .089 0.041 0 .130 0.093 0 .206 0.080 0 .193 0.052 0 .166 0.032 0 .119 0.046 0 .144 0.042 0 .146
+25% 0.022 0 .097 0.023 0 .101 0.023 0 .099 0.044 0 .135 0.093 0 .206 0.080 0 .193 0.052 0 .166 0.032 0 .119 0.046 0 .144 0.042 0 .146
+37.5% 0.027 0 .108 0.029 0 .112 0.030 0 .112 0.049 0 .143 0.113 0 .231 0.103 0 .219 0.069 0 .191 0.039 0 .131 0.057 0 .161 0.063 0 .182
+50% 0.033 0 .120 0.035 0 .123 0.042 0 .131 0.055 0 .151 0.134 0 .255 0.132 0 .248 0.089 0 .218 0.047 0 .145 0.067 0 .174 0.082 0 .208
+Avg 0.025 0 .103 0.028 0 .109 0.028 0 .108 0.047 0 .140 0.104 0 .218 0.093 0 .206 0.062 0 .177 0.036 0 .126 0.051 0 .150 0.055 0 .166ETTm 212.5% 0.018 0 .079 0.019 0 .081 0.019 0 .078 0.108 0 .239 0.034 0 .127 0.062 0 .166 0.056 0 .159 0.021 0 .088 0.023 0 .092 0.108 0 .228
+25% 0.020 0 .085 0.021 0 .087 0.021 0 .084 0.028 0 .099 0.042 0 .143 0.085 0 .196 0.080 0 .195 0.024 0 .096 0.026 0 .101 0.136 0 .262
+37.5% 0.022 0 .089 0.023 0 .092 0.024 0 .090 0.030 0 .104 0.051 0 .159 0.106 0 .222 0.110 0 .231 0.027 0 .103 0.030 0 .108 0.175 0 .300
+50% 0.025 0 .096 0.025 0 .097 0.027 0 .098 0.034 0 .110 0.059 0 .174 0.131 0 .247 0.156 0 .276 0.030 0 .108 0.035 0 .119 0.211 0 .329
+Avg 0.021 0 .087 0.022 0 .089 0.023 0 .088 0.029 0 .102 0.046 0 .151 0.096 0 .208 0.101 0 .215 0.026 0 .099 0.029 0 .105 0.157 0 .280ETTh 112.5% 0.058 0 .165 0.064 0 .170 0.043 0 .141 0.093 0 .201 0.240 0 .345 0.151 0 .267 0.070 0 .190 0.060 0 .165 0.074 0 .182 0.074 0 .194
+25% 0.077 0 .189 0.082 0 .192 0.056 0 .159 0.107 0 .217 0.265 0 .364 0.180 0 .292 0.106 0 .236 0.080 0 .189 0.090 0 .203 0.102 0 .227
+37.5% 0.096 0 .209 0.098 0 .209 0.074 0 .182 0.120 0 .230 0.296 0 .382 0.215 0 .318 0.124 0 .258 0.102 0 .212 0.109 0 .222 0.135 0 .261
+50% 0.118 0 .228 0.116 0 .226 0.104 0 .214 0.141 0 .248 0.334 0 .404 0.257 0 .347 0.165 0 .299 0.133 0 .240 0.137 0 .248 0.179 0 .298
+Avg 0.087 0 .198 0.090 0 .199 0.069 0 .174 0.115 0 .224 0.284 0 .373 0.201 0 .306 0.117 0 .246 0.094 0 .201 0.103 0 .214 0.122 0 .245ETTh 212.5% 0.039 0 .131 0.040 0 .132 0.041 0 .129 0.057 0 .152 0.101 0 .231 0.100 0 .216 0.095 0 .212 0.042 0 .133 0.044 0 .138 0.163 0 .289
+25% 0.046 0 .143 0.048 0 .146 0.046 0 .137 0.061 0 .158 0.115 0 .246 0.127 0 .247 0.137 0 .258 0.049 0 .147 0.050 0 .149 0.206 0 .331
+37.5% 0.053 0 .154 0.055 0 .156 0.053 0 .148 0.067 0 .166 0.126 0 .257 0.158 0 .276 0.187 0 .304 0.056 0 .158 0.060 0 .163 0.252 0 .370
+50% 0.061 0 .165 0.061 0 .165 0.060 0 .160 0.073 0 .174 0.136 0 .268 0.183 0 .299 0.232 0 .341 0.065 0 .170 0.068 0 .173 0.316 0 .419
+Avg 0.050 0 .148 0.051 0 .150 0.050 0 .144 0.065 0 .163 0.119 0 .250 0.142 0 .259 0.163 0 .279 0.053 0 .152 0.055 0 .156 0.234 0 .352ECL12.5% 0.087 0 .203 0.090 0 .204 0.080 0 .194 0.055 0 .160 0.102 0 .229 0.092 0 .214 0.107 0 .237 0.093 0 .210 0.089 0 .210 0.190 0 .308
+25% 0.091 0 .207 0.092 0 .209 0.087 0 .203 0.065 0 .175 0.121 0 .252 0.118 0 .247 0.120 0 .251 0.097 0 .214 0.096 0 .220 0.197 0 .312
+37.5% 0.095 0 .213 0.096 0 .213 0.094 0 .211 0.076 0 .344 0.141 0 .273 0.144 0 .276 0.136 0 .266 0.102 0 .220 0.104 0 .229 0.203 0 .315
+50% 0.101 0 .220 0.102 0 .221 0.101 0 .220 0.091 0 .208 0.160 0 .293 0.175 0 .305 0.158 0 .284 0.108 0 .228 0.113 0 .239 0.210 0 .319
+Avg 0.094 0 .211 0.095 0 .212 0.091 0 .207 0.072 0 .183 0.131 0 .262 0.132 0 .260 0.130 0 .259 0.100 0 .218 0.101 0 .225 0.200 0 .313Weather12.5% 0.026 0 .048 0.025 0 .047 0.027 0 .049 0.029 0 .049 0.047 0 .101 0.039 0 .084 0.041 0 .107 0.027 0 .051 0.026 0 .047 0.031 0 .076
+25% 0.029 0 .055 0.031 0 .062 0.030 0 .054 0.031 0 .053 0.052 0 .111 0.048 0 .103 0.064 0 .163 0.029 0 .056 0.030 0 .054 0.035 0 .082
+37.5% 0.032 0 .059 0.034 0 .064 0.034 0 .062 0.035 0 .058 0.058 0 .121 0.057 0 .117 0.107 0 .229 0.033 0 .062 0.032 0 .060 0.040 0 .091
+50% 0.033 0 .061 0.035 0 .062 0.037 0 .066 0.038 0 .063 0.065 0 .133 0.066 0 .134 0.183 0 .312 0.037 0 .068 0.037 0 .067 0.046 0 .099
+Avg 0.030 0 .056 0.031 0 .059 0.032 0 .058 0.060 0 .144 0.055 0 .117 0.052 0 .110 0.099 0 .203 0.032 0 .059 0.031 0 .057 0.038 0 .087
+Table 14: Complete classification task results. ∗. in the Transformers indicates the name of ∗former.
+MethodsClassical RNNTCNTransformers MLPTimesNetLLMLLM-TSXGB Roc LSTNet LSSL Trans. Re. In. Pyra. Auto. Station. FED. ETS. Flow. DL LTS. GPT4TS TEST
+Ethanol 43.7 45 .239.9 31 .128.932.7 31 .9 31 .6 30 .8 31 .6 32 .7 31 .2 28 .1 33 .832.6 29 .7 30.4 26.2 25 .1 31.9
+FaceD 63.3 64 .765.7 66 .752.867.3 68 .6 67 .0 65 .7 68 .4 68 .0 66 .0 66 .3 67 .668.0 67 .5 68.6 67.8 50 .1 68.9
+HandW 15.8 58 .825.8 24 .653.332.0 27 .4 32 .8 29 .4 36 .7 31 .6 28 .0 32 .5 33 .827.0 26 .1 32.1 28.9 20 .1 32.7
+HeartB 73.2 75 .677.1 72 .775.676.1 77 .1 80 .5 75 .6 74 .6 73 .7 73 .7 71 .2 77 .675.1 75 .1 77.6 72.2 73 .7 77.1
+JapanV 86.5 96 .298.1 98 .498.998.7 97 .8 98 .9 98 .4 96 .2 99 .2 98 .4 95 .9 98 .996.2 96 .2 97.2 98.4 78 .4 98.1
+PEMS 98.3 75 .186.7 86 .168.882.1 82 .7 81 .5 83 .2 82 .7 87 .3 80 .9 86 .0 83 .875.1 88 .4 89.6 79.2 59 .5 90.8
+SCP1 84.6 90 .884.0 90 .884.692.2 90 .4 90 .1 88 .1 84 .0 89 .4 88 .7 89 .6 92 .587.3 89 .8 90.4 90.1 84 .0 91.8
+SCP2 48.9 53 .352.8 52 .255.653.9 56 .7 53 .3 53 .3 50 .6 57 .2 54 .4 55 .0 56 .150.5 51 .1 57.1 50.0 54 .4 57.8
+SpokenA 69.6 71 .2100.0 100 .095.698.4 97 .0 100 .0 99 .6 100 .0 100 .0 100 .0 100 .0 98 .881.4 100 .0 98.6 97.9 82 .1 98.6
+UWave 75.9 94 .487.8 85 .988.485.6 85 .6 85 .6 83 .4 85 .9 87 .5 85 .3 85 .0 86 .682.1 80 .3 85.5 85.6 84 .4 86.6
+Avg 66.0 72 .571.8 70 .970.371.9 71 .5 72 .1 70 .8 71 .1 72 .7 70 .7 71 .0 73 .067.5 70 .4 72.7 69.5 61 .273.4
+Table 15: Full results for the anomaly detection.
+Methods SMD MSL SMAP SWaT PSM Avg F1
+Metrics P R F1 P R F1 P R F1 P R F1 P R F1 %
+LLM-TS 88.09 81 .54 84 .69 89.04 74 .49 81 .11 89.95 56 .51 69 .41 91.16 95 .40 93 .23 98.44 96 .45 97 .43 85.17
+TimesNet 87.93 81 .45 84 .57 88.62 73 .48 80 .34 89.59 56 .35 69 .18 91.00 95 .33 93 .12 98.40 96 .18 97 .27 84.90
+GPT4TS 87.70 81 .19 84 .32 82.15 81 .32 81 .73 90.04 55 .75 68 .86 92.12 93 .06 92 .59 98.37 96 .34 97 .34 84.97
+PatchTST 87.26 82 .14 84 .62 88.34 70 .96 78 .70 90.64 55 .46 68 .82 91.10 80 .94 85 .72 98.84 93 .47 96 .08 82.79
+ETSformer 87.44 79 .23 83 .13 85.13 84 .93 85 .03 92.25 55 .75 69 .50 90.02 80 .36 84 .91 99.31 85 .28 91 .76 82.87
+FEDformer 87.95 82 .39 85 .08 77.14 80 .07 78 .57 90.47 58 .10 70 .76 90.17 96 .42 93 .19 97.31 97 .16 97 .23 84.97
+LightTS 87.10 78 .42 82 .53 82.40 75 .78 78 .95 92.58 55 .27 69 .21 91.98 94 .72 93 .33 98.37 95 .97 97 .15 84.23
+DLinear 83.62 71 .52 77 .10 84.34 85 .42 84 .88 92.32 55 .41 69 .26 80.91 95 .30 87 .52 98.28 89 .26 93 .55 82.46
+Stationary 88.33 81 .21 84 .62 68.55 89 .14 77 .50 89.37 59 .02 71 .09 68.03 96 .75 79 .88 97.82 96 .76 97 .29 82.08
+Autoformer 88.06 82 .35 85 .11 77.27 80 .92 79 .05 90.40 58 .62 71 .12 89.85 95 .81 92 .74 99.08 88 .15 93 .29 84.26
+Pyraformer 85.61 80 .61 83 .04 83.81 85 .93 84 .86 92.54 57 .71 71 .09 87.92 96 .00 91 .78 71.67 96 .02 82 .08 82.57
+Anomaly Transformer 88.91 82 .23 85 .49 79.61 87 .37 83 .31 91.85 58 .11 71 .18 72.51 97 .32 83 .10 68.35 94 .72 79 .40 80.50
+Informer 86.60 77 .23 81 .65 81.77 86 .48 84 .06 90.11 57 .13 69 .92 70.29 96 .75 81 .43 64.27 96 .33 77 .10 78.83
+Reformer 82.58 69 .24 75 .32 85.51 83 .31 84 .40 90.91 57 .44 70 .40 72.50 96 .53 82 .80 59.93 95 .38 73 .61 77.31
+Transformer 83.58 76 .13 79 .56 71.57 87 .37 78 .68 89.37 57 .12 69 .70 68.84 96 .53 80 .37 62.75 96 .56 76 .07 76.88
+Table 16: Different traditional models. We use prediction length O∈ {96,192,336,720}for ILI and O∈ {24,36,48,60}for
+others.
+Methods PatchTST PatchTST INT ETSformer ETS INT Stationary Stat INT FreTS FreTS INT
+Metric MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAEWeather96 0.174 0.216 0.172 0.214 0.196 0.282 0.200 0.285 0.178 0.226 0.201 0.246 0.187 0.243 0.179 0.235
+192 0.222 0.258 0.219 0.255 0.282 0.364 0.278 0.361 0.235 0.278 0.238 0.280 0.227 0.274 0.221 0.278
+336 0.280 0.298 0.279 0.298 0.344 0.409 0.322 0.382 0.327 0.339 0.312 0.329 0.281 0.325 0.276 0.320
+720 0.356 0.349 0.356 0.348 0.430 0.472 0.427 0.470 0.387 0.383 0.386 0.383 0.352 0.382 0.344 0.376
+Avg 0.258 0.280 0.257 0.279 0.313 0.382 0.307 0.375 0.282 0.307 0.284 0.309 0.262 0.306 0.255 0.302ETTh 196 0.381 0.398 0.382 0.401 0.554 0.536 0.550 0.532 0.534 0.499 0.523 0.486 0.398 0.412 0.395 0.409
+192 0.421 0.426 0.422 0.428 0.686 0.619 0.690 0.621 0.639 0.560 0.609 0.560 0.454 0.449 0.455 0.451
+336 0.464 0.449 0.460 0.441 0.869 0.730 0.868 0.728 0.790 0.648 0.780 0.634 0.512 0.483 0.502 0.474
+720 0.527 0.500 0.510 0.496 1.085 0.849 1.054 0.830 0.706 0.620 0.701 0.606 0.572 0.547 0.560 0.530
+Avg 0.448 0.443 0.444 0.442 0.799 0.684 0.791 0.678 0.667 0.582 0.653 0.572 0.484 0.473 0.478 0.466ETTm 196 0.332 0.368 0.332 0.372 0.526 0.495 0.424 0.434 0.417 0.417 0.412 0.410 0.340 0.375 0.339 0.374
+192 0.368 0.388 0.367 0.388 0.565 0.538 0.458 0.461 0.446 0.437 0.445 0.435 0.395 0.408 0.384 0.399
+336 0.397 0.405 0.396 0.405 0.658 0.603 0.537 0.519 0.582 0.507 0.570 0.491 0.431 0.433 0.420 0.423
+720 0.457 0.445 0.460 0.446 0.801 0.696 0.802 0.696 0.661 0.546 0.660 0.546 0.494 0.470 0.484 0.462
+Avg 0.389 0.402 0.389 0.403 0.638 0.583 0.555 0.528 0.527 0.477 0.522 0.471 0.415 0.422 0.407 0.415ILI24 2.229 0.894 2.172 0.856 4.043 1.410 3.607 1.305 2.722 1.024 1.905 0.872 3.226 1.231 3.202 1.213
+36 2.330 0.925 2.347 0.978 3.809 1.358 3.705 1.315 3.026 1.071 2.790 1.068 3.363 1.259 3.000 1.173
+48 2.140 0.894 1.984 0.869 3.851 1.351 3.714 1.309 2.622 1.032 2.132 0.900 3.456 1.285 3.132 1.213
+60 2.037 0.912 1.770 0.831 3.983 1.349 3.935 1.350 2.520 1.035 1.991 0.901 3.749 1.340 3.298 1.243
+Avg 2.184 0.906 2.068 0.884 3.922 1.367 3.740 1.320 2.722 1.041 2.205 0.935 3.449 1.279 3.158 1.211
+Table 17: Different LLM embeddings. We use prediction length O∈ {96,192,336,720}for ILI and O∈ {24,36,48,60}for
+others.
+Methods LLM-TS (LLaMA) LLaMA w/o text GPT2 BERT No LLM
+Metric MSE MAE MSE MAE MSE MAE MSE MAE MSE MAEWeather96 0.166 0.217 0.170 0.218 0.168 0.218 0.167 0.217 0.168 0.218
+192 0.229 0.269 0.227 0.266 0.226 0.267 0.229 0.270 0.227 0.268
+336 0.278 0.302 0.295 0.314 0.292 0.310 0.283 0.305 0.298 0.318
+720 0.354 0.351 0.360 0.354 0.359 0.354 0.360 0.354 0.361 0.356
+Avg 0.257 0.285 0.263 0.288 0.261 0.287 0.260 0.287 0.264 0.290ETTh 196 0.403 0.420 0.409 0.427 0.408 0.426 0.402 0.421 0.402 0.422
+192 0.440 0.441 0.445 0.445 0.442 0.444 0.452 0.450 0.459 0.455
+336 0.471 0.457 0.490 0.472 0.487 0.467 0.494 0.472 0.471 0.457
+720 0.503 0.487 0.518 0.496 0.517 0.494 0.520 0.497 0.535 0.507
+Avg 0.454 0.451 0.465 0.460 0.464 0.458 0.467 0.460 0.467 0.460ETTm 196 0.329 0.371 0.350 0.387 0.338 0.370 0.340 0.375 0.341 0.377
+192 0.380 0.398 0.383 0.398 0.392 0.404 0.401 0.408 0.404 0.413
+336 0.418 0.425 0.423 0.426 0.416 0.423 0.414 0.421 0.432 0.428
+720 0.476 0.440 0.467 0.449 0.477 0.454 0.470 0.445 0.468 0.449
+Avg 0.401 0.409 0.406 0.415 0.406 0.413 0.406 0.412 0.411 0.417ILI24 1.921 0.898 1.998 0.929 1.997 0.929 1.917 0.915 2.170 0.947
+36 2.151 0.933 2.422 0.957 2.333 0.958 2.431 1.004 2.093 0.889
+48 2.062 0.892 2.198 0.964 2.269 0.937 2.333 0.961 2.418 0.959
+60 1.759 0.853 2.072 0.948 2.077 0.921 2.089 0.926 2.203 0.971
+Avg 1.973 0.894 2.173 0.950 2.169 0.936 2.193 0.952 2.221 0.942
+Table 18: Static Weighting Scheme with Different ratios.
+Ratio 0.0 0.2 0.4 0.6 0.8 1.0 Ours
+Metric MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE MSE MAE
+ETTh 10.478 0 .468 0.471 0 .459 0.465 0 .462 0.470 0 .463 0.473 0 .450 0.471 0 .463 0.454 0 .451
+ETTm 10.415 0 .417 0.408 0 .414 0.405 0 .412 0.406 0 .412 0.417 0 .419 0.416 0 .419 0.401 0 .409

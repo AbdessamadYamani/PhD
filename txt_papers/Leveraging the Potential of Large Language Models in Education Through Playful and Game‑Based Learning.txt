@@ -1,0 +1,171 @@
+in Education Through Playful and Game‑Based Learning
+Stefan E. Huber1 · Kristian Kiili2 · Steve Nebel3 · Richard M. Ryan4,5 ·
+Michael Sailer6 · Manuel Ninaus1,7
+Accepted: 9 February 2024 / Published online: 27 February 2024
+© The Author(s) 2024
+Abstract
+This perspective piece explores the transformative potential and associated challenges of large language models (LLMs) in education and how those challenges
+might be addressed utilizing playful and game-based learning. While providing
+many opportunities, the stochastic elements incorporated in how present LLMs process text, requires domain expertise for a critical evaluation and responsible use of
+the generated output. Yet, due to their low opportunity cost, LLMs in education may
+pose some risk of over-reliance, potentially and unintendedly limiting the development of such expertise. Education is thus faced with the challenge of preserving
+reliable expertise development while not losing out on emergent opportunities. To
+address this challenge, we first propose a playful approach focusing on skill practice and human judgment. Drawing from game-based learning research, we then go
+beyond this playful account by reflecting on the potential of well-designed games
+to foster a willingness to practice, and thus nurturing domain-specific expertise. We
+finally give some perspective on how a new pedagogy of learning with AI might
+utilize LLMs for learning by generating games and gamifying learning materials,
+leveraging the full potential of human-AI interaction in education.
+Keywords Large language models · Generative artificial intelligence · Education ·
+Playful learning · Gamification · Game-based learning
+Introduction
+Large language models (LLMs) and their recently increased accessibility via chatbots like ChatGPT (OpenAI, 2023), Bard (Google, 2023), or Bing Chat (Microsoft,
+2023) provide both new opportunities and challenges for education. On the one
+hand, they legitimately promise effective ways to assist with many tasks involved in
+both teaching and learning (Bernabei et al., 2023; Kohnke et al., 2023), to provide
+scalable, personalized learning material (Abd-alrazaq et al., 2023; Sallam, 2023),
+Extended author information available on the last page of the article1 3Educational Psychology Review (2024) 36:25 Page 11 of 20 25
+On a socio-cultural dimension (Fernández-Manjón et al., 2015), an issue is social
+rejection of games, which may be reduced by improving society’s understanding of
+games as another form of cultural good, and informing stakeholders (students, educators, and parents) about the social potential and positive effects of video games
+(Granic et al., 2014) and their usefulness in education (Bourgonjon et al., 2010). At
+the same time, violence, sexism, and discrimination are advised to be avoided in the
+design of educational games (Fernández-Manjón et al., 2015).
+Along an educational dimension, limited accessibility to educational games can
+prevent their further adoption in education (Fernández-Manjón et al., 2015). Whereas
+creating and maintaining user manuals and best practice guides are ways to facilitate
+accessibility (Fernández-Manjón et al., 2015), both require further structural support.
+The latter can be provided by simultaneous support and creation of communities of
+practice (Wenger, 1998) allowing participation in development processes (MorenoGer et al., 2008) and knowledge production and transfer between educators, developers, and researchers (Fernández-Manjón et al., 2015; Hébert et al., 2021).
+Along a technological dimension, limited accessibility to technology is an issue
+(Hébert et al., 2021). Lowering development costs and developing environments that
+allow educators some game development without requiring substantial programming skills and specific game development expertise are regarded as necessary steps
+to address this issue (Fernández-Manjón et al., 2015).
+LLMs as an Opportunity for Harnessing the Potential of Games Within Education
+In this context, LLMs or more generally generative AI tools have the potential to
+transform game-based learning practices and—again similarly to the use of computers in Papert’s class (1980)—could even become once more part of their own remedy regarding the challenge they pose for education. This, however, warrants a new
+pedagogy of learning with artificial intelligence.
+In particular, we identified two use scenarios in which generative AI tools can
+boost the use of games in educational settings. First, generative AI tools provide new
+ways to implement making games for learning approaches (Kafai & Burke, 2015), in
+which students learn educational content by designing and making games. Second,
+teachers and educators can utilize AI tools to gamify their learning materials or even
+create fully-fledged learning games for their students. In the following, we consider
+how LLMs can be utilized in these scenarios.
+Learning by Generating Games
+Making games for learning is another prime example of a constructionist learning
+activity (Kafai & Burke, 2015) similar to Papert’s (1980) early use of computers in
+the classroom discussed above. Kafai and Burke (2015) argue that we are witnessing
+a paradigmatic shift toward constructionist gaming, in which students design games
+for learning instead of just consuming games created by professional developers.Educational Psychology Review (2024) 36:251 325 Page 12 of 20
+We believe that generative AI tools will further accelerate this shift. LLMs have
+the potential to make game creation more accessible for novices in a similar way as
+block-based visual programming environments like Scratch (Resnick et al., 2009)
+lowered the demands to program interactive stories and animations in educational
+settings. The pedagogical idea behind learning by generating games relies mostly
+on the assumption that game-making activities help students reformulate their
+understanding of the subject matter (educational content) and express their personal
+understanding and ideas about the subject (Kafai, 2006). In addition, generating
+games using AI’s technical backup can be open and creative, allowing for experiences of autonomy and competence essential to sustained interest and intrinsic motivation (Ryan & Rigby, 2020). As the technicalities of programming can be largely
+outsourced to LLMs, students can focus more on the topic and game design aspects.
+A recent study indicates that game-designing activities can be even more beneficial, especially for the long-term retention of knowledge, than learning by playing
+games (Chen & Liu, 2023). Furthermore, Resnick et al., (2009) have emphasized
+that digital fluency requires more than just interacting with media; it requires an
+ability to collaboratively design, create, and invent with media. Similar abilities are
+needed when creating games with the help of LLMs and seem now more important
+than ever. However, making games with LLMs also imposes unique requirements
+for students as well as for teachers who are orchestrating the game-making activities.
+We coined the term prompting pedagogy to capture fundamental pedagogical practices involved in generating games or other digital outputs with the help of
+LLMs going beyond prompt engineering as discussed above and constituting one
+aspect of a new pedagogy of learning with AI. While prompt engineering will be a
+crucial competence for harnessing the potential of AI in education (Eager & Brunton, 2023), we also want to emphasize that the ability to critically evaluate generated outputs and its facilitation by existing (domain) expertise are equally important
+(Dwivedi et al., 2023; Krügel et al., 2023). This critical evaluation informs the crafting of prompts leading to meaningful and constructive dialogue with LLMs. Such
+cumulative and continuous dialog is crucial when using LLMs in complex tasks
+like game-making. Moreover, using LLMs in such a reflective and critical manner
+enhances critical thinking and problem-based learning (Bernabei et al., 2023; Sallam, 2023; Shue et al., 2023).
+It is evident that effective prompting is challenging, and students need support
+to develop adequate prompting skills to generate games with LLMs. Prompting
+pedagogy for game-making also involves the preparation of support materials (e.g.,
+prompting templates for different purposes) and sequencing the prompting activities
+to specific phases (e.g., idea generation, core design, prototyping, and assessment).
+Even though the use of LLMs plays a crucial role in the suggested learning by
+generating games approach, the design and production activities need to be integrated into a meaningful teaching process. For example, the creative thinking
+spiral process (imagine, create, play, share, reflect, imagine, and so forth) can be
+adapted to the learning by generating games approach (Resnick, 2009). According
+to Resnick (2009, p. 1), in this process, “people imagine what they want to do, create a project based on their ideas, play with their creations, share their ideas and
+creations with others, and reflect on their experiences—all of which leads them to1 3Educational Psychology Review (2024) 36:25 Page 13 of 20 25
+imagine new ideas and new projects.” This thus provides a way to emphasize playtesting with peers (sharing and testing game prototypes and games) as well as reflective discussion sessions about prompting and game design strategies in LLMs-based
+game-making projects.
+Overall, learning by generating games promotes a creative, experimental, playful,
+and inclusive learning culture that aims to support the learning of academic content
+while preparing students for utilizing generative AI tools effectively and creatively
+in different contexts. As teachers have a significant role in this approach, a starting
+point for them may be to generate at least one learning game with an LLM before
+applying the learning approach in their teaching. Such first-hand experience can
+facilitate perceiving the affordances that LLMs provide, preparing support materials
+for students, and planning the workflow of activities.
+The use of generative AI for developing learning games may also help to decrease
+the barriers to the creation of low-budget game productions and educational games.
+One problem with educational games is that we have become more and more accustomed to big-budget releases. Many educational games seem degraded by comparison (e.g., poor graphics and mechanics) and are thus perceived as boring or unappealing. A reasonable utilization of LLMs for game development could eventually
+help to close this gap. Moreover, since the activities are learner generated, they may
+well engender a different kind of interest and sense of ownership than studio produced educational outputs.
+Gamifying Learning Materials
+Generative AI provides many low-threshold possibilities for educators to gamify
+their teaching or to generate learning games for teaching. That is, LLMs and generative AI might establish themselves as a useful tool for developing (educational)
+games, for instance, by supporting the generation of artwork, code, or game levels
+(Nasir & Togelius, 2023; Todd et al., 2023). LLMs can further assist educators in
+the analysis, design, evaluation, and development phases of game creation projects,
+allowing, for instance, the adaption of popular board games such as Monopoly for
+specific learning purposes (Gatti Junior et al., 2023).
+It may eventually not matter whether the game makers are students or educators;
+the generation of games with LLMs requires a playful, experimental, and iterative
+style of engagement in which game makers continually reassess their goals, explore
+new solutions, and imagine new possibilities based on the generated outputs and
+dialogue with LLMs. Resnick and Rosenbaum (Resnick & Rosenbaum, 2013) called
+such a bottom-up approach “tinkering.” As highlighted above, one of the key skills
+of the successful generation of games with LLMs is prompting and critical evaluation of generated outputs, which requires expertise such tinkering might enhance.
+As game development is usually a highly interdisciplinary process requiring
+expertise in various areas, LLMs might be used to complement individuals’ skills
+in a particular area. For instance, it might allow an educator with expertise in
+the pedagogical approach for a given problem and an idea for the game design
+to implement a working prototype of an educational game, which would have
+been significantly more difficult for the educator without using generative AIEducational Psychology Review (2024) 36:251 325 Page 14 of 20
+technologies. Furthermore, as game design is a very complex activity, it is important to break complex prompts into a series of small, specific steps and phases,
+starting from the idea generation and identification of instructional approaches
+and core game mechanics. For example, chain-of-thought prompting (generating
+intermediate outputs) or role prompting (giving the LLM, e.g., the specific role of
+an instructional designer or target group player) can increase the model’s contextual tenability and enhance the quality of outputs.
+Conclusions and General Remarks
+On balance, implementing insights from game-based learning in educational contexts is far from a straightforward task. However, game-based learning research
+has revealed that well-designed games indeed address, challenge, and promote
+players holistically, incorporating all cognitive (Mayer, 2020), affective (Loderer
+et al., 2020), motivational (Ryan & Rigby, 2020), and sociocultural (Steinkuehler
+& Tsaasan, 2020) aspects of the human condition. Applications of game-based
+learning in science, technology, engineering, and mathematics (Klopfer & Thompson, 2020), or the development of educational games for critical thinking (Butcher
+et al., 2017) or social problem-solving (Ang et al., 2017) indicate at least the
+potential games may have for fostering deep engagement with the learning material and continuous practice of expertise. Utilizing LLMs for learning by generating games and purposefully gamifying learning materials may allow educators to
+fully harness the potential of games toward a new pedagogy of learning with AI.
+The potential of playful and game-based learning we see for education is
+strongly related to games’ motivational and engaging power, that “in play, the aim
+is play itself” (Flanagan, 2009). Even if the activities associated with the playful
+engagement encountered in games could be delegated to AI support, who would
+want this—because in this context, it would be outsourcing the fun and intrinsic
+satisfactions of play. That would be like delegating joy to a robot. Even if we
+could, why should we want that?
+The notion of (good) practice has since Aristotle (2020) involved the aspect of
+bearing its meaning in itself, a quality which practice has, according to Rousseau
+and Schiller (Greipl et al., 2020), in common with play. It seems as if the advent
+of AI challenges us as educators to remember and revive research and its teaching, as such practice calls for the creation and cultivation of playful spaces within
+education. While this perspective is certainly not about advocating that we redesign each class into a game promising enjoyment or entertainment, we think that
+game-based learning could be especially valuable in taking advantage of the educational capabilities of AI, which themselves require capable human partnership.
+Funding Open access funding provided by University of Graz. The authors acknowledge the financial
+support of the University of Graz. Kristian Kiili was supported by the Strategic Research Council (SRC)
+established within the Research Council of Finland [Grants: 335625, 358250].1 3Educational Psychology Review (2024) 36:25 Page 15 of 20 25
+Data Availability Not applicable to this article as no datasets were generated or analysed during the current study.
+Open Access This article is licensed under a Creative Commons Attribution 4.0 International License,
+which permits use, sharing, adaptation, distribution and reproduction in any medium or format, as long
+as you give appropriate credit to the original author(s) and the source, provide a link to the Creative
+Commons licence, and indicate if changes were made. The images or other third party material in this
+article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line
+to the material. If material is not included in the article’s Creative Commons licence and your intended
+use is not permitted by statutory regulation or exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence,
