@@ -52,7 +52,7 @@ def main():
 
                 # Summarize all text files
                 st.write("Summarizing papers...")
-                summaries_result = batch_summarize_papers()
+                summaries_result = batch_summarize_papers(keywords=subject)
                 st.success("Summaries generated successfully!")
 
                 # Provide download buttons for all generated Markdown files
