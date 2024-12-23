@@ -1,1966 +1,0 @@
-Massachusetts Institute of Technology
-Lincoln Laboratory
-Knowledge-Integrated Informed AI for National Security
-Anu K. Myne
-Kevin J. Leahy
-Ryan J. Soklaski
-Technical Report TR-1272
-27 January 2022
-DISTRIBUTION STATEMENT A. Approved for public release. Distribution is un-
-limited. This material is based upon work supported by the United States Air Force
-Contract No. FA8702-15-D-0001. Any opinions, ndings, conclusions or recommenda-
-tions expressed in this material are those of the author(s) and do not necessarily reect
-the views of the United States Air Force.
-c2022 Massachusetts Institute of Technology.
-Delivered to the U.S. Government with Unlimited Rights, as dened in DFARS Part
-252.227-7013 or 7014 (Feb 2014). Notwithstanding any copyright notice, U.S. Govern-
-ment rights in this work are dened by DFARS 252.227-7013 or DFARS 252.227-7014
-as detailed above. Use of this work other than as specically authorized by the U.S.
-Government may violate any copyrights that exist in this work.
-Lexington Massachusetts
-This page intentionally left blank.
-ABSTRACT
-The state of articial intelligence technology has a rich history that dates back decades and
-includes two fall-outs before the explosive resurgence of today, which is credited largely to data-
-driven techniques. While AI technology has and continues to become increasingly mainstream with
-impact across domains and industries, it's not without several drawbacks, weaknesses, and potential
-to cause undesired eects. AI techniques are numerous with many approaches and variants, but
-they can be classied simply based on the degree of knowledge they capture and how much data
-they require; two broad categories emerge as prominent across AI to date: (1) techniques that are
-primarily, and often solely, data-driven while leveraging little to no knowledge and (2) techniques
-that primarily leverage knowledge and depend less on data. Now, a third category is starting to
-emerge that leverages both data and knowledge, that some refer to as \informed AI." This third
-category can be a game changer within the national security domain where there is ample scientic
-and domain-specic knowledge that stands ready to be leveraged, and where purely data-driven AI
-can lead to serious unwanted consequences.
-This report shares ndings from a thorough exploration of AI approaches that exploit data
-as well as principled and/or practical knowledge, which we refer to as \knowledge-integrated in-
-formed AI." Specically, we review illuminating examples of knowledge integrated in deep learning
-and reinforcement learning pipelines, taking note of the performance gains they provide. We also
-discuss an apparent trade space across variants of knowledge-integrated informed AI, along with ob-
-served and prominent issues that suggest worthwhile future research directions. Most importantly,
-this report suggests how the advantages of knowledge-integrated informed AI stand to benet the
-national security domain.
-iii
-This page intentionally left blank.
-ACKNOWLEDGMENTS
-I'd like to thank Robert Bond and Sanjeev Mohindra for their enduring support and encour-
-agement. Special thanks also goes to my co-authors, Kevin Leahy and Ryan Soklaski, for their
-practical viewpoints and for supporting the extensive literature review, and to all cited authors
-who are making great contributions to the advancement of articial intelligence technology.
-v
-This page intentionally left blank.
-TABLE OF CONTENTS
-Page
-Abstract iii
-Acknowledgments v
-List of Figures ix
-List of Tables xi
-1. MOTIVATION AND SCOPE 1
-1.1 Further Discussion of Computer Models and AI Paradigms 5
-1.2 An Opposing AI Paradigm 8
-2. KNOWLEDGE-INTEGRATED INFORMED AI FOR NATIONAL SECURITY 13
-2.1 Performance Gains Realized via Knowledge-Integrated Informed AI 13
-2.2 Beneting National Security Applications 16
-2.3 Roadmap to Accelerate Knowledge-Integrated Informed AI Research and
-Development for National Security 18
-3. WHAT IS KNOWLEDGE-INTEGRATED INFORMED AI? 23
-3.1 Architectures for Integrating Knowledge 23
-3.2 Knowledge Representations 24
-3.3 Knowledge-Integrated Deep Learning Pipeline 24
-3.4 Knowledge-Integrated Reinforcement Learning Pipeline 26
-4. ILLUMINATING EXAMPLES 31
-4.1 Knowledge-Integrated via Additional Knowledge-Containing Dataset(s) 31
-4.2 Knowledge-based Architecture or Weights (a.k.a., Hypothesis Set) 35
-4.3 Knowledge-Integrated Learning Algorithm 39
-4.4 Learned-model Consistency Check (a.k.a., Final Hypothesis) 45
-4.5 Embedded and Jointly Trained Neural Networks 47
-5. PERFORMANCE GAINS VS. VARIANTS OF KNOWLEDGE INFORMED AI 55
-6. CHALLENGES AND UNTAPPED RESEARCH OPPORTUNITIES 59
-7. SUMMARY 63
-References 65
-vii
-This page intentionally left blank.
-LIST OF FIGURES
-Figure
-No. Page
-1 Grouping AI Techniques by Knowledge Captured and Data Dependence 1
-2 Venn Diagram of Informed AI 2
-3 Knowledge-Integrated Informed AI Block Diagram 3
-4 Well-known, Early Examples of Knowledge-Integrated Informed AI 4
-5 Recent Example of Knowledge-Integrated Informed AI 4
-6 Symbolic vs. Numerical Classication 7
-7 Neurosymbolic Classication 8
-8 Removing Knowledge from the RL Pipeline 10
-9 Reinforcement Learning without Prior Knowledge 11
-10 Add Knowledge and Domain Expertise as an Important Building Block of
-AI Technology 20
-11 Roadmap to Accelerate Knowledge-Integrated Informed AI Research and
-Development for National Security 21
-12 Loosely Coupled to Tightly Integrated Informed Deep Learning Architectures 24
-13 Forms of Knowledge Representation from Laura von Rueden et. al. [1] 25
-14 Laura von Rueden et. al. Informed Machine Learning Pipeline [1] 26
-15 Components of Non-deep RL 27
-16 Components of Deep RL 28
-17 Q-Table vs. Neural Network 28
-18 Deep RL Pipeline 29
-19 Architecture with Additional Training Data from [2] (Aug 2018) 31
-20 Forms of Knowledge Shown to Integrate via Training Data 32
-21 Examples from Literature that Illustrate Knowledge Integration via Training Data 33
-22 RL Example Informed via Additional Simulated Data 34
-23 Forms of Knowledge Shown to Integrate via Architecture and/or Weights 35
-ix
-LIST OF FIGURES
-(Continued)
-Figure
-No. Page
-24 Examples from Literature that Illustrate Knowledge Integration via Hypoth-
-esis Set 37
-25 RL Example Informed via Architectural Elements 38
-26 Knowledge-Integrated RL via Architectural Elements - Performance 39
-27 Forms of Knowledge Shown to Integrate via Learning Algorithm 41
-28 Examples from Literature that Illustrate Knowledge Integration via Learning
-Algorithm 42
-29 An Example from Literature that Illustrates Integration of Auxiliary Tasks
-via Learning Algorithm 43
-30 RL Example with Knowledge Integrated via Learning Process 43
-31 RL Example with Knowledge Integrated via Learning Process - Monte Carlo
-Tree Search 44
-32 RL Example with Knowledge Integrated via Learning Process - Performance 44
-33 Forms of Knowledge Shown to Integrate via Final Hypothesis 46
-34 Example from Literature that Illustrate Knowledge Integration via Final
-Hypothesis 46
-35 RL Example with Knowledge Integrated via Final Hypothesis 47
-36 Applications of Universal Dierential Equations 49
-37 Learning Predator-Prey Dynamics with a Universal Dierential Equation 50
-38 Replacing an Expensive Mechanistic Model with Ecient Surrogate 51
-39 Training a Model to Aim a Trebuchet Using Consequence Modeling 53
-40 A Programming Language Problem 62
-x
-LIST OF TABLES
-Table
-No. Page
-1 Opportunities in Terms of Knowledge Sources 14
-2 Performance Gains Achieved by Knowledge-Integrated Informed AI 15
-3 Opportunities in Terms of Performance Gains 17
-4 Rudimentary Examples of Knowledge-Integrated Informed AI for National
-Security 19
-5 Performance Gains by Knowledge Representation and Integration Path 57
-6 References Associated with Gains Included in Performance Gains Table 58
-xi
-This page intentionally left blank.
-1. MOTIVATION AND SCOPE
-Articial intelligence (AI) techniques are numerous with many unique variants that employ
-dierent learning algorithms and architectures. One can separate techniques by the two resources
-that these techniques predominantly leverage: (1) techniques that focus on leveraging knowledge
-with less or no dependence on data, or (2) techniques that are primarily, and often solely, data-
-driven. The main diagonal of the matrix in Figure 1 captures these two overarching categories
-in the top left and bottom right. Historically, the former set of approaches that directly capture
-knowledge (scientic, mechanistic, or domain expertise) were dominant. Recently though, data-
-driven approaches that learn patterns from data have taken center stage for many applications,
-especially speech recognition [3], game play [4], and image classication [5].
-Figure 1. Grouping AI Techniques by Knowledge Captured and Data Dependence
-This 2x2 matrix divides the space of AI techniques by the degree of knowledge captured and the level
-of data-dependence. Regardless of class of technique, getting and staying ahead with AI requires
-performance across several metrics including accuracy, explainability, and reliability, to name a few.
-Knowledge-Integrated informed AI techniques, which fall in the top right (green) quadrant, promise
-noteworthy gains across several key performance metrics. Foundation models [6], an almost exactly
-opposing paradigm, fall in the lower right corner of the bottom right quadrant.
-While numerous promising research directions exist in both major categories, a third class
-of techniques that are hybrid (exploiting both knowledge and data in fundamentally new ways) is
-emerging with promise to achieve profoundly more capable AI (top right quadrant of matrix). We
-refer to this broad space, which encapsulates it's own set of sub-classes of techniques, as \knowledge-
-informed AI." There is a long list of names given to these techniques, some listed to the right of
-Figure 2, which suggests that terminology in this paradigm of AI is unsettled. In their excellent
-survey paper published in 2021 [1], Laura von Rueden et. al. coined the term \informed machine
-learning," while others use terms like \scientic machine learning," \neurosymbolic AI," or \physics-
-1
-informed AI." As illustrated in the Venn diagram in Figure 2, symbolic AI can be considered as a
-class of techniques that are inherently informed by knowledge, but that's not new nor is it part of
-the emerging paradigm we aim to shed light on in this report. Instead, if we take standard forms of
-deep learning and reinforcement learning and marry them with either symbolic AI or other non-AI
-models with embedded knowledge, it's the areas of intersection that make up the new and emerging
-paradigm that is the scope of this report. We focus very little on neurosymbolic hybrid AI, where
-the two worlds of data-driven and knowledge-based models are usually only loosely-coupled, and
-we focus heavily on techniques that we refer to as \knowledge-integrated informed AI."
-Figure 2. Venn Diagram of Informed AI
-Informed AI is a superset of approaches that includes symbolic AI, Neuro-symbolic AI, and
-Knowledge-Integrated Informed AI. The areas of intersection (purple) represent new and emerg-
-ing AI paradigms. The focus of this report is on knowledge-integrated informed AI.
-Our denition of knowledge-integrated informed AI is the following:
-Knowledge-Integrated Informed AI : AI techniques in which explicit, principled and/or prac-
-tical knowledge that is scientic, domain-specic, or data-centric is integrated (not necessarily in a
-separable way) into a model's development pipeline. In these techniques:
-Knowledge from scientic or domain expertise is integrated to provide partial explanations or
-constraints for the unknown relationship that the model is built to learn,
-Or
-Understanding of properties of training data are exploited to provide more ecient/eective
-mechanisms for learning.
-2
-This denition is illustrated with the block diagram in Figure 3. While it can be standard
-practice to consider knowledge about the problem while developing machine learning models, the
-actual integration of explicit knowledge so that it constrains or guides the learning process is the
-major distinguishing factor. There are several forms of knowledge representation as well as paths
-of knowledge integration that are discussed later in this report.
-Figure 3. Knowledge-Integrated Informed AI Block Diagram
-The integration of explicit knowledge in data-driven AI pipelines is what distinguishes knowledge-
-integrated informed AI from standard data-driven AI.
-In some ways, the promise of knowledge-integrated informed AI techniques has already been
-proven. Figure 4 illustrates two well known, breakthrough developments that are precursors of this
-new paradigm. While the convolutional neural network changed the world of image recognition by
-exploiting data-centric knowledge (that low-level image features are local and exhibit translational
-invariance), AlphaGo changed the world of reinforcement learning by leveraging practical knowledge
-of the game being played (yes, the more recent MuZero masters game play without rules, but
-with far more compute power and time that can be considered unnecessary and wasteful). Both
-of these precursor examples that integrated dierent forms of knowledge through distinct entry
-points demonstrated superior performance and broad-reaching impact, which suggests that more
-deliberate integration of knowledge can lead to many more breakthroughs.
-A more recent example that ts squarely into this new paradigm of AI is the Neural Circuit
-Policy model that has received media attention [7] [8] for its ability to \learn cause and eect" for a
-navigation task (Figure 5). The model learns to steer an autonomous vehicle with very few neurons,
-\superior generalizability, interpretability, and robustness compared to orders of magnitude larger
-black-box learning systems." Upon deeper investigation, we realize that this model has knowledge-
-integrated design elements that play a big hand in its ability to achieve noteworthy performance.
-It has a bio-inspired architecture where the nal output is arrived at in steps that go from sensor
-to decision to actuation, and the network is followed with an ordinary dierential equation (ODE)
-solver that captures the dynamics of the nervous system to \obtain numerically accurate and stable
-solutions." Without these design elements, the performance of this model would undoubtedly be
-unremarkable. [9]
-3
-Figure 4. Well-known, Early Examples of Knowledge-Integrated Informed AI
-Both the convolutional neural network and AlphaGo are well-known examples of breakthroughs
-in deep learning and reinforcement learning that leverage knowledge about the problems they are
-designed to solve.
-Figure 5. Recent Example of Knowledge-Integrated Informed AI
-The Neural Circuit Policy model designed by Lechner et. al. is a nice recent example of ground-
-breaking performance achieved by a novel knowledge-integrated informed AI approach.
-4
-Knowledge-integrated informed AI techniques are particularly appealing for the national se-
-curity domain, where there are elevated concerns with purely data-driven approaches that often
-lack in explainability, generalizability, traceablity, and reliability. Intuitively, techniques that ex-
-ploit both data and knowledge, where knowledge can be leveraged to satisfy constraints or guide
-learning, should provide superior performance (such as improved accuracy, reliability, robustness,
-and more ecient use of resources). It turns out that many recent works, in addition to the ex-
-amples discussed above, have now proven this intuition. Furthermore, while there exist opposing
-perspectives, several reputable scholars have suggested that knowledge-integrated informed AI will
-bring the next generation of AI, or its third wave [10] [11]. In subsequent sections in this report,
-we explore numerous recent examples of knowledge-integrated informed AI, what's behind these
-claims of game-changing potential, and what this new paradigm of AI can mean for problems of
-national security.
-In order to thoroughly explore the current state of the art of knowledge-integrated informed
-AI for national security, the literature review summarized in this report considers many published
-examples. Our eort was hugely facilitated by the taxonomy presented in Laura von Rueden et.
-al.'s 2020 survey paper [1], as well as a few other recent and well formulated surveys [12] [13]
-[14]. Subsequent sections in this report dive into the various knowledge-integrated informed AI
-architectures, distinct paths of integrating knowledge into AI pipelines, illuminating examples and
-their reported performance gains, observed research gaps and opportunities, and how knowledge-
-integrated informed AI could positively impact the national security domain.
-1.1 FURTHER DISCUSSION OF COMPUTER MODELS AND AI PARADIGMS
-We referred earlier to two broad categories of AI. Here we consider the individual strengths
-and challenges of knowledge-based models and data-driven AI models, what's complementary and
-opposing, and how these arguments lead to a hybrid class.
-First, the following are our denitions of two classes of computer models:
-We consider knowledge-based models to broadly include models that capture scientic or
-mechanistic phenomena, or human expertise, through specic representation of fundamental
-understandings of a domain. Generally, these models are designed to serve a multitude of
-purposes that need some representation of the world to perform their assigned tasks. In terms
-of AI models, symbolic AI (reasoning based on symbolic knowledge) and other classical AI
-models (ex., logic-based models and probabilistic graphs) fall into this category. As dened,
-this class of computer models is more broadly inclusive, and therefore also includes all kinds
-of models that capture and represent knowledge, even non-AI models.
-We dene data-driven AI models as essentially universal function approximators that learn
-from data, such that model architectures and/or weights are updated via learning pipelines
-have no explicit consideration of domain knowledge. Generally, these models are designed
-to perform various tasks such as perception, reasoning, planning, and even to represent and
-understand the world. Learning models that also exploit explicit knowledge in addition to
-data do not t into this category.
-5
-Many in the AI community refer to an earlier paradigm of AI being one of symbolism, or
-reasoning based on symbolic knowledge (a paradigm that dominated until the 1980s), and the
-more recent paradigm as one of connectionism, or data-driven decision making using neural net-
-works (which began increasing in popularity in the 1990s). While connectionist models are ex-
-actly analogous to data-driven AI paradigm, referring to only symbolic models as the opposing
-knowledge-informed AI paradigm paints an incomplete picture, because knowledge can be repre-
-sented in non-symbolic ways. But the fusion of symbolic and connectionist AI is gaining similar
-attention as the fusion of knowledge-models with data-driven AI models. So this discussion here
-draws comparisons between both symbolic and connectionist models as well as knowledge-informed
-and data-driven models.
-All classes of computer models in discussion here have been and continue to be used extensively
-across domains, and have demonstrated their usefulness. With their respective strengths, they each
-come also with many challenges that deem them unfeasible or insucient for certain applications.
-There is undoubtedly decades of knowledge and domain expertise built into many high-
-performing knowledge-based models. To their advantage, these models are able to represent and
-reason about complex, causal, and abstract concepts with solutions that are traceable, interpretable
-and explainable. These valuable strengths however, come with design processes that are all-too-
-often manually intensive and highly problem-specic, with many opportunities to insert biases,
-and even preclude discovery of new insights. Furthermore, problems can more quickly become
-computationally unfeasible as cost to run models at appropriate resolutions in space and/or time
-is often high, and the number of samples needed to provide good estimates can be prohibitively
-expensive [12] [15] [16].
-For example, in symbolic systems that are developed for classication problems, rules or other
-non-numerical methods are used to reason about properties (often abstract) of objects to draw
-conclusions about them. One common example is a decision tree. In the case of cat classication,
-one can imagine a decision tree that asks if an animal is a vertebrate, a mammal, etc., to determine
-whether it is a cat. A well-known example of such classication systems is taxonomy in biological
-systems, such as the Linnaean taxonomy. The strength of such symbolic models lies in their
-interpretability and explainability. They are very transparent, and they can reason about arbitrary
-and abstract properties. However, while these symbolic models have strong ability to reason, they
-are not good at processing data. For example, there is not a natural way for a decision tree to
-classify the contents of an image.
-Similar to knowledge-based models, data-driven AI models have clearly showcased winning
-performance and impact. What formulates these models can be viewed as incredibly versatile|more
-general-purpose and less problem-specic yet still providing desirable performance. Their versatility
-is largely attributed to the pliable nature of the learning framework and powerful constituting
-elements. As much as they are appreciable, they also exhibit several drawbacks. Training the models
-requires massive datasets (or intensive interaction with the environment for reinforcement learning)
-which are easily entrenched with a variety of imperfections (noise, incomplete coverage, lack of
-variability/representation, etc.), and the nal product often fails to generalize beyond its training
-distribution [17]. What machines learn via purely data-driven approaches is a direct product of the
-6
-imperfect data combined with algorithms that cannot compensate for those imperfections. While
-learning may be layers deep, actual understanding is easily only surface level or just indemonstrable.
-Furthermore, like knowledge-based models, this class of AI also has many entry points for bias
-(data collection or conditioning, the learning algorithm, and even the network architecture), and
-comes with computational drawbacks, such as an alarming amount of energy needed to supply the
-staggering amounts of compute power used for model development [18] [19]. Furthermore, their
-lack of interpretability, and explainability, and their sensitivity to adversarial attack raise many
-more alarms.
-To continue with classication as the example problem, rather than reasoning through the
-task, a connectionist model (a.k.a., a data-driven deep learning model) performs via numerical rep-
-resentation and operations that use lots of data to learn relationships between inputs and outputs.
-For example, to classify images of cats, a neural network typically needs to be shown a very large
-number of images, with labels indicating the presence or absence of cats. Generally, this need for
-a large amount of data is not present in symbolic AI. Once a network has the data, it performs
-numerical operations on the data. In the image classication example, the system performs matrix
-operations on pixel values in order to nd commonalities among similarly labeled images. The
-resulting trained neural network can determine whether a previously unseen image does or does
-not contain a cat. It is good at perceiving and processing data, but its process for classifying is
-opaque.
-Figure 6. Symbolic vs. Numerical Classication
-A decision tree as an example of a symbolic cat classier (left), and a neural network as a numerical
-cat classier (right). Symbolic classication reasons directly on properties (possibly abstract) using
-methods based on \symbolic" (human-readable) representations of problems, logic, and search, where
-symbols are manipulated symbolically in otherwise purely numeric computation frameworks [10].
-Conversely, in numerical classication, an image classier learns to classify based on relationships
-between pixels in an image le using numerical operations.
-7
-As the strengths and challenges of knowledge-based models and data-driven AI models lead
-to a combined class of knowledge-integrated informed AI, so do the strengths and challenges of
-symbolic and connectionist AI lead to neurosymbolic AI.
-In the case of knowledge-integrated deep learning, these models are more accurate, general-
-izable, interpretable, data-ecient and computationally-ecient because of the knowledge infusion
-into otherwise black-box, unaware neural networks. Their learning is guided by things we know
-about the relationship that needs to be learned or, if not course correcting, then knowledge is
-constraining or restricting what the models learn tying them down with known aspects of the
-relationship that has unknowns to learn.
-In the case of neurosymbolic AI, models possess reasoning abilities of symbolic systems and
-the perception and data processing abilities of numerical systems. In terms of the cat classication
-problem, consider the case of distinguishing among closely related species of rare wild cats. There
-may not be enough imagery of any one species to train a neural network. But there may be too
-much imagery (e.g., from cameras placed in remote locations to capture footage of wild animals)
-for a human to process alone. In that case, humans can use their expertise to build a decision
-tree about dierent traits that each species of cat has|e.g., tufted ears, stripes, long whiskers, etc.
-Imagery of dierent species can be used to train a neural network classier on each of those traits.
-For a new image, the results of the classiers can be processed on a decision tree to determine if
-the image contains one of the rare species of interest. Thus, the perceptive neural network feeds
-the decision tree, which can reason about the output. Figure 7 illustrates a neurosymbolic concept.
-Figure 7. Neurosymbolic Classication
-Neurosymbolic AI possesses the reasoning abilities of symbolic systems and the perception and data
-processing abilities of numerical systems.
-1.2 AN OPPOSING AI PARADIGM
-This discussion of emerging AI paradigms would be incomplete without reference to an entirely
-opposite research direction that aims for AI that does not leverage knowledge.
-8
-1.2.1 Foundation Models
-Foundation models are also at the forefront of AI research, especially for natural language
-processing (NLP) and computer vision (CV) applications [6]. These models eschew the use of
-highly-regimented model architectures (e.g., recurrent layers for NLP applications, and convolution
-layers for CV) trained in a supervised setting, in favor of less-structured architectures that learn in
-a self-supervised manner. Models like BERT [20], GPT3 [21], and CLIP [22] are among the most
-widely recognizable and inuential foundation models. These approaches demonstrate that the
-availability of large amounts of highly varied, unlabeled data|even if the data is very noisy|can
-be sucient to produce a model that can adapt to novel tasks in a zero-shot manner and that
-achieves state-of-the-art performance on these tasks.
-The most costly and obstructive aspect of supervised deep learning is the need for large,
-hand-labeled data sets to inform one's model. Foundation models eliminate this cost altogether,
-as they have proven capable of learning from large, multi-modal repositories of structured (but
-unlabeled) data (e.g., Flickr [23] and Wikipedia [24]). However, these public data repositories are,
-themselves, unrivaled in size: they are the culmination of decades-long contributions from millions
-of individuals from across the globe. Furthermore, the process of training these models represents
-a paradigm-shift toward being increasingly sophisticated and prohibitively expensive. For instance,
-a standard ResNet-50 CV model can be trained in a supervised fashion to achieve competitive
-performance on ImageNet using only 64 GPU hours [25]. By contrast, training CLIP to achieve
-state-of-the-art performance on ImageNet zero-shot required 86,000 GPU hours [26]. It must be
-emphasized that this is notan apples-to-apples comparison, and that the resulting CLIP model
-is fundamentally distinct in nature, as it is capable of performing far more generalized tasks than
-is the ResNet model. That being said, the 1,000x dierence in computational cost to develop the
-model is resounding nonetheless.
-It remains to be seen how foundation models will impact the role of deep learning in scientic
-elds, where knowledge-informed AI techniques can more naturally nd purchase [27].
-1.2.2 Reinforcement Learning without Knowledge
-In recent years, some researchers|most notably DeepMind|have made an eort to reduce the
-knowledge used in deep reinforcement learning (Figure 8). Like foundation models, this approach
-is in direct opposition to the notion of knowledge-informed AI.
-DeepMind developed AlphaGo in 2016 [4], which learned to play the game Go using data from
-human gameplay, domain knowledge, and the rules of the game. They have progressively pared
-back the knowledge provided to their system. Notably, AlphaZero [28] used a single algorithm
-for multiple games, although it had rules for all three games it learned. To date, this eort has
-culminated in MuZero [29], which learned four games with a single algorithm, without knowledge
-of the game. MuZero learns three models for playing a game (Figure 9): a representation of the
-state, the dynamics of the game, and the policy and reward. In a typical reinforcement learning
-scenario, the state and reward are chosen by a user or designer, and even the dynamics may be
-known. In that case, the system only needs to learn the policy. Here, the system learns the three
-components from scratch.
-9
-Figure 8. Removing Knowledge from the RL Pipeline
-Since 2016, DeepMind has pursued reinforcement learning that uses increasingly less knowledge.
-This line of research, starting with AlphaGo and culminating in MuZero in 2020, provides an
-approach for mastering several games with no human data, domain knowledge, or rules. This
-approach is in direct contrast with an Informed AI approach. [30]
-10
-Figure 9. Reinforcement Learning without Prior Knowledge
-MuZero learns three separate models for playing games. Function his an encoding of the current
-state,gmodels the dynamics of the game, and fmodels the policy and reward. [29]
-We note that MuZero uses a single algorithm to learn a variety of games without any prior
-knowledge. Unlike foundation models (see Section 1.2), it does not generalize from one game to
-another. Foundation models provide a trained model that can be modied or tuned to suit a variety
-of problems. MuZero, on the other hand, provides an algorithm that is broadly useful for many
-games, but needs to be separately trained on each game. We note also that the computational
-results reported for MuZero require many hours or days of specialized computational hardware.
-One goal of informed AI is to reduce computational requirements by informing the system.
-11
-This page intentionally left blank.
-2. KNOWLEDGE-INTEGRATED INFORMED AI FOR NATIONAL
-SECURITY
-As research and development of AI solutions has become increasingly prevalent toward ad-
-dressing problems of national importance, the performance requirements of these systems have
-been evolving. We have realized that we need AI that not only performs accurately, but that is
-also traceable (i.e., correct-by-construction, and interpretable), reliable (i.e., generalizable to novel
-instances), and robust against adversarial attack [31]. Some of these metrics are often posed as
-ethical guidelines, but they are also markers for well-engineered systems that enable better human-
-machine teaming. Bottom line up front: Utilizing valuable knowledge from the extensive
-range of scientic and domain expertise that exists within the national security do-
-main in knowledge-integrated informed AI solutions will help realize many AI system
-performance goals.
-Technology for national security is a broad mission that includes many diverse sub-domains
-(ex., air/land/sea/space defense, homeland protection, air trac control, cyber security, intelli-
-gence, surveillance, reconnaissance, defense against biological and chemical weapons, etc.). A vast
-and constantly evolving set of technologies are developed to address important problems associated
-with each of these mission areas, which all leverage one or more of the following knowledge-bases:
-Scientic Expertise (ex., physics, biology, chemistry, etc.)
-Scientic/Expert Understanding of Technologies (how they are designed, fabricated, their
-limits, etc.)
-Expert Understanding of the Applications for which Technologies are Developed
-Nearly all formal representations of knowledge (in the form of equations, dynamical systems,
-probabilistic relations, logic rules, knowledge graphs, simulations invariances, or human feedback),
-which are presented later in this report (Section 3.2), come into play for each of these major
-categories of knowledge in the technology for national security domain. As AI is making headway
-across this domain, leveraging these knowledge sources more deliberately and explicitly can be
-game changing. Table 1 suggests just a few example ways these knowledge sources may integrate
-with AI and prove to be strategically advantageous.
-2.1 PERFORMANCE GAINS REALIZED VIA KNOWLEDGE-INTEGRATED IN-
-FORMED AI
-The hypothesis going into this study was that integration of knowledge into typically data-
-driven AI should yield signicant gains for specic performance metrics that matter for problems of
-national security|at a minimum, producing more trustworthy AI because it satises, is consistent
-with, or is guided by knowledge dened by science or domain experts. The idea was that this kind
-of knowledge integration can lead us to more capable AI that requires less data, is more explain-
-able with better interpretability, and generalizes better to novel samples unseen during training.
-13
-TABLE 1
-Opportunities in Terms of Knowledge Sources
-Knowledge Sources and Likely Representations: Possible Knowledge-Integrated In-
-formed AI Goals / Use Cases
-Scientic Expertise (ex. Physics, biology, chemistry): - Use domain knowledge
-(simulators, governing equations,
-dynamical systems, relations,
-associations, etc.) to ground models
-that aim to discover/learn from data
-- Develop neural network surrogate
-solutions that demonstrate
-consistent/accurate scientic
-phenomena with computational
-speedup and/or higher-order
-approximationsAlgebraic Equations Knowledge Greaphs
-Dierential Equations Simulations
-Probabilistic Equations Invariances
-Logic Rules Human Feedback
-Scientic/Expert Understanding of Technology:
-Algebraic Equations Knowledge Graphs
-Dynamical Systems Simulations
-Probabilistic Equations Invariances
-Logic Rules Human Feedback
-Expert Understanding of Technology Applications:
-- Employ AI solutions that are
-constrained/guided by policy/rules
-of engagementAlgebraic Equations Knowledge Graphs
-Discrete-time Models Simulations
-Probabilistic Equations Invariances
-Logic Rules Human Feedback
-14
-TABLE 2
-Performance Gains Achieved by Knowledge-Integrated Informed AI
-Performance Gain Quantied / Qualied Gain
-Greater Accuracy +0.6-20% Accuracy, -(4-70)% Test Er-
-ror, 1-8x Score
-Extended Applicability Implied
-Enabling New Capabilities and Discoveries Implied
-Improved Safety and Reliability:
-- Correct-by-Construction Implied
-- Interpretable*, Traceable*, Explainable* Claimed Qualitatively
-- Robustness via Generalizability Claimed Qualitatively (usually)
-More Ecient Use of Resources:
-- Data Eciency 40-96% less data, 0-1% of labels
-- Computational Speedup 2-15,000x
-- Network Size 1/3rd parameters
-Exploration of the state-of-the-art, from examples that date back decades to now, conrmed these
-hypotheses along with additional unanticipated benets. Knowledge-integrated informed AI, all
-variants included, is growing in popularity and has been shown to oer one or more of the gains
-in performance summarized in Table 2. Note that some improvements are only claimed qualita-
-tively, while others vary and fall inside the spread that we aggregated from the subset of papers we
-reviewed.
-The reasoning behind knowledge integration leading to an applicability extension beyond
-the already broad application space is twofold. Firstly, this can be attributed to the increases in
-accuracy and the mechanism to ground a model by the truths of a domain which is, in turn, leading
-to more domain experts adopting modern AI techniques (especially in scientic domains). Secondly,
-these approaches are opening up the application space of deep learning from mostly perception and
-classication or generative tasks, to neural network surrogates that can replace computationally
-expensive knowledge-based models (expensive physics-based or earth-science models, for example).
-There were some expected performance gains that were not found in the literature. First,
-neither robustness to adversarial attack, nor deeper and/or contextual understanding came up in
-any of the reviewed papers. While these possible benets have not yet been highlighted, they likely
-will be in the future. Furthermore, as we surveyed the literature, we postulated other additional
-benets that also have not been found to be prevalent in the literature, but likely will be in the
-future. First, some explicit knowledge integration approaches may be more easily updated new
-to accommodate situational constraints to enabling better adaptability. Second, easier verication
-using more standard methods could be achieved for models with fewer neurons. Third, knowledge
-integration could improve a model's memory eciency, i.e., ability to maintain fundamental \under-
-standing" even if trained to perform multiple tasks (that generally can cause memory loss|a.k.a.,
-15
-catastrophic forgetting). Section 6 lists all of these performance gains that we found to be uncharted
-in the literature as worthwhile future research directions.
-2.2 BENEFITING NATIONAL SECURITY APPLICATIONS
-Many example national security applications stand to benet from one or more of the perfor-
-mance gains oered by knowledge-integrated informed AI approaches. Table 3 lists several example
-applications while Table 4 oers some specic, but rudimentary, example problems.
-The rst row block in Table 3 suggests that we can expect greater accuracy with knowledge-
-informed AI for AI tasks that fall in or around a processing chain with an available data stream
-andassociated valuable knowledge (formally representable). For example, many signal processing
-applications t this description, along with traditional, computationally-expensive models that can
-entirely or partially be replaced with neural network surrogates. Furthermore, given this strong
-potential for improvements in accuracy, applicability to problems for which modern AI techniques
-have been previously rejected may now be reconsidered. Moreover, this broadening of applicability
-is leading to new capabilities and new discoveries.
-The second row block in Table 3 suggests that improved safety and reliability, which come
-through techniques that are correct-by-construction, interpretable (through traceability and ex-
-plainability), and more robust because of generalizability, will also be benecial for many na-
-tional security applications. Obviously beneting applications are ones that are described as high-
-consequence and safety-critical, and those that rely on humans and machines performing as a team.
-Additionally, problems that present dynamic and unpredictable settings will benet from greater
-generalizability, as will problems where the knowledge may be changing with time (explicitly in-
-tegrated knowledge is more easily updated). Perhaps a less obvious beneting application is of
-problems that need multi-task solutions, which can suer from catastrophic forgetting, but can
-benet from integration of strong and unchanging foundational knowledge.
-Finally, the third row block in Table 3 suggests that many national security applications also
-stand to benet from more ecient use of resources, whether the resource is data, compute power,
-or the size or simplicity of the neural network. These applications include those that belong to
-data-limited domains (many if not most, most if not all), and problems that use AI at the tactical
-edge, especially if the AI is deployed on a platform with restricting size, weight, and power (SWaP).
-16
-TABLE 3
-Opportunities in Terms of Performance Gains
-Performance Gain Achieved Beneting National Security Domains/Applications
-Greater Accuracy (+0.6-20% Accuracy, -(4-
-70)% Test Error, 1-8x Score)
-Extended Applicability (Implied)
-Enabling New Capabilities and Discoveries
-(Implied)- Processing chains with available data streams and formally
-expressible knowledge: ex. Radar, SAR, GMTI, IR, SIGINT,
-LIDAR, GPS/GPS-denied, etc.; Materials, weather, climate,
-chemistry, biology, physiology, etc.; C2, IC, LE, HADR, IO, etc.
-- Traditional, computationally-expensive models { NN surrogates
-Improved Safety and Reliability:
-- Correct-by-Construction (Implied)
-- Interpretable*, Traceable*, Explainable*
-(Claimed Qualitatively)
-- Robustness via Generalizability (Usually
-Claimed Qualitatively)- High-consequence, safety-critical
-- Human-machine Teaming (ex., decision support in adversarial
-or safety-critical settings)
-- Open-ended (i.e., dynamic and unpredictable) environments
-that will benet from generalizability and learning in the eld
-- Multi-task solutions (can benet from context-aware memory)
-More Ecient Use of Resources:
-- Data Eciency (40-96% less data, 0-1% of labels)
-- Computational Speedup (2-15,000x)
-- Network Size (1/3rd parameters)- Data-limited domains
-- Tactical edge (including continuous learning at the edge)
-- SWAP-constrained platforms
-17
-2.3 ROADMAP TO ACCELERATE KNOWLEDGE-INTEGRATED INFORMED
-AI RESEARCH AND DEVELOPMENT FOR NATIONAL SECURITY
-To quickly begin realizing the performance benets that knowledge-integrated informed AI
-techniques promise to deliver to the national security domain, a rst step is acknowledging \knowl-
-edge" as an important building block of AI technology. While other research directions are pursued
-to advance modern AI without knowledge integration, we should be considering which knowledge-
-bases should be integrated and how much importance the provided knowledge should be given over
-the standard approach.
-Pursuing knowledge-integrated informed AI research for national security can come down
-to several deliberate steps that are data-oriented, knowledge-oriented, or that serve to advance
-the state of the art and its adoption into the national security domain. Figure 11 lays out some
-immediate steps we should be taking. In addition to realizing the performance advantages described
-in this section, all of these steps can be honed toward addressing existing challenges and pursuing
-promising yet untapped research opportunities (discussed later in Section 6)
-18
-TABLE 4
-Rudimentary Examples of Knowledge-Integrated Informed AI for National Security
-Biotechnology Missile Defense Air Trac Control
-Deep learning based ultrasound
-image interpretation guided by
-knowledge graphs !more gen-
-eralizableIntegrate knowledge of atmo-
-spheric eects on signal propa-
-gation into deep learning for sig-
-nal classication/discrimination
-!greater accuracyConsider symmetries in rein-
-forcement learning approach for
-air trac collision avoidance !
-faster and more ecient learning
-Cybersecurity Communications Engineering
-Consider symmetries in cyber-
-network-based neural network
-topologies to maintian connec-
-tivity and immunity to vulner-
-abilities!more ecient learn-
-ing, more veriable modelsIntegrate communication net-
-work access rules and limits into
-a deep learning based secure
-access and routing scheme !
-correctness-by-constructionConstrain autonomous control
-and planning algorithms with
-necessary rules of engagement !
-improved accuracy and validity
-of recommendations
-Technology Space Systems Surveillance
-Use expert-specied examples
-and physical constraints to dis-
-cover and recommend better
-experiment congurations !
-greater likelihood of valid recom-
-mendationsUse orbital mechanics equations
-to constrain optimal satellite
-control learning algorithm !
-greater accuracy and more gen-
-eralizableExploit human implicit and
-explicit semantic knowledge
-(graphs) for reasoning over
-object categories !greater
-accuracy and more generalizable
-19
-Figure 10. Add Knowledge and Domain Expertise as an Important Building Block of AI Technology
-Knowledge/domain expertise should be recognized as important building block of AI technology for
-national security.
-20
-Figure 11. Roadmap to Accelerate Knowledge-Integrated Informed AI Research and Development for National Security
-Here we list several steps that will help accelerate knowledge-integrated informed AI research and development for national
-security that are either data-oriented, knowledge-oriented, or serving to advance the state of the art and its adoption into the
-national security domain. Circled one, two, and three indicate rst, second, and third priority.
-21
-This page intentionally left blank.
-3. WHAT IS KNOWLEDGE-INTEGRATED INFORMED AI?
-We mostly adopted Laura von Rueden et. al.'s denition of \informed machine learning"
-into our denition of \knowledge-integrated informed AI," which we presented earlier in Section 1
-and repeat here. Note that we more exclusively focus on the integration of knowledge into more
-\modern" AI techniques, i.e., deep learning and reinforcement learning.
-Laura von Rueden et. al.'s dene \informed machine learning" in their 2021 survey paper [1]
-as the following: Techniques that learn from a hybrid information source which consists of both data
-and prior knowledge . In this denition,
-knowledge is \true" or \justied belief," validated either via science, empirical studies, or ex-
-perts, where the more formally knowledge is represented, the more easily it can be integrated.
-the source of knowledge can be from the natural sciences, social sciences, expert knowledge,
-or world knowledge.
-prior knowledge is explicit, pre-existent, separate from the data, and integrated into the
-machine learning pipeline.
-informed deep learning and reinforcement learning are encompassed, and other classes of AI
-are not excluded (for example they include probabilistic graphical model based methods, like
-Bayesian networks).
-Our adapted denition of knowledge-integrated informed AI is the following:
-Knowledge-Integrated Informed AI : AI techniques in which explicit, principled and/or prac-
-tical knowledge, that is scientic, domain-specic, or data-centric, is integrated (not necessarily in
-a separable way) into a model's development pipeline. In these techniques:
-Knowledge from scientic or domain expertise is integrated to provide partial explanations or
-constraints for the unknown relationship that the model is built to learn,
-Or
-Understanding of properties of training data are exploited to provide more ecient/eective
-mechanisms for learning.
-3.1 ARCHITECTURES FOR INTEGRATING KNOWLEDGE
-Before necking down into knowledge-informed AI pipelines, we should discuss some dier-
-ent architectures for knowledge integration. The integration of explicit knowledge into otherwise
-\uninformed" AI pipelines can be anywhere from loosely coupled to tightly integrated. Figure 12
-illustrates the various system architecture we've encountered. For this study, we focused largely
-on tightly integrated architectures of informed deep learning and reinforcement learning|covered
-in Sections 3.3 and 3.4 with illustrating examples in Section 4 We also looked into embedded and
-jointly trained neural networks, which we cover in Section 4.5.
-23
-While also a worthwhile direction, since such approaches are more common and straightfor-
-ward, we did not deeply investigate loosely coupled architectures. These consist of serial approaches
-where (1) a knowledge-based model could narrow the search space for a neural network, or (2) where
-a knowledge-based model renes or facilitates the predictions that come out of a neural network;
-and \complementary" congurations where there can be adaptive selection between knowledge-
-based or neural network models. In other words, we did not deeply explore neuro-symbolic AI that
-has been dened as \modular systems that seek to have the property of compositionality" [32].
-Figure 12. Loosely Coupled to Tightly Integrated Informed Deep Learning Architectures
-Loosely coupled: Serial hybrid or complimentary hybrid congurations. Tightly integrated: addi-
-tional knowledge-containing dataset (a.k.a., informed via training data), knowledge-based architec-
-ture and/or weights (a.k.a., informed hypothesis set), informed learning algorithm, learned-model
-consistency check (a.k.a., informed nal hypothesis).
-3.2 KNOWLEDGE REPRESENTATIONS
-Illustrated in Figure 13, Laura von Rueden et. al. enumerate eight forms of knowledge
-representation [1] that can be integrated into informed AI pipelines. We mostly adopt their list
-making only one minor modication: renaming to \dierential equations" to \dynamical system."
-Also, we indicate on their list which of the knowledge forms can have symbolic representations.
-3.3 KNOWLEDGE-INTEGRATED DEEP LEARNING PIPELINE
-In general, deep learning models are developed to learn unknown input/output relationships
-of a given problem. With features inand predictions out, the model is trained to t the provided
-24
-Figure 13. Forms of Knowledge Representation from Laura von Rueden et. al. [1]
-This is an excellent and comprehensive list of knowledge representations. *We modied this list
-slightly, renaming \dierential equations" to \dynamical systems" so to also include discrete-time
-models|ex., Markov decision processes, state machines, etc. 25
-data. Laura von Rueden et. al. dene a generic \informed machine learning" pipeline illustrated
-in Figure 14. This pipeline works for the new and emerging paradigm of knowledge-integrated
-informed AI that is based on deep learning techniques, however not perfectly, and we indicate why
-below.
-Figure 14. Laura von Rueden et. al. Informed Machine Learning Pipeline [1]
-As drawn, the pipeline in Figure 14 does not clearly highlight what's dierent about this
-AI paradigm from standard approaches. Namely, this pipeline can be used also for approaches
-where knowledge is used to only implicitly inform or inuence learning. For example, considering
-prior knowledge in the data pre-processing step is common practice that many refer to as feature
-engineering. However, implicit informing and standard feature engineering don't t the textual def-
-inition (not ours nor Laura von Rueden's). Instead, new ways of explicitly integrating knowledge do
-t|for example, leveraging additional knowledge-based datasets (though not the most promising
-knowledge integration path, more on this in Section 4).
-In Section 4, we discuss the four established integration paths (training data, hypothesis set,
-learning algorithm, and nal hypothesis) in more detail, along with examples that we found to be
-illuminating. We also share our overarching observations based on reported performance gains and
-the apparent state of the art.
-As we discuss illuminating examples of knowledge-integrated informed AI variants, we pop-
-ulate a table of reported performance gains that is structured around the taxonomy of knowledge
-forms and integration paths. This table, presented in Section 5, allows us to extend the discussion
-from promising performance gains to which variants may be more suitable for dierent problems.
-3.4 KNOWLEDGE-INTEGRATED REINFORCEMENT LEARNING PIPELINE
-The generic machine learning pipeline described in the previous section is broadly relevant,
-beyond just deep learning, and even applies to reinforcement learning. However, while the forms
-26
-of knowledge representations can largely remain the same, informed reinforcement learning has its
-own framework with unique integration paths.
-Generally, reinforcement learning (RL) is a sub-eld of machine learning where the goal is to
-train an agent to make optimal choices in a sequential decision making process. In other words, at
-any given moment, the agent should select the best action, taking into account the future eects of
-its decision. The action can come from a policy, which maps a state to an action; a value function,
-which maps a state to the expected future performance from that state; or a q-table, which maps
-a state-action pair to the expected future performance.
-In standard (i.e., non-deep) RL, policies, value functions, and Q-tables are typically repre-
-sented as lookup tables. These tables need an entry for every state or state-action pair. For many
-real-world systems, the size of these tables renders the learning process eectively intractable. Fur-
-thermore, all states (or state-action pairs) need to be explored in order for the agent to have a good
-idea of what the performance will be in those states. Entries in the policy, value table, or q-table
-do not generalize to other unvisited states.
-Figure 15. Components of Non-deep RL
-Components that are learned in non-deep RL setting include policy functions, value functions,
-and/or Q-tables. These functions are trained to return the best action from a given state, or the
-value of an action from a given state. These methods have issues of scalability and generalizability
-to states that were not seen during training.
-Because of these issues of intractability and generalizability, there is interest in deep RL where
-the policy, value table, or q-table is replaced with a neural network approximator. Now, instead
-of large tables, the learned function is a relatively small network. For example, in the case of a
-three-dimensional state space, with ve possible values per state and ve actions, the Q-table needs
-625 entries. The corresponding neural network needs three input nodes (one per dimension) and
-ve output nodes (one per action), and a small number of hidden layers. In concrete terms, this
-can lead to a signicant reduction in the storage size of the policy. For example, in ACAS-X, the
-policy table is 1.22 GB, but a neural network approximation is 104 KB (Figure 17) [33].
-27
-Figure 16. Components of Deep RL
-Components that are learned in deep RL setting policy networks, value networks and/or Q networks.
-These networks approximate the tables and functions in Figure 15. They do not suer from the
-same issues of scalability and generalizability encountered in non-deep RL.
-Figure 17. Q-Table vs. Neural Network
-ACAS-X collision avoidance policy as a Q-Table (left) and a neural network (right). The neural
-network requires much less storage, but it may dier from the original policy. Images from [33]
-28
-A neural network representation can also generalize, assuming similar inputs should lead to
-similar outputs. Eectively, unvisited states get evaluated according to the \closest" state that has
-been visited. On the other hand, this generalization makes verication and other analysis harder
-for a neural network than a table.
-The deep RL pipeline has essentially four main steps (Figure 18). First, the agent takes action
-according to its policy and observes the results transition, observations, and rewards. Second, the
-history is saved. The process of saving the history varies according to dierent algorithms (out of
-scope for this report). Third, a loss function is computed. Again, this process varies according to
-the specic algorithm under consideration, but the loss is often a property of the value network or
-Q-network (such as self-consistency according to the Bellman equation) or the dierence between
-observed and expected performance. The loss is weighted by the accumulated reward. Fourth,
-the loss is backpropagated across the neural network that represents the policy, value network, or
-Q-network. These steps repeat until performance stabilizes, or some other termination criteria are
-reached.
-Figure 18. Deep RL Pipeline
-The typical deep RL pipeline includes fours steps: 1) Executing a policy and observing the results,
-including transitions and rewards; 2) saving the results; 3) computing a loss function on the results,
-weighted according to the received reward; and 4) updating the policy via backpropagation. This
-process repeats until a termination condition is met. Dierent pathways for informing the RL
-pipeline are highlighted for each of the four steps in the pipeline. Blue text indicates pathways for
-informing the pipeline. The dashed box applies to model-based RL.
-During the literature review performed for this report, we came across several main pathways
-for informing deep RL. These pathways are indicated in green in Figure 18. For step 1, reward
-shaping or modifying the loss function are common pathways for informed deep RL. Additionally,
-step 1 can also accommodate rules, strategies, and models that can be used by a planner to
-29
-select actions based on a policy or value network. For step 2, external data, such as human
-gameplay or other demonstrations, can be added to the set of saved experience. In step 3, human
-feedback or importance sampling can determine what data is used, or how it is weighted, in the
-loss function. For example, human demonstrations could be sampled more frequently to force the
-RL process to mimic the human examples. In step 4, dierentiable models can be used as part
-of the backpropagation process, sometimes termed \backpropagation through time." This type of
-backpropagation is sometimes accomplished using an LSTM. In subsequent sections of this report,
-we highlight examples of some of these pathways for informing deep RL.
-We note that the pipeline we describe here, displayed in Figure 18, is geared specically
-toward deep RL. However, as the reader might infer from Figures 15 & 16, the main dierences
-between RL and deep RL lie mainly with how policies are stored and updated. Many of the other
-components in the learning pipeline are the same. Therefore, many of the pathways for informing
-the deep RL pipeline apply equally well to RL in the absence of deep learning.
-30
-4. ILLUMINATING EXAMPLES
-4.1 KNOWLEDGE-INTEGRATED VIA ADDITIONAL KNOWLEDGE-CONTAINING
-DATASET(S)
-Explicitly integrating knowledge into training data comes down to augmenting an original data
-set with an additional, (separate) dataset that captures important patterns with some certainty .
-Figure 19 aptly captures this concept.
-Figure 19. Architecture with Additional Training Data from [2] (Aug 2018)
-This broadly applicable approach of leveraging prior knowledge through synthetic data generation is
-described nicely in \Learning from the experts: From expert systems to machine-learned diagnosis
-models" [2] (Aug 2018).
-The additional dataset(s) often, but not necessarily, come from simulations (that can leverage
-understanding of the domain in the form of algebraic equations, knowledge graphs, or invariances),
-or via expert demonstration of the task at hand (Figure 20). For example:
-When knowledge is represented in the form of algebraic equations or knowledge graphs, it
-can be leveraged to train data generators [34] such that the generated data is then used to
-supply samples into a widened neural network input layer.
-Additional data may also come from having access to additional information, such as access
-to a simulation's background processes [35]. These kinds of data augmentation have been
-shown to improve accuracy and generalizability.
-31
-Likewise, supplementing with data generated by human demonstrations of performing the
-task at hand (that the neural network is being trained to perform) also has been shown to
-result in improved accuracy [36].
-Claims of greater accuracy and generalizability along with data and computational eciencies
-come from integrating knowledge of invariances (i.e., symmetries across mathematical oper-
-ations, such as translation, reection, rotation, and scaling of an image [37], which may be
-used to create and use new, virtual examples that are transformations of samples in original
-datasets [37] [38].
-Many of the examples listed above may blur as, simply, \feature engineering," but the
-knowledge-based data source(s) being explicit or separate from other data is a distinguishing fac-
-tor. Nonetheless, the performance gains reported from integrating knowledge into deep learning
-pipelines via additional training data touch several important metrics: accuracy, generalizability,
-data, and computational eciencies. Performance in terms of accuracy is sometimes claimed only
-qualitatively, but when quantied we saw gains from 1-7%, 0.6-1.7%, and 2.4%, for example. These
-gains, when compared to other knowledge integration paths, may be considered marginal to mod-
-erate, however may be be sucient for certain applications. Improvements in generalizability and
-data or computational eciencies may also be worthwhile gains that make all the dierence.
-Figure 20. Forms of Knowledge Shown to Integrate via Training Data [1]
-32
-Figure 21. Examples from Literature that Illustrate Knowledge Integration via Training Data
-PANEL A, from [34], illustrates data augmentation from both explicitly and implicitly dened
-knowledge graphs. PANEL B, from [35], shows four networks (G-generator, D-discriminator, T-
-perception task, and P-prediction of simulator's privileged information) that are trained jointly to
-improve the perception task's performance. PANEL C, from [36], illustrates the active learning
-approach where a human analyzes model results in order to suggest new instances for data labeling.
-33
-4.1.1 Integrating Knowledge via Training Data for Informed Reinforcement Learn-
-ing
-For reinforcement learning, it has been shown that simulation results can be leveraged to augment
-the main learning loop. Inherently, reinforcement learning involves executing actions in the real
-world or in simulation. However, additional information can be provided via simulation for use
-during online adaptation. For example, in \Robots that can adapt like animals" [39], the authors
-build a low-dimensional behavioral map of robot performance in simulation during the initial train-
-ing phase (Figure 22, top row). The low-dimensional map reduces the high-dimensional state space
-of the robot to a behavioral map that measures expected performance along dierent behavioral
-axes (e.g., speed, heading, etc.). At run time, the robot can compare its actual performance to
-its expected performance via the behavioral map (Figure 22, bottom row). If the performance
-degrades when the robot is deployed, due to damage or other issues, the robot will identify the
-discrepancy between its expected performance and the behavioral map. It will then update the
-map and attempt a new strategy from the updated map.
-Figure 22. RL Example Informed via Additional Simulated Data
-(LEFT) The two steps in using a performance map to improve online learning to recover from
-damage. Top row: creating an initial low-dimensional performance map from simulation data.
-Bottom row: updating the map online and using it to sample new behaviors. (RIGHT) Comparison
-of algorithm performance on a damaged hexapod. Bottom blue and orange curves represent unin-
-formed RL approaches. The top set of curves represent variants of the algorithm presented in the
-paper. [39]
-This ecient sampling and updating of simulated data with real-world experience can lead
-to signicant performance improvement in reinforcement learning applications. The results of this
-process for a hexapod robot led to approximately 3-5x performance improvement over uninformed
-RL as measured by the walking speed of the robot after sustaining damage (Figure 8). RL is in gen-
-eral a resource intensive process, requiring signicant training experience to get good performance,
-34
-and it can struggle to scale with high-dimensional spaces. Informing RL with this type of simula-
-tion data aids the process by providing an expectation of performance a priori (thereby reducing
-the amount of experience that needs to be generated online), and reducing the dimensionality of
-the search space (thereby reducing the diculty of eciently sampling the search space).
-4.2 KNOWLEDGE-BASED ARCHITECTURE OR WEIGHTS (A.K.A., HYPOTH-
-ESIS SET)
-Our literature review included many creative examples of integrating knowledge into the
-hypothesis set, i.e., the initial architecture and/or weights of a neural network. Collectively, the
-examples we reviewed indicate that this integration path can often deliver signicant improvements
-in performance. We found that the degree of knowledge integration into neural network architec-
-tures can range from modifying the input layer (via invariances, knowledge graphs), to constraining
-intermediate layers (via algebraic equations, logic rules), to inuencing the overall framework (using
-simulation results, probabilistic relations, or dynamical system constructs). Human feedback by
-model steering (via weight sliders, choice of model, etc.) is also considered a means of integrating
-knowledge into the neural network hypothesis which can be useful in applications where valuable
-knowledge may not be as readily and formally represented. For example:
-Figure 23. Forms of Knowledge Shown to Integrate via Architecture and/or Weights [1]
-To account for known invariances, additional input layers can be embedded into an architec-
-ture [40] [41] (panels A and E in Figure 24). Note that embedding invariances into a neural
-network architecture has been reported to yield both a larger network (1.5x [42]) as well as a
-smaller network (1/3x [41]).
-35
-Alternatively, a neural network can be architected to allow \dynamic" input vectors with zero
-padding that is based on importance and determined, for example, via reasoning through a
-knowledge graph [43] (panel B in Figure 24).
-Moving beyond the input layer, physics-based constraints can be enforced by mathematically
-derived (via algebraic equation) intermediate variables in a neural network [44] (panel C in
-Figure 24).
-Graph neural networks (GNNs) have a unique architecture that allows them to directly process
-graphical data (including probabilistic graphs) where knowledge may be present in the graph
-structure and/or priors. GNNs have been shown to oer greater ecacy in handling loopy
-graphs. They also deliver greater accuracies, and generalizability (than graphs that are larger
-or with less "informed" structure) [45] [46] (panel F in Figure 24).
-More holistically, a neural network can be architected to learn unknown parameters in dier-
-ential equations, or other mathematical frameworks, such that the architecture is determined
-by the necessary mathematical constructs [47] (panel D in Figure 24).
-Deep Lagrangian Networks (DeLaN from [47]) is a particularly elegant example where prin-
-cipled knowledge was infused into the deep learning system. Both the model's architecture and the
-gradients used to train it are derived from a rich understanding of mechanics (Euler-Lagrange equa-
-tions of motion for mechanical systems). In this example, the aim is to solve a second order ordinary
-dierential equation (ODE) by being trained to infer, from generalized positions, velocities, and ac-
-celerations of a mechanical system's components. The DeLaN architecture explicitly incorporates
-the structure of the Euler-Lagrange equation and is designed specically to relate a mechanical
-system's state with a control input (e.g., motor torques) to predict the system's evolution{outputs
-of the feed-forward neural network. The rest of the architecture incorporates these quantities with
-the observed system state to produce the generalized forces, via exact Euler-Lagrange calculations.
-The full architecture is trained in a traditional way, where the loss function eectively optimizes
-the DeLan's parameters to minimize the violation of Lagrangian mechanics.
-In terms of eectiveness, the DeLan model eectively learns to relate system dynamics to
-produce joint torques for desired motion trajectories|directly attributable to the physics-informed
-design of its architecture. In terms of performance, not only does the learned model come with a
-high degree of interpretability and ability to handle arbitrary velocities and accelerations that fall
-outside of the training data, it reached this state using less data. These gains in performance are
-not quantied, but are nonetheless signicant.
-Generally, integrating knowledge via the hypothesis set into deep learning pipelines has been
-shown to deliver signicant performance gains in terms of accuracy, generalizability, eciencies
-in data, compute, and model size, and interpretability. Most of these improvements are reported
-qualitatively, but we found improvements in accuracy ranging from from 0.6-16%, reductions in
-test error on the order of -6 to -70%, requiring 40-57% less data, providing similar performance
-with a fraction (1/3rd) of network parameters, and 440x speedup in training time.
-36
-Figure 24. Examples from Literature that Illustrate Knowledge Integration via Hypothesis Set
-PANEL A, from [40], shows how invariances deduced from Reynolds Navier-Stokes equations can
-be embedded into a neural network architecture. PANEL B, from [43], illustrates how weights/zero-
-padding in a network can be determined from propagation through a knowledge graph. PANEL
-C, from [44], illustrates physics-constrained intermediate variables. PANEL D, from [47], shows
-how physics-based, dierentiable transformations can be built into a neural network. PANEL E,
-from [41] demonstrates how simple cyclic rotations are exploited in convolutional neural networks.
-PANEL F, from [46], illustrates a probabilistic graphical model is translated so that it can be pro-
-cessed by a graph neural network.37
-4.2.1 Integrating Knowledge via Hypothesis Set for Informed Reinforcement
-Learning
-The reward function is a critical architectural element that directly eects the performance of
-reinforcement learning algorithms. It is the primary mechanisms for conveying the quality of an
-action or policy to the learning algorithm. For many tasks, designing a good reward function
-is hard, especially for tasks that are complex, have many steps, or have delayed rewards. With
-typical, Markovian, state-dependent rewards, accomplishing these types of tasks can require very
-long training time. Using logical rules and automata that encode knowledge about the structure
-of the task to inform the reward function has strong potential to address these diculties.
-The authors of the paper DeepSynth [48] present a method for informing the reward function
-using logical rules based on simulation results. At run time, a semantic segmentation module
-observes the scene and the reward (Figure 25, left). By identifying the semantic data corresponding
-to the reward, the algorithm can build an automaton capturing the reward (Figure 25, right). The
-only rewards specied by a human are very sparse|a reward of 100 for nding a key, and a reward
-of 300 for opening the door. This sequential task with sparse rewards is very dicult for most RL
-algorithms, but providing a reward automaton to the algorithm allows the agent to reason about
-the tasks that will lead to higher rewards in the future, resulting in convergence two orders of
-magnitude faster than the next best algorithm (Figure 26).
-Figure 25. RL Example Informed via Architectural Elements
-Left: A semantic segmentation module captures information about the task during training and
-converts it to a reward automaton. Right: The reward automaton synthesized from Montezumas
-Revenge captures the high-level steps involved in playing the game. [48]
-This logical pathway for informing the reward has several other benets. First, in addition
-to an automaton that is automatically constructed, it can also accept an automaton or partial
-automaton provided by the user. Rather than, or in addition to, specifying a sparse reward, a
-user can provide high-level tasking as an automaton. This automaton allows the agent to better
-understand the operator's goals. Further, the policy representation conforms to the automaton.
-Therefore, the operator gets the added benet of interpretable policies. Thus, informed rewards
-38
-Figure 26. Knowledge-Integrated RL via Architectural Elements - Performance
-The methodology proposed in DeepSynth suggests that reward automatons that capture high-level
-aspects of the task outperform other RL methods and converge two orders of magnitude faster. [48]
-oer benets to the algorithm and to the user. A user can specify non-trivial tasks that are
-dicult to express, resulting in much faster convergence, and the algorithm provides output that
-also informs the user about its goals and its policy.
-4.3 KNOWLEDGE-INTEGRATED LEARNING ALGORITHM
-A typical neural network supervised learning approach involves a loss function that aims
-to minimize the prediction error produced by the function f(x) by nding optimal weights, ,
-for each sample, x1:::xN, using real labels, y, as in Equation 1, where Rmay be any standard
-regularizing term. So, integrating knowledge into the learning algorithm generally amounts to
-adding an additional term, or terms, to this loss function as in Equation 2. Note that additional
-parameters, as in Equation 3, may be included to control how steep the penalty should be for
-violating any of the terms in the loss function.
-arg min
-f NX
-i=1L(f(xi);yi) +R(f)!
-(1)
-arg min
-f NX
-i=1L(f(xi);yi) +R(f) +Lk(f(xi);yi)!
-(2)
-arg min
-f NX
-i=1lL(f(xi);yi) +rR(f) +kLk(f(xi);yi)!
-(3)
-39
-According to the survey paper and our own literature review, it has been shown that several of
-the forms of knowledge representation can be integrated into the learning algorithm, or conversely,
-that the learning algorithm can be used to engage human expertise. For example:
-We found that additional knowledge-based loss terms, dened by algebraic or dierential
-equations, have a straightforward path into the learning function and oer signicant improve-
-ments to performance via improved accuracy or reduced test error, computational speedup
-and data eciency [49] [50] [51] (examples B, C, and D in Figure 28). Note that if knowledge
-is represented as logic rules, appropriate continuous and dierentiable constraints need to be
-selected for the additional loss term(s) [52].
-If knowledge is represented with a knowledge graph, the additional terms can eectively
-enforce strongly connected variables to behave similarly in a model [53]. Example A in
-Figure 28 claimed greater interpretability with their approach which led to the discovery of
-new clinically-relevant patterns.
-If knowledge is captured in a simulation or in auxiliary models, the learning algorithm can
-be modied to ensure that only predictions that obey constraints that are implied or em-
-bedded in those models eect the neural network learning. [54] illustrated in Figure 29 is an
-example that suggests that using semantic knowledge through regularized objectives can lead
-to slightly greater improvement in performance (overall accuracy and better generalizability)
-than additional inputs. We did not come across any reporting of the eect of integrating aux-
-iliary tasks on compute time. Another example, [55], employed a similar approach by jointly
-running a physics-based simulation during training. This example claimed a reduction in the
-amount of data required for training along with improvement in accuracy and generalizability
-(but led to signicantly more expensive compute time in simulation).
-Alternatively, a human can exploit the loss function using visual interactive analysis tech-
-niques. One approach is described in [36], where the training process using the standard
-loss function supplies samples on which the model performs poorly, and similar data samples
-are gathered and labeled for additional training{eectively focusing the model to train on its
-weaknesses. Another approach is described in [56] where a penalty is imposed when sam-
-ples are classied correctly but for wrong reasons{thereby encouraging the model to focus on
-relevant features.
-Overall, integrating knowledge into deep learning via the learning algorithm has been demon-
-strated to provide signicant improvements across several important performance metrics: greater
-accuracies (+1.5 to +20%, or -4 to -43% test error), better interpretability and generalizability,
-data eciency from requiring less data (as little as 4%) or less labeled data (1% to no labels at
-all), and computational speedups (4x).
-4.3.1 Integrating Knowledge via Reinforcement Learning Algorithm
-In some problems that are dicult for machine learning, humans are able to make decisions
-that are \good enough," without much diculty. Often, this is because humans understand the
-40
-Figure 27. Forms of Knowledge Shown to Integrate via Learning Algorithm [1]
-rules of the game they are playing, or the way that other players will react to them. Imbuing an RL
-agent with this same understanding can signicantly improve the performance of the RL algorithm.
-When actual human experience is included, the system has the potential to quickly match or even
-exceed human performance.
-One example of integrating knowledge into the RL algorithm in this way is Alpha Go [4].
-This approach includes models of the evolution of the game in the RL algorithm, along with
-human gameplay data, to develop a superhuman player for the game of Go. First, human expert
-data is used to initialize a policy network, which can then be used as the initial policy network
-by the RL agent (Figure 30). This network is then rened through self-play to improve over the
-human baseline. A value network is trained by comparing expected performance against actual
-performance using Monte Carlo tree search (Figure 31). This comparison is enabled by both a
-dynamical system representation of the game's dynamics (for determining the possible evolutions
-of the game), as well as the human data (for initializing the probability of moves by the other
-player). As a result, the Alpha Go algorithm was the rst AI system to beat a professional-level
-human player in Go, and ranked 1.6 times higher by ELO (a common ranking system for comparing
-two players in zero-sum games) than the next best AI for Go.
-This example demonstrates the value of incorporating knowledge into the algorithm, as well
-as human expertise directly in the training data. The state space of Go is extremely large, so a
-complete enumeration of the state space is intractable. By leveraging the models of the evolution
-of the game, and using probabilities from human gameplay and self-play, the system can develop
-useful internal models of how the system will evolve. It can measure the dierence between the
-expectations output by its models and how the game unfolds to improve performance. Likewise, by
-41
-Figure 28. Examples from Literature that Illustrate Knowledge Integration via Learning Algorithm
-Excerpts from several papers illustrate dierent modications of the neural network loss function.
-In PANEL A, from [53], the learning algorithm encourages neural network predictions to be similar
-to the matrix representation of the probabilistic/knowledge graph. In PANEL B, from [49], an
-additional loss term forces monotonicity among specic input features. In PANEL C, from [50],
-the prediction loss is minimized while considering additional physics-based terms. In PANEL D,
-from [51], not satisfying a partial dierential equation (PDE) encourages a generator (G) to produce
-samples that satisfy the PDE.
-42
-Figure 29. An Example from Literature that Illustrate Integration of Auxiliary Tasks via Learning Algorithm
-The main objective LMin this example from [54] is to predict the center word given surrounding
-context. Additional loss terms, LEandLR, incorporate semantic and syntactic knowledge via
-auxiliary tasks that leverage an entity vector and a relation matrix.
-Figure 30. RL Example with Knowledge Integrated via Learning Process
-LEFT: Human expert data is used to train a network to sample actions (rollout policy) and a
-network to play the game (SL policy network). RIGHT: The network trained on human gameplay
-is used to initialize an RL policy network that also learns a value network for the game via self-
-play. [4]
-43
-Figure 31. RL Example with Knowledge Integrated via Learning Process - Monte Carlo Tree Search
-Monte Carlo tree search is used to evaluate moves based on game play. First, an action is selected
-with the maximum Q value (a). Then actions are sampled according to the policy network (b).
-The learned value network and rollout policy network (trained on human gameplay) estimate the
-outcomes of the game (c). Finally, Q values are updated along the tree. [4]
-Figure 32. RL Example with Knowledge Integrated via Learning Process
-Alpha Go (blue) was compared against several other Go programs (red) and a human expert (green).
-Distributed Alpha Go outperformed the human player, and both Alpha Go variants signicantly
-outperformed the other Go programs, even with handicaps (pale red bars). [4]
-44
-including human expert data, the search space is further limited, and a more intelligent valuation
-of moves is possible. It also provides a warm start to the learning process. Instead of learning
-from scratch, the algorithm can learn from a good policy based on what expert humans perform.
-Informing an algorithm in this manner should lead to a signicant reduction in training time.
-Without this information, the system would have to essentially luck into winning positions, and then
-reinforce those strategies. It should be noted that recent research has focused on achieving similar
-or better results without using problem-specic algorithms or human data. For more information
-on those research directions, see Sec. 1.2.2.
-4.4 LEARNED-MODEL CONSISTENCY CHECK (A.K.A., FINAL HYPOTHESIS)
-Generally, the aim of training a deep learning model is to arrive at a nal hypothesis, after
-pursuing intermediate hypotheses, for the model and its weights. As such, there is opportunity to
-integrated knowledge into the learning pipeline during training. Knowledge is often leveraged as
-standard practice-when the performance of deep learning models is compared to selected baselines
-which are knowledge-based models (such as algebraic equations or simulation results). Here we
-shed light on a how knowledge may be leveraged by rening a model, as a nal step or an inte-
-grated intermediate step in the learning process. As knowledge-integrated deep learning gains in
-popularity, we expect approaches that integrate knowledge at the nal stages will too as they have
-been shown to yield greater accuracy, generalizability, and computational eciency.
-The following few examples suggest how knowledge may be integrated as an intermediate step
-to rene the learned model just before or while arriving at a nal model:
-In [57], a neural network is fed sequences with temporal order to iteratively correct the learned
-model. The approach is claimed to more accurately reproduce small-scale temporal eects.
-In [58], knowledge is integrated through a semantic consistency modier that improves object
-detection through a re-optimization step.
-Similarly in [59], a surrogate model is iteratively improved with new observations. This
-approach is illustrated in Figure 34 and claimed improvements in accuracy, as well as a
-computational speedup.
-Another way of leveraging knowledge in the nal hypothesis is by passing the NN predicted
-outputs into an embedded knowledge-based model, that can provide a more informed loss as
-the model trains. This sub-class of techniques is covered in greater depth as an embedded
-and jointly trained approach in Section 4.5.3.
-4.4.1 Knowledge Integrated into Final Hypothesis for Reinforcement Learning
-In reinforcement learning, the reward function is used to weight actions and trajectories that
-meet some criteria of \goodness" better than other actions and trajectories. In this sense, the
-reward can be viewed as both the initial hypothesis or the nal hypothesis. Nevertheless, the
-45
-Figure 33. Forms of Knowledge Shown to Integrate via Final Hypothesis [1]
-Figure 34. Example from Literature that Illustrate Knowledge Integration via Final Hypothesis
-This diagram illustrates a training approach from [59] that iteratively improves a surrogate model
-with new observations.
-46
-typical use of the reward function is to reward (or penalize) outcomes based on a designer's initial
-notion of good behavior of the reinforcement learning system.
-In some cases, the reward can be used to explicitly inform the reinforcement learning process
-as a nal hypothesis, operating as a consistency check on the results of the learning process. For
-example, in [60], the authors study branes from string theory. In particular, they wish to nd
-vacuua , stable states that can be used for making predictions in physics. The space of plausible
-vacuua is at least 10500, and therefore they use a deep RL agent to explore this large space. Not
-all vacuua are consistent with known physics. The authors use the consistency of each vacuua
-the system discovers to inform the reinforcement learning process via the reward function. Thus,
-vacuua that are consistent with known and accepted conditions in physics receive higher reward
-than those that are inconsistent.
-Some selected results from [60] are presented in Fig. 35. First, the authors observed a O(200)
-increase in the number of feasible solutions discovered relative to an uninformed method. An
-additional, qualitative result, is that the consistency checks used in the reward function resulted
-in a strategy that is similar to how humans think about branes and vacuua. They use so-called
-\ller" branes to ensure some degree of consistency with known physics, and then test the results of
-adding other branes. The right-hand side of Fig. 35 displays the results of the RL system learning
-to use ller branes. These results show that integrating knowledge into the nal hypothesis via the
-reward function is a promising and viable path for RL applications.
-Figure 35. RL Example with Knowledge Integrated via Final Hypothesis
-LEFT: The knowledge-integrated RL approach (orange and blue markers) outperforms naive ap-
-proaches (green, red, and purple markers) by nding O(200) more solutions. RIGHT: The
-knowledge-integrated RL approach learns to use \ller" branes to nd a larger set of feasible solu-
-tions. [60]
-4.5 EMBEDDED AND JOINTLY TRAINED NEURAL NETWORKS
-A special variant considered in scope for this study, even though the knowledge is not explicitly
-and tightly integrated, is neural networks (NN) that are embedded and jointly trained. This variant
-47
-is not explicitly constrained or informed by architecture or topology, rather the NNs are informed
-by their surrounding context. We found three major categories of embedded and jointly trained
-neural networks that are described in this section.
-4.5.1 Neural Network Surrogates
-A neural network surrogate is an embedded and jointly trained NN that can take the place of
-a computationally expensive knowledge-based model, or that can serve to supplement a knowledge-
-based model in order to represent known, but un-characterized phenomena in the system being
-described. This strategy exploits the fundamental notion that an NN eectively serves as a universal
-function approximator, as well as the fact that modern NN architectures are designed in terms of
-highly ecient, parallelizable array operations. In this way, an NN surrogate can be expected to be
-both suciently expressive as to encapsulate complex and realistic processes in the modeled system,
-and to be ecient so as to eliminate signicant computational bottlenecks from the system.
-4.5.2 Neural Networks with Surrounding Mathematical Structure
-Another avor of embedded and jointly trained NNs is where the NN is architected to learn
-unknown terms in an otherwise known mathematical structure, such as a dierential equation.
-In the latter context, the NN can learn to embody specic, unknown mechanisms in a system
-that is otherwise well characterized by the surrounding informed structure. There can be many
-benets to embedding an NN in this way. Generally, provable properties about the encompassing
-mathematical structure can provide valuable insights into{and even bounds on{the behavior of
-the NN. Additionally, tools of analysis and methods for working in this context (e.g., numerical
-methods for solving dierential equations) can lead to specialized and principled approaches for
-training the NN.
-\Universal dierential equations" (UDEs) is a methodology for incorporating neural networks
-(or other machine-learnable models) into a dierential equation, so that prior structural (e.g.,
-scientic) knowledge can be combined with exible, data-driven approaches for modeling systems
-[61]. In a UDE, the neural network is embedded in a dierential equation (or a system of equations)
-alongside known, analytical terms that describe the system's behaviors or dynamics. Thus, in a
-UDE, the NN is not responsible for learning the governing dynamics of the systems in their entirety,
-rather it is tasked with modeling the dynamics associated with a subset of the mechanisms at play
-in the system. In this way, the governing dynamics of the unknown mechanisms or terms can
-be learned from data, while prior scientic knowledge (e.g., conservation laws, incompressibility
-constraints, transport models) of the system are modeled explicitly. The embedded NN is trained
-by solving the dierential equations and comparing the result to recorded data. Note that the
-adjoint sensitivity method enables backpropagation through standard ODE solvers [62], which can
-be treated as black boxes. Thus the full array of numerical methods for solving dierential equations
-can be leveraged to train the embedded NN.
-For example, the UDE methodology for embedding NNs has been demonstrated to enable
-the recovery of governing equations using less data, to utilize arbitrary conservation laws as prior
-knowledge in a model, to discover and recover the exact mechanisms that govern a realistic biological
-48
-PDE, to enable an adaptive method for solving a 100-dimensional nonlinear PDE, and to automate
-the modeling of a fast and physically-realistic surrogate of a climate simulation [61].
-Figure 36. Applications of Universal Dierential Equations
-LEFT: A Susceptible, Infectious, and Recovered (SIR) model is augmented with neural network
-terms to produce a learned model of the quarantine impact on the spread of Covid-19 [63]. RIGHT:
-A model for battery degradation in electric aircraft combines mechanistic and learned terms to
-describe the system's dynamics [64].
-Although the UDE methodology was only proposed in 2020, it has already made an impact
-on real-world applications. In the eld of infectious disease modeling, a UDE was developed to
-augment a Susceptible, Infectious, and Recovered (SIR) model to create a learned model of the
-impact that quarantine policies have on the spread of Covid-19 [63] (Figure 36). A \universal
-battery degradation model" was used to model the battery performance and degradation for electric
-aircraft [64]. As depicted in Figure 36, an NN is incorporated with an electrochemical cell model,
-and various mechanistic models for battery degradation. This research produced a superior physics-
-informed and data-driven model that better predicts battery degradation and performance than
-the purely mechanistic battery models.
-UDEs can also enable researchers to discover exact analytical forms of dynamical mechanisms
-in their systems. To demonstrate this, the famed Lotka-Volterra predator-prey model was used to
-generate noisy population data, and a UDE was formed to explicitly include the prior knowledge
-of exponential growth (decay) in the prey (predator) while using an NN to represent the unknown
-population-interaction mechanisms [61].
-As shown in Figure 37, the UDE-embedded NN was trained over a narrow domain of training
-data, which did not encompass a full period of the cyclic solution. The resulting learned predator-
-prey interaction model proved capable of yielding high-quality extrapolation of the populations
-far beyond the regime covered by the training data. Furthermore, the authors were able to use
-49
-Figure 37. Learning Predator-Prey Dynamics with a Universal Dierential Equation
-A universal dierential equation with learned terms for the predator-prey interactions of a Lotka-
-Volterra system is able to recover, to high delity, the quadratic interaction dynamics from only a
-limited regime of training data.
-50
-the method of sparse identication of nonlinear dynamical systems (SInDy) [65] on the learned
-component of the UDE to recover{on a polynomial bases{the exact quadratic relationship that
-describes the predator-prey interaction dynamics in the Lotka-Volterra system.
-Figure 38. Replacing an Expensive Mechanistic Model with Ecient Surrogate
-A continuous-time echo state network surrogate of an HVAC system reliably and eciently models
-a heating system interacting with ten rooms.
-A learned model embedded in a UDE can also be tailored to the challenging dynamical features
-of its encompassing system, such as the manifestation of processes on highly disparate time-scales,
-which is often referred to as \stiness" in a system. For example, Robertson's chemical reaction
-equation features stiness in the form of a rapidly-transforming transient chemical species amidst a
-slowly-occurring, stable chemical reaction. Models like physics-informed neural networks [66] and
-recurrent neural networks struggle to learn to be reliable surrogates for such sti non-linear systems.
-Thus the embedded model ought to be further informed via its design to try to accommodate these
-sophisticated dynamics. Continuous-time echo state networks (CTESN) [ ?] exemplify such an
-informed design. They prove to be capable of learning highly sti dynamics, and thus can serve
-as fast and reliable surrogates for systems that are typically expensive to simulate. A compelling
-application of a CTESN demonstrated that the learned model was capable of serving as an accurate
-learned surrogate of a heating, ventilation, and air conditioning (HVAC) system (Figure 38). The
-runtime of the surrogate scales linearly with system size, whereas the standard implicit ODE solver
-51
-scales cubically with system size; thus for realistic settings, the learned surrogate accelerates the
-HVAC simulation by nearly 100x.
-4.5.3 Consequence Modeling
-Consequence modeling is a phrase that we have coined to represent a special case where
-knowledge is integrated via the nal hypothesis of the ML system1. Note that this discussion could
-just as well have been covered in Section 4.4. A consequence model maps the NN's output (e.g.,
-the control parameters for aiming a trebuchet) to a meaningful, measurable quantity of interest
-(e.g., where a launched projectile ultimately lands, given that the trebuchet was red using said
-control parameters). The consequence model (e.g., dierential equations describing the kinematics
-of a trebuchet) is assumed to be dierentiable so that its results can be incorporated into the
-objective function that is used to train the NN; thus the training gradients become informed by the
-expert knowledge that is instilled via the consequence model. This is in stark contrast to standard
-approaches to providing feedback to an NN via its nal hypothesis; typically, this entails designing
-a loss function only to have nice mathematical properties for solving a general optimization problem
-(e.g., an L2 loss measuring the discrepancy between the NN's predicted control parameters against
-known control parameters). Consequence modeling instead uses expert knowledge to formulate a
-meaningful and interpretable loss function, whose landscape captures the interplay of quantities of
-interest{including the NN's various outputs{in a principled way.
-Incorporating a dierentiable simulator down-stream of a NN is an elegant and powerful
-way to inform a learned model. Consider, for example, an NN that is responsible for aiming a
-trebuchet: given the target's position and the wind conditions, the NN must learn to deduce the
-control parameters (e.g., the counter weight magnitude and angle of release) that will lead to a
-precise hit. A traditional approach to training a surrogate to this inverse physics problem would
-be to gather or simulate a large collection of data{control parameter, wind, and target tuples{and
-then train the NN in a supervised fashion using this training set.
-By contrast, an informed approach to this problem was demonstrated in [67] wherein the neu-
-ral network was placed upstream a dierentiable physics model of the trebuchet. In this approach,
-which is depicted in Figure 39, the neural network is trained by predicting control parameters,
-which then are used to \re" the trebuchet. The neural network is thus trained not against a
-na ve L2 loss between predicted and desired control parameters, but instead against the measured
-displacement between the desired target and the actual strike point. In this way, the gradients
-that propagate back to the network are informed by the trebuchet model that is used to mea-
-sure the meaningful \consequence" of the NN's prediction. As such, the NN is optimized based
-on the known interplay between disparate quantities (e.g., counter weight and launch angle) that
-are naturally and equitably combined in forming the consequence-based loss. Not only does this
-process quickly train a reliable and lightweight surrogate, but it also provides a clear path forward
-toward improving the system delity: rely on scientic expertise to develop increasingly detailed
-dierentiable simulators.
-1Term aptly coined by Jason Nezvadovitz, MIT Lincoln Laboratory, Group 76
-52
-Figure 39. Training a Model to Aim a Trebuchet Using Consequence Modeling
-A neural network is provided with the wind speed and desired target distance, and is tasked with
-aiming the trebuchet to hit the target. The model's outputs are veried by simulating the resulting
-shot with a dierentiable physics simulation of the trebuchet.
-Aspects of \consequence" modeling have found early success in realistic control problems. In
-these applications the consequence can manifest in diverse ways, such as a measured departure
-from an ideal trajectory [68], or as a violation from a control Hamiltonian [69]. In these cases the
-objective function can be used to encode directly the constraints of the optimal control problem and
-thus provide the learned components of system physics-informed feedback to its evolving policy.
-53
-This page intentionally left blank.
-5. PERFORMANCE GAINS VS. VARIANTS OF KNOWLEDGE
-INFORMED AI
-As previously noted (Section 2), knowledge-integrated informed AI techniques have been
-shown to lead to signicant improvements in performance when measured by a variety of metrics
-that matter for technology problems of national importance (accuracy, enabling new discoveries
-through broadened applicability, improved safety and reliability, ecient use of resources). Looking
-closely at which of the forms of knowledge representation and which integration paths lead to these
-gains in performance suggests that there is a tradespace across informed techniques that should be
-considered in order to develop the best performing approach for any given problem.
-In Table 5, we gather quantied and qualied performance gains reported for each example
-described in the previous section (and more) into one large table divided by integration path
-and form of knowledge representation. Comparing reported performance across the rows and
-columns suggests (1) some gains are achieved regardless of the selected knowledge representation
-and/or integration path (with dierences in magnitude), and (2) some gains are more prevalent for
-particular knowledge representations and/or integration paths. The following are some observations
-drawn from this table:
-All integration paths and knowledge forms have demonstrated accuracy or score improve-
-ment. The magnitude of these gains suggests that stronger improvements are achieved when
-knowledge is integrated via the learning algorithm, then hypothesis set, then training data.
-Reporting of improvements in accuracy sometimes coincides with better generalizability be-
-yond training distribution.
-In terms of resource eciencies:
-{Data eciency is another improvement that is common across integration paths and
-knowledge representations, although not always reported on.
-{Claims of improvements in computational eciency often coincides with data eciency.
-Also note that knowledge integration can instead increase compute requirements. This
-has at least been reported in two cases where knowledge is integrated into the learning
-algorithm [55] [70].
-{Eect on network size (i.e., network simplicity) is not commonly measured. Few reports
-suggest eect on size can be better (fewer parameters, smaller network) or worse (more
-parameters, larger network). Furthermore, we found that this eect is only reported
-when the knowledge form is invariances.
-Claims of interpretability are made mostly when the knowledge representation has some
-symbolic reasoning power. An exception is where the network architecture itself is based on
-knowledge.
-Informed RL examples mostly use symbolic representations of knowledge (logic rules, knowl-
-edge graphs, and human feedback) and often claim improvements in interpretability (espe-
-cially if integration path is via hypothesis set).
-55
-There is relatively less research activity for knowledge integration into training data and
-hypothesis set. This may shift with greater awareness of informed techniques.
-There are several factors to note as we draw conclusions from this table:
-1. Researchers more often report on performance gains, not disadvantages.
-2. Reporting on some metrics is standard (accuracy, score improvements, reductions in test
-error), however reporting on other metrics (generalizability, data eciency) is entirely up to
-the authors.
-3. Several observed reporting inconsistencies:
-Improvements are not always reported using the same metrics|overall accuracy, AU-
-ROC, RMSE, test error, mAP, IoU, etc.
-Certain metrics are rarely or never quantied (generalizability, interpretability, reliabil-
-ity).
-Choice of baseline model is sometimes questionable or missing entirely.
-4. Publications generally document unique solutions for dierent problems. Therefore, while
-comparing performance gains across solutions suggests an interesting tradespace, theoretical
-and empircal analysis across various techniques for select problems, or classes of problems,
-would be more conclusive.
-56
-TABLE 5
-Performance Gains by Knowledge Representation and Integration Path
-1.Accuracy (%a), Test error (%e) / Score (xS)
-2.Generalizable (G) / Interpretable (I)
-3.Resource Eciency (% <D data, % <L labels, xC computational speed-up, fraction N of network size)
-White Box Highlight = RL Examples
-+Only qualied (or quantied with unique metric)
-1st sh = First super-human performance
-Training Data Hypothesis Set Learning Algorithm Final Hypothesis
-1 2 3 1 2 3 1 2 3 1 2 3
-Algebraic
-Equations2-16%a
-30-60%e440xC
-10xC-4-43%e 0%<L %a+
-Logic Rules xS+,
-8xSI+,
-I+, I+57%<D,
-<D+,xC+,
-100xC20%a,
-8xSI+0%L,
-1%L
-Simulation
-Results1-7%a,
-3-5xSG+40%<D,
-100xC%a+,
-%a+G>,
-G+<D+,
->C%a+xC+
-Dynamical
-Systems%a+,
-same,
--99%eG+<D+,
-xC+,
-<D+,
-15kxC,
-2xC-30%e,
-%a+,
-%a+,
-1st sh<D+,
-96%<D,
-4xC
-Knowledge
-Graphs.6-1.7%a,
-2.4%aI+.6-1.7%a,
-2.4%a,
-8xSI+,
-I+Discovery,
-1.5-
-6.5%a,
-8xSI+,
-G+,
-I+%a+,
-%a+G+,
-G+
-Probabilistic
-Relations9-10%a,-
-50%e,
-EcacyG+,
-G+<D<D>
-Invariances %a+G+<D+,
-xC+-6%e,
--30%e,
--3.3%eG+,
-I+1/3rdxN,
-1.5xN,
-xC+I+xC+
-Human
-Feedback%a+,
-%a+,
-1-4.5xS,
-1st sh<D+,
-xC+%a+,
-1.5-3xS,
-1-4.5xS
-1st shI+<D+,
-xC+1st sh,
-1st sh,
-1.4-6.5xSTrust+xC+,
-<D+
-57
-TABLE 6
-References Associated with Gains Included in Performance Gains Table
-1.Accuracy (%a), Test error (%e) / Score (xS)
-2.Generalizable (G) / Interpretable (I)
-3.Resource Eciency (% <D data, % <L labels, xC computational speed-up, fraction N of network size)
-White Box Highlight = RL Examples
-+Only qualied (or quantied with unique metric)
-1st sh = First super-human performance
-Training Data Hypothesis Set Learning Algorithm Final Hypothesis
-1 2 3 1 2 3 1 2 3 1 2 3
-Algebraic
-Equations[44] [71] [71]
-[72][49] [73] [57]
-Logic Rules [74],
-[75][32],
-[74],
-[75][76],
-[32],
-[32],
-[32],
-[48][77],
-[75][75] [73],
-[77]
-Simulation
-Results[35],
-[39][35] [78],
-[48][79],
-[55][79],
-[55][55],
-[55][59] [59]
-Dynamical
-Systems[51],
-[80], [80][47] [47],
-[47],
-[51],
-[80],
-[80][50],
-[51],
-[81],
-[4][51],
-[82], [82]
-Knowledge
-Graphs[34], [43] [43] . [34],
-[43],
-[75][43],
-[75][53],
-[54],
-[75][53],
-[54] ,
-[75][83],
-[58][83],
-[58]
-Probabilistic
-Relations[45],
-[45], [46][45],
-[46][51]
-Invariances [38] [38] [38],
-[38][41],
-[40], [42][40],
-[84][41],
-[42],
-[84][84] [84]
-Human
-Feedback[85],
-[36],
-[86][86],
-[86][85],
-[87],
-[86],
-[86][87] [86],
-[86][4],
-[88],
-[89][56] [88],
-[70]
-58
-6. CHALLENGES AND UNTAPPED RESEARCH OPPORTUNITIES
-For a lengthy set of challenges and directions for knowledge-integrated informed AI ap-
-proaches, we refer to the last section in Laura von Rueden et. al.'s survey paper [1]. Here we
-oer a brief collection of promising research directions and application areas we found to be un-
-tapped and worthwhile for advancing technology for national security. Each item here stands as a
-gap in foundational research, or an applied technology opportunity.
-The tradespace across knowledge-integrated informed AI techniques (employing dierent
-knowledge representations and integration paths) has been barely explored beyond draw-
-ing comparisons across dispersed research activities. One example paper from more than two
-decades ago discussed the dierence between dierent integration paths and suggested that
-\expanding the eective training set size . . . is mathematically equivalent to incorporating
-the prior knowledge as a regularizer" [38]. Exploring the tradespace theoretically and empir-
-ically, considering each form of knowledge representation, their plausible integration paths,
-and how much importance to give to the knowledge vs. data will help lead to the development
-of techniques that are most optimal for any given problem. Others have also suggested this
-as an important research direction noting that \as the eld of AI moves towards agreement
-on the need for combining the strengths of neural and symbolic AI, it should turn next to the
-question: what is the best representation for neurosymbolic AI?" [10] This sentiment can, of
-course, be extended beyond just neurosymoblic AI.
-Performance degradation caused by knowledge integration is largely unreported. For example,
-it is plausible that knowledge integration can be too constraining, or perhaps even misleading,
-precluding learning. Alternatively, knowledge integration could be a computational bottleneck
-that slows down training and/or learning. These kinds of issues are yet to be explored and
-understood.
-Knowledge representation in deep learning may not scale well, therefore there is a need to
-understand the limits and the reasons for those limits. In other words, \as we expand and
-exercise the symbolic part and address more challenging reasoning tasks, things might become
-more challenging... For example, among the biggest successes of symbolic AI are systems
-used in medicine, such as those that diagnose a patient based on their symptoms. These have
-massive knowledge bases and sophisticated inference engines. The current neurosymbolic
-[informed] AI isn't tackling problems anywhere nearly so big." [90] This observation too can
-be extended beyond just neurosymbolic AI.
-It's plausible that the integration of knowledge that constrains or guides learning would result
-in solutions that are more robust to adversarial attack. Analysis that specically explores
-sensitivity to such counter-AI techniques with and without knowledge integration may show
-strong ability to address concerns of robustness in today's AI with knowledge-integrated
-informed AI.
-Verication and validation of engineered systems is an exponential problem in general, and
-becomes more so for systems that employ AI. It's plausible to suggest that explicitly informed
-59
-techniques are easier to verify/validate. Developing proof of this hypothesis along with specic
-methodology for testing informed systems can help make strides toward safer AI.
-The recent dramatic successes of transformer-based, self-supervised models in the domains of
-both computer vision (CV) and natural language processing (NLP) may serve as a blueprint
-for developing foundational models for scientic domains that are informed by rich simulation
-frameworks. It is an open question as to whether a traditional, attention-based transformer
-architecture will be as impactful in problem spaces where informed AI techniques are es-
-pecially promising, or if such architectures and learning paradigms can be augmented to
-explicitly incorporate expert knowledge.
-Updating of knowledge that is explicitly integrated could enable AI systems that are more
-adaptable via continuous learning and continuous integration. This research direction would
-be valuable for learn-in-the-eld (edge-AI) applications.
-There's a dependency on programming languages and packages that allow for knowledge
-integration. Advancements in the state of the art of knowledge-integrated informed AI there-
-fore depend on continued eorts to develop languages and packages that allow all kinds of
-knowledge integration. This issue is discussed in more detail below.
-A Language Problem Among the many research projects examined here, the vast majority of
-them are implemented using one of a handful of Python-based libraries for deep learning. Over
-the past decade, Python has emerged as the language of choice among data scientists and machine
-learning researchers; its popularity has earned it a critical mass of users such that a rich, unparalleled
-ecosystem of powerful and polished tools, libraries, tutorials, and reference implementations has
-manifested, with the likes of Microsoft and Facebook having invested heavily into it. It is this
-Python-centric ecosystem that has fostered the recent deep learning revolution in domains like
-computer vision and natural language processing. But is this sustainable? Is Python a language
-that can foster the expansion of novel applications of deep learning into other scientic elds?
-The fact of the matter is that all scientic computing Python libraries, in one way or an-
-other, depend on a faster, \lower-level" language{like C{to handle all of the fast mathematical
-computations. Thus far, deep learning models for computer vision and natural language processing
-applications have not been so hindered by this \two language" paradigm; dense, convolutional, and
-recurrent neural networks can be framed in terms of vectorizable, linear algebra routines, which can
-easily be dispatched to a lower-level language. Indeed these are the corner stones of libraries like
-PyTorch and TensorFlow. However, as the disciplines of scientic computing and machine learning
-meet and begin to cross-pollinate, there will be a need to support fast computation and automatic
-dierentiation involving adaptive algorithms, non-standard algebras (e.g., quaternion algebra), and
-the ability to interface with other programming paradigms, such as probabilistic programming
-languages. In short: knowledge-integrated informed AI will likely lead us away from the land of
-multiplying massive matrices of real numbers.
-60
-Python, in its present form, can never address such gaps itself. It can only be used as an
-interface with other languages that can then attempt to solve these problems. This is why Jeremy
-Howard, creator of the fast.ai deep learning library (which is Python-based, of course) asserted:
-\Python is not the future of machine learning. It can't be. It's so nicely hackable, but it is so
-frustrating to work with a language where you can't do anything fast enough unless you call out to
-some external CUDA or C code [...] It's ne for a lot of things, but not really in the deep learning
-or machine learning world. I really hope that Julia is successful [...] Most importantly, it's Julia
-all the way down, so you can write your GPU kernel in Julia." [91]
-Google's JAX [92] is a Python library that is growing in popularity as a route toward ecient,
-dierentiable programming; it provides an XLA-based (Accelerated Linear Algebra) just-in-time
-compiler that can operate on a subset of Python and NumPy to accelerate computations that
-would otherwise fall outside of the \vectorizable" suite of code patterns. JAX makes it simple to
-write fast, compose-able NumPy-based functions, and it provides a rich automatic dierentiation
-framework for accessing various high-order derivatives, Jacobian-vector products, etc., of these
-functions. As such, it is being used in some pioneering works in the knowledge-integrated informed
-AI space, such as the development of a dierentiable molecular dynamics simulator [93] and a
-dierentiable quantum chemistry simulator (Li, 2021). However, JAX is ultimately limited by its
-roots in the Python language; simple control-ow logic and in-place operations on data structures
-are not supported by JAX, which limits its applicability to many domains of scientic computing
-and thus knowledge-integrated informed AI.
-Beyond the world of Python, Julia is a programming language that is designed to be just-
-in-time compiled such that performant code can be written natively in Julia, while still being
-accessible and readable like Python. Julia is likely the language that boasts the most comprehensive
-automatic dierentiation capabilities; for instance, the Zygote automatic dierentiation library
-operates on Julia's abstract syntax tree itself to enable dierentiable programming [67]. In this
-way, Julia is similar to but exceeds JAX in a fundamental way: it is unimpeded by the two (or N)
-language problem. For instance, one can easily write highly performant Julia code that operates on
-exotic data types using non-standard algebras and then use this code in a larger machine learning
-framework. Additionally, Julia is designed around a multiple dispatch system [94], which fosters
-rich code reuse such that features like automatic dierentiation, GPU dispatch, and fast linear
-algebra routines can easily be extended to one's novel mathematical framework. In terms of design,
-Julia is the most natural language to do innovative research in the realm of knowledge-integrated
-informed AI. But the cost of leaving the rich ecosystem of Python-based machine learning and
-data science resources is dicult to overstate. It has both practical and far-reaching implications
-ranging from Julia's relative lack of infrastructure and convenient tooling, to making one's research
-inaccessible to others in the eld, to Julia being unknown or untested by the software security
-standards that are required for deploying solutions in secure environments.
-61
-Figure 40. A Programming Language Problem
-A heat map that indicates the approaches to informed AI that are most likely to be obstructed by
-the \two language problem." To tightly incorporate simulations and models of dynamical systems
-into one's ML framework is often a substantial challenge in Python, whereas Julia is highly capable
-toward this end.
-62
-7. SUMMARY
-AI that leverages both data and knowledge is continuously gaining interest as it delivers
-noteworthy and game-changing performance. Within the national security domain, where there is
-ample scientic and domain-specic knowledge that stands ready to be leveraged, and where purely
-data-driven AI can lead to serious unwanted consequences, this emerging class of AI techniques
-should be deliberately pursued.
-In this report, we discuss the motivations behind what we refer to as \knowledge-integrated
-informed AI", along with our ndings from a thorough exploration of approaches that fall into this
-paradigm of AI. Through illuminating examples of knowledge integrated into both deep learning
-and reinforcement learning pipelines, we shed light on specic kinds of performance gains that
-knowledge-integrated informed AI has been shown to provide. We also discuss an apparent trade
-space across variants, along with observed and prominent issues that suggest worthwhile future
-research directions. Most importantly, we discuss how performance gains can benet problems of
-national security, and we lay out immediate and longer term steps we can take to appropriately
-adapt and apply knowledge-integrated informed AI techniques.
-63
-This page intentionally left blank.
-REFERENCES
-[1] L. von Rueden, S. Mayer, K. Beckh, B. Georgiev, S. Giesselbach, R. Heese, B. Kirsch, M. Wal-
-czak, J. Pfrommer, A. Pick, and et al., \Informed machine learning - a taxonomy and survey
-of integrating prior knowledge into learning systems," IEEE Transactions on Knowledge and
-Data Engineering pp. 1{1 (2021), URL http://dx.doi.org/10.1109/TKDE.2021.3079836 .
-[2] X. Amatriain, \Data as prior/innate knowledge for deep
-learning models," (2019), URL https://xamat.medium.com/
-data-as-prior-innate-knowledge-for-deep-learning-models-23898363a71a .
-[3] G. Hinton, L. Deng, D. Yu, G.E. Dahl, A.r. Mohamed, N. Jaitly, A. Senior, V. Vanhoucke,
-P. Nguyen, T.N. Sainath, and B. Kingsbury, \Deep neural networks for acoustic modeling
-in speech recognition: The shared views of four research groups," IEEE Signal Processing
-Magazine 29(6), 82{97 (2012).
-[4] D. Silver, A. Huang, C. Maddison, A. Guez, L. Sifre, G. Van Den Driessche, J. Schrittwieser,
-I. Antonoglou, V. Panneershelvam, M. Lanctot, S. Dieleman, D. Grewe, J. Nham, N. Kalch-
-brenner, I. Sutskever, T. Lillicrap, M. Leach, K. Kavukcuoglu, T. Graepel, and D. Hassabis,
-\Mastering the game of go with deep neural networks and tree search," Nature 529(7587),
-484{489 (2016), URL https://doi.org/10.1038/nature16961 , cited By 5915.
-[5] A. Krizhevsky, I. Sutskever, and G. Hinton, \Imagenet classication with deep convolutional
-neural networks," (2012), vol. 2, pp. 1097{1105, cited By 50743.
-[6] R. Bommasani, D.A. Hudson, E. Adeli, R. Altman, S. Arora, S. von Arx, M.S. Bernstein,
-J. Bohg, A. Bosselut, E. Brunskill, et al., \On the opportunities and risks of foundation
-models," arXiv preprint arXiv:2108.07258 (2021).
-[7] \New deep learning models require fewer neurons," URL https://www.csail.mit.edu/news/
-new-deep-learning-models-require-fewer-neurons .
-[8] A. Zewe, \These neural networks know what they're doing," URL https://news.mit.edu/
-2021/cause-effect-neural-networks-1014 .
-[9] M. Lechner, R. Hasani, A. Amini, T. Henzinger, D. Rus, and R. Grosu, \Neural circuit poli-
-cies enabling auditable autonomy," Nature Machine Intelligence 2(10), 642{652 (2020), URL
-https://doi.org/10.1038/s42256-020-00237-3 , cited By 10.
-[10] A. d'Avila Garcez and L.C. Lamb, \Neurosymbolic ai: The 3rd wave," (2020), URL https:
-//arxiv.org/abs/2012.05876v2 .
-[11] G. Marcus, \The next decade in ai: Four steps towards robust articial intelligence," (2020),
-URL https://arxiv.org/abs/2002.06177v2 .
-[12] J. Willard, X. Jia, S. Xu, M. Steinbach, and V. Kumar, \Integrating scientic knowledge with
-machine learning for engineering and environmental systems," (2020), URL https://arxiv.
-org/abs/2003.04919v4 .
-65
-[13] A. Borghesi, F. Baldo, and M. Milano, \Improving deep learning models via constraint-based
-domain knowledge: a brief survey," (2020), URL https://arxiv.org/abs/2005.10691v1 .
-[14] R. Roscher, B. Bohn, M.F. Duarte, and J. Garcke, \Explainable machine learning for scientic
-insights and discoveries," (2020), URL https://arxiv.org/abs/1905.08883v3 .
-[15] K. Cranmer, J. Brehmer, and G. Louppe, \The frontier of simulation-based inference," Pro-
-ceedings of the National Academy of Sciences 117(48), 30055 (2020), URL http://www.pnas.
-org/content/117/48/30055.abstract .
-[16] R. Baker, J.M. Pe~ na, J. Jayamohan, and A. J erusalem, \Mechanistic models versus machine
-learning, a ght worth ghting for the biological community?" Biology Letters 14, 20170660
-(2018), URL https://www.researchgate.net/publication/325172474_Mechanistic_
-models_versus_machine_learning_a_fight_worth_fighting_for_the_biological_
-community , found on ResearchGate.
-[17] L.C. Lamb, A. Garcez, M. Gori, M. Prates, P. Avelar, and M. Vardi, \Graph neural networks
-meet neural-symbolic computing: A survey and perspective," (2021), URL https://arxiv.
-org/abs/2003.00330v7 .
-[18] D.A. Cox, \Neurosymbolic hybrid ai," (2020), URL https://www.youtube.com/watch?v=
-AdMceC1R_sg .
-[19] W. Knight, \Ai can do great things|if it doesn't burn the planet," (2020), URL https:
-//www.wired.com/story/ai-great-things-burn-planet .
-[20] J. Devlin, M.W. Chang, K. Lee, and K. Toutanova, \Bert: Pre-training of deep bidirectional
-transformers for language understanding," arXiv preprint arXiv:1810.04805 (2018).
-[21] T.B. Brown, B. Mann, N. Ryder, M. Subbiah, J. Kaplan, P. Dhariwal, A. Neelakantan,
-P. Shyam, G. Sastry, A. Askell, et al., \Language models are few-shot learners," arXiv preprint
-arXiv:2005.14165 (2020).
-[22] A. Radford, J.W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal, G. Sastry, A. Askell,
-P. Mishkin, J. Clark, et al., \Learning transferable visual models from natural language su-
-pervision," arXiv preprint arXiv:2103.00020 (2021).
-[23] SmugMug, \website photos on ickr," (2004), URL https://www.flickr.com .
-[24] W. Foundation, \Wikipedia: Online encyclopedia," (2001), URL https://www.wikipedia.
-org/ .
-[25] J. Howard, \Now anyone can train imagenet in 18 minutes," (2018), URL https://www.fast.
-ai/2018/08/10/fastai-diu-imagenet/ .
-[26] A. Radford, I. Sutskever, J.W. Kim, G. Krueger, and S. Agarwal, \Clip: Connecting text and
-images," (2021), URL https://www.fast.ai/2018/08/10/fastai-diu-imagenet/ .
-66
-[27] R. Bommasani and P.e.a. Liang, \On the opportunities and risks of foundation models,"
-arXiv.org e-Print archive (2), 53{72.
-[28] D. Silver, T. Hubert, J. Schrittwieser, I. Antonoglou, M. Lai, A. Guez, M. Lanctot, L. Sifre,
-D. Kumaran, T. Graepel, T. Lillicrap, K. Simonyan, and D. Hassabis, \A general reinforcement
-learning algorithm that masters chess, shogi, and Go through self-play," Science 362(6419),
-1140{1144 (2018).
-[29] J. Schrittwieser, I. Antonoglou, T. Hubert, K. Simonyan, L. Sifre, S. Schmitt, A. Guez, E. Lock-
-hart, D. Hassabis, T. Graepel, et al., \Mastering atari, go, chess and shogi by planning with
-a learned model," Nature 588(7839), 604{609 (2020).
-[30] \MuZero: Mastering Go, chess, shogi and Atari without rules," https://deepmind.com/
-blog/article/muzero-mastering-go-chess-shogi-and-atari-without-rules , accessed:
-2021-10-20.
-[31] Defense.gov, \Dod adopts ethical principles for articial intelligence," URL https:
-//www.defense.gov/Newsroom/Releases/Release/Article/2091996/dod%E2%80%
-90adopts%E2%80%90ethical%E2%80%90principles%E2%80%90for%E2%80%90artificial%
-E2%80%90intelligence/ .
-[32] A. Garcez, M. Gori, L. Lamb, L. Serani, M. Spranger, and S. Tran, \Neural-symbolic comput-
-ing: An eective methodology for principled integration of machine learning and reasoning,"
-Journal of Applied Logics 6(4), 611{632 (2019), URL http://www.collegepublications.
-co.uk/downloads/ifcolog00033.pdf .
-[33] K.D. Julian, Safe and ecient aircraft guidance and control using neural networks , Ph.D.
-thesis, Stanford University (2020), URL http://purl.stanford.edu/tr210hw4978 .
-[34] C. Jiang, X. Liang, H. Xu, and L. Lin, \Hybrid knowledge routed modules for large-
-scale object detection," Neural information processing systems foundation (2018), vol. 2018-
-December, pp. 1552{1563, URL https://www.scopus.com/inward/record.uri?eid=2-s2.
-0-85064840476&partnerID=40&md5=b62a5790dded2b7390c589ca3d8c3ce4 , cited By 21.
-[35] K.H. Lee, J. Li, A. Gaidon, and G. Ros, \Spigan: Privileged adversarial learn-
-ing from simulation," International Conference on Learning Representations, ICLR
-(2019), URL https://www.scopus.com/inward/record.uri?eid=2-s2.0-85083952211&
-partnerID=40&md5=cdb5c5d037e144b7f86f61ac953f9b0b , cited By 5.
-[36] J. Bernard, M. Zeppelzauer, M. Sedlmair, and W. Aigner, \Vial: a unied process for visual
-interactive labeling," Visual Computer 34(9), 1189{1207 (2018), URL https://doi.org/10.
-1007/s00371-018-1500-3 .
-[37] D.L. Bergman, \Symmetry constrained machine learning," (2019), URL https://arxiv.org/
-abs/1811.07051v2 .
-[38] P. Niyogi, F. Girosi, and T. Poggio, \Incorporating prior information in machine learning by
-creating virtual examples," Proceedings of the IEEE 86(11), 2196{2208 (1998), URL https:
-//ieeexplore.ieee.org/document/726787 .
-67
-[39] A. Cully, J. Clune, D. Tarapore, and J.B. Mouret, \Robots that can adapt like animals,"
-Nature 521(7553), 503{507 (2015), URL https://doi.org/10.1038/nature14422 .
-[40] J. Ling, A. Kurzawski, and J. Templeton, \Reynolds averaged turbulence mod-
-elling using deep neural networks with embedded invariance," Journal of Fluid Me-
-chanics 807, 155{166 (2016), URL https://www.cambridge.org/core/article/
-reynolds-averaged-turbulence-modelling-using-deep-neural-networks-with-embedded-invariance/
-0B280EEE89C74A7BF651C422F8FBD1EB .
-[41] S. Dieleman, J. De Fauw, and K. Kavukcuoglu, \Exploiting cyclic symmetry in convolutional
-neural networks," International Machine Learning Society (IMLS) (2016), vol. 4, pp. 2799{
-2808, URL http://proceedings.mlr.press/v48/dieleman16.pdf , cited By 40.
-[42] D. Worrall, S. Garbin, D. Turmukhambetov, and G. Brostow, \Harmonic deep: Networks
-translation and rotation equivariance," Institute of Electrical and Electronics Engineers Inc.
-(2017), vol. 2017-January, pp. 7168{7177, URL https://doi.org/10.1109/CVPR.2017.758 ,
-cited By 76.
-[43] K. Marino, R. Salakhutdinov, and A. Gupta, \The more you know: Using knowledge graphs
-for image classication," (2017), URL https://arxiv.org/abs/1612.04844v2 .
-[44] Y. Lu, M. Rajora, P. Zou, and S.Y. Liang, \Physics-embedded machine learning: Case study
-with electrochemical micro-machining," Machines 5(1) (2017), URL https://www.mdpi.com/
-2075-1702/5/1/4 .
-[45] F. Scarselli, M. Gori, A.C. Tsoi, M. Hagenbuchner, and G. Monfardini, \The graph neural
-network model," IEEE Transactions on Neural Networks 20(1), 61{80 (2009), URL https:
-//doi.org/10.1109/TNN.2008.2005605 .
-[46] K. Yoon, R. Liao, Y. Xiong, L. Zhang, E. Fetaya, R. Urtasun, R. Zemel, and X. Pitkow,
-\Inference in probabilistic graphical models by graph neural networks," (2019), URL https:
-//arxiv.org/abs/1803.07710v5 .
-[47] M. Lutter, C. Ritter, and J. Peters, \Deep lagrangian networks: Using physics as model prior
-for deep learning," (2019), URL https://arxiv.org/abs/1907.04490v1 .
-[48] M. Hasanbeig, N. Yogananda Jeppu, A. Abate, T. Melham, and D. Kroening, \Deep-
-synth: Automata synthesis for automatic task segmentation in deep reinforcement learning,"
-(2021), vol. 35, pp. 7647{7656, URL https://ojs.aaai.org/index.php/AAAI/article/
-view/16935 .
-[49] N. Muralidhar, M.R. Islam, M. Marwah, A. Karpatne, and N. Ramakrishnan, \Incorporating
-prior domain knowledge into deep neural networks," in 2018 IEEE International Conference
-on Big Data (Big Data) (2018), pp. 36{45, URL https://dx.doi.org/10.1109/BigData.
-2018.8621955 .
-[50] E. de Bezenac, A. Pajot, and P. Gallinari, \Deep learning for physical processes: Incorporating
-prior scientic knowledge," (2018), URL https://arxiv.org/abs/1711.07970v2 .
-68
-[51] Y. Yang and P. Perdikaris, \Physics-informed deep generative models," (2018), URL https:
-//arxiv.org/abs/1812.03511v1 .
-[52] K. Leung, N. Ar echiga, and M. Pavone, \Back-propagation through signal temporal logic speci-
-cations: Infusing logical structure into gradient-based methods," in Workshop on Algorithmic
-Foundations of Robotics (2020), URL 2008.00097 .
-[53] Z. Che, D. Kale, W. Li, T. Bahadori, and Y. Liu, \Deep computational phenotyping," in The
-21th ACM SIGKDD International Conference (2015), vol. 2015-August, pp. 507{516, URL
-https://doi.org/10.1145/2783258.2783365 .
-[54] J. Bian, B. Gao, and T.Y. Liu, \Knowledge-powered deep learning for word embedding," in
-T. Calders, F. Esposito, E. H ullermeier, and R. Meo (eds.), Machine Learning and Knowledge
-Discovery in Databases , Berlin, Heidelberg: Springer Berlin Heidelberg (2014), vol. 8724 LNAI,
-pp. 132{148, URL https://doi.org/10.1007/978-3-662-44848-9_9 .
-[55] Y. Du, Z. Liu, H. Basevi, A. Leonardis, B. Freeman, J. Tenenbaum, and J. Wu, \Learning
-to exploit stability for 3d scene parsing," in S. Bengio, H. Wallach, H. Larochelle, K. Grau-
-man, N. Cesa-Bianchi, and R. Garnett (eds.), Advances in Neural Information Processing
-Systems , Curran Associates, Inc. (2018), vol. 31, URL https://proceedings.neurips.cc/
-paper/2018/file/43feaeeecd7b2fe2ae2e26d917b6477d-Paper.pdf .
-[56] P. Schramowski, W. Stammer, S. Teso, A. Brugger, X. Shao, H.G. Luigs, A.K. Mahlein, and
-K. Kersting, \Right for the wrong scientic reasons: Revising deep networks by interacting
-with their explanations," (2020), URL https://arxiv.org/abs/2001.05371v1 .
-[57] R. King, O. Hennigh, A. Mohan, and M. Chertkov, \From deep to physics-informed learning
-of turbulence: Diagnostics," (2018), URL https://arxiv.org/abs/1810.07785v2 .
-[58] Y. Fang, K. Kuan, J. Lin, C. Tan, and V. Chandrasekhar, \Object detection meets knowledge
-graphs," in Proceedings of the Twenty-Sixth International Joint Conference on Articial Intelli-
-gence, IJCAI-17 (2017), pp. 1661{1667, URL https://doi.org/10.24963/ijcai.2017/230 .
-[59] J. Pfrommer, C. Zimmerling, J. Liu, L. K arger, F. Henning, and J. Beyerer, \Optimisation of
-manufacturing process parameters using deep neural networks as surrogate models," Procedia
-CIRP 72, 426{431 (2018), URL https://www.sciencedirect.com/science/article/pii/
-S221282711830146X , 51st CIRP Conference on Manufacturing Systems.
-[60] J. Halverson, B. Nelson, and F. Ruehle, \Branes with brains: exploring string vacua with deep
-reinforcement learning," Journal of High Energy Physics 2019(6), 1{60 (2019).
-[61] C. Rackauckas, Y. Ma, J. Martensen, C. Warner, K. Zubov, R. Supekar, D. Skinner, A. Ra-
-madhan, and A. Edelman, \Universal dierential equations for scientic machine learning,"
-arXiv preprint arXiv:2001.04385 (2020).
-[62] R. Chen, Y. Rubanova, J. Bettencourt, and D. Duvenaud, \Neural ordinary dierential equa-
-tions," Neural information processing systems foundation (2018), vol. 2018-December, pp.
-6571{6583, cited By 354.
-69
-[63] R. Dandekar and G. Barbastathis, \Quantifying the eect of quarantine control in covid-19
-infectious spread using machine learning," medRxiv (2020), URL https://www.medrxiv.org/
-content/early/2020/04/06/2020.04.03.20052084 .
-[64] A. Bills, S. Sripad, W.L. Fredericks, M. Guttenberg, D. Charles, E. Frank, and V. Viswanathan,
-\Universal battery performance and degradation model for electric aircraft," (2020), URL
-https://arxiv.org/abs/2008.01527v1 .
-[65] S.L. Brunton, J.L. Proctor, and J.N. Kutz, \Discovering governing equations from data by
-sparse identication of nonlinear dynamical systems," Proceedings of the National Academy of
-Sciences 113(15), 3932{3937 (2016), URL https://www.pnas.org/content/113/15/3932 .
-[66] M. Raissi, P. Perdikaris, and G. Karniadakis, \Physics-informed neural networks: A deep learn-
-ing framework for solving forward and inverse problems involving nonlinear partial dierential
-equations," Journal of Computational Physics 378, 686{707 (2019), cited By 697.
-[67] C. Rackauckas, A. Edelman, K. Fischer, M. Innes, E. Saba, V.B. Shah, and W. Tebbutt,
-\Generalized physics-informed learning through language-wide dierentiable programming."
-inAAAI Spring Symposium: MLPS (2020).
-[68] I. Mordatch and E. Todorov, \Combining the benets of function approximation and trajectory
-optimization." in Robotics: Science and Systems (2014), vol. 4.
-[69] J. Carius, F. Farshidian, and M. Hutter, \Mpc-net: A rst principles guided policy search,"
-IEEE Robotics and Automation Letters 5(2), 2897{2904 (2020).
-[70] P. Christiano, J. Leike, T. Brown, M. Martic, S. Legg, and D. Amodei, \Deep reinforcement
-learning from human preferences," Neural information processing systems foundation (2017),
-vol. 2017-December, pp. 4300{4308, URL https://www.scopus.com/inward/record.uri?
-eid=2-s2.0-85046999643&partnerID=40&md5=5ffef52e69ce75915865634de63042ba , cited
-By 148.
-[71] Z. Li, N. Kovachki, K. Azizzadenesheli, B. Liu, K. Bhattacharya, A. Stuart, and A. Anand-
-kumar, \Fourier neural operator for parametric partial dierential equations," (2020), URL
-https://arxiv.org/abs/2010.08895v1 .
-[72] R. Ramamurthy, C. Bauckhage, R. Sifa, J. Sch ucker, and S. Wrobel, \Leveraging domain
-knowledge for reinforcement learning using mmc architectures," in I.V. Tetko, V. K urkov a,
-P. Karpov, and F. Theis (eds.), Articial Neural Networks and Machine Learning { ICANN
-2019: Deep Learning , Cham: Springer International Publishing (2019), pp. 595{607, URL
-http://dx.doi.org/10.1007/978-3-030-30484-3_48 .
-[73] R. Stewart and S. Ermon, \Label-free supervision of neural networks with physics and domain
-knowledge," (2016), URL https://arxiv.org/abs/1609.05566v1 .
-[74] R.T. Icarte, T.Q. Klassen, R. Valenzano, and S.A. McIlraith, \Reward machines: Exploiting
-reward function structure in reinforcement learning," (2020), URL https://arxiv.org/abs/
-2010.03950v1 .
-70
-[75] X. Li, Z. Serlin, G. Yang, and C. Belta, \A formal methods approach to interpretable
-reinforcement learning for robotic planning," Science Robotics 4(37) (2019), URL https:
-//doi.org/10.1126/scirobotics.aay6276 , cited By 13.
-[76] G.G. Towell and J.W. Shavlik, \Knowledge-based articial neural networks," Articial Intel-
-ligence 70(1), 119{165 (1994), URL https://www.sciencedirect.com/science/article/
-pii/0004370294901058 .
-[77] J. Xu, Z. Zhang, T. Friedman, Y. Liang, and G.V. den Broeck, \A semantic loss function
-for deep learning with symbolic knowledge," (2018), URL https://arxiv.org/abs/1711.
-11157v2 .
-[78] F. Wang and Q.J. Zhang, \Knowledge based neural models for microwave design," in IEEE
-MTT-S International Microwave Symposium Digest (1997), vol. 2, pp. 627{630, URL https:
-//doi.org/10.1109/22.643839 .
-[79] J. Ingraham, A.J. Riesselman, C. Sander, and D.S. Marks, \Learning protein structure
-with a dierentiable simulator," in 7th International Conference on Learning Representa-
-tions, ICLR 2019, New Orleans, LA, USA, May 6-9, 2019 , OpenReview.net (2019), URL
-https://openreview.net/forum?id=Byg3y3C9Km .
-[80] C. Rackauckas, A. Edelman, K. Fischer, M. Innes, E. Saba, V. Shah, and W. Tebbutt, \Gener-
-alized physics-informed learning through language-wide dierentiable programming," CEUR-
-WS (2020), vol. 2587, cited By 0.
-[81] M. Raissi, P. Perdikaris, and G.E. Karniadakis, \Physics informed deep learning (part
-ii): Data-driven discovery of nonlinear partial dierential equations," (2017), URL https:
-//arxiv.org/abs/1711.10566v1 .
-[82] J. Degrave, M. Hermans, J. Dambre, and F. wyels, \A dierentiable physics engine for deep
-learning in robotics," (2018), URL https://arxiv.org/abs/1611.01652v2 .
-[83] G. Glava s and I. Vuli c, \Explicit retrotting of distributional word vectors," in Proceedings of
-the 56th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long
-Papers) , Melbourne, Australia: Association for Computational Linguistics (2018), pp. 34{45,
-URL http://dx.doi.org/10.18653/v1/P18-1004 .
-[84] P. Toth, D.J. Rezende, A. Jaegle, S. Racani ere, A. Botev, and I. Higgins, \Hamiltonian gen-
-erative networks," (2020), URL https://arxiv.org/abs/1909.13789v2 .
-[85] S. Das, D. Cashman, R. Chang, and A. Endert, \Beames: Interactive multimodel steering,
-selection, and inspection for regression tasks," IEEE Computer Graphics and Applications
-39(05), 20{32 (2019), URL https://doi.ieeecomputersociety.org/10.1109/MCG.2019.
-2922592 .
-[86] T. Hester, M. Vecerik, O. Pietquin, M. Lanctot, T. Schaul, B. Piot, D. Horgan, J. Quan,
-A. Sendonaris, G. Dulac-Arnold, I. Osband, J. Agapiou, J.Z. Leibo, and A. Gruslys, \Deep
-q-learning from demonstrations," (2017), URL https://arxiv.org/abs/1704.03732v4 .
-71
-[87] P. Tambwekar, A. Silva, N. Gopalan, and M. Gombolay, \Interpretable policy specication
-and synthesis through natural language and rl," (2021).
-[88] G. Warnell, N. Waytowich, V. Lawhern, and P. Stone, \Deep tamer: Inter-
-active agent shaping in high-dimensional state spaces," AAAI press (2018), pp.
-1545{1553, URL https://www.researchgate.net/publication/320163505_Deep_TAMER_
-Interactive_Agent_Shaping_in_High-Dimensional_State_Spaces , cited By 34.
-[89] R. Kaplan, C. Sauer, and A. Sosa, \Beating atari with natural language guided reinforcement
-learning," (2017), URL https://arxiv.org/abs/1704.05539v1 .
-[90] A. Ananthaswamy, \Ai's next big leap," (2020), URL https://knowablemagazine.org/
-article/technology/2020/what-is-neurosymbolic-ai .
-[91] L. Biewald, L. Shukla, and C. Sharp, \The story of fast.ai and why python is not the future of
-ml with jeremy howard," URL https://www.youtube.com/watch?v=t2V2kf2gNnI&t=2430s .
-[92] J. Bradbury, R. Frostig, P. Hawkins, M.J. Johnson, C. Leary, D. Maclaurin, and
-S. Wanderman-Milne, \Jax: composable transformations of python+ numpy programs, 2018,"
-URL http://github. com/google/jax 4, 16 (2020).
-[93] S. Schoenholz and E.D. Cubuk, \Jax md: a framework for dierentiable physics," Advances
-in Neural Information Processing Systems 33 (2020).
-[94] S. Karpinski, \The unreasonable eectiveness of multiple dispatch," URL https://www.
-youtube.com/watch?v=kc9HwsxE1OY .
-72
