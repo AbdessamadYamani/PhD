@@ -4,17 +4,12 @@ import zipfile
 
 from test import process_papers, batch_convert_pdfs_to_text, batch_summarize_papers
 
-def create_zip_from_files(zip_filename="files.zip", md_files=[], summary_files=[]):
-    # Create a Zip file containing all .md and summary text files
+def create_zip_from_md_files(zip_filename="markdown_files.zip"):
+    # Create a Zip file containing all .md files in the current directory
     with zipfile.ZipFile(zip_filename, "w") as zipf:
-        # Add .md files to the zip archive
-        for filename in md_files:
-            zipf.write(filename, os.path.basename(filename))
-        
-        # Add summary text files to the zip archive
-        for summary_filename in summary_files:
-            zipf.write(summary_filename, os.path.basename(summary_filename))
-    
+        for filename in os.listdir():
+            if filename.endswith(".md"):
+                zipf.write(filename, os.path.basename(filename))
     return zip_filename
 
 def main():
@@ -40,7 +35,7 @@ def main():
         help="You can manually upload PDFs to include them in the processing pipeline."
     )
 
-    if st.button("Generate Markdown"):
+    if st.button("Generate SLR"):
         if subject:
             try:
                 # Create necessary folders
@@ -69,23 +64,19 @@ def main():
                 summaries_result = batch_summarize_papers(keywords=subject)  # Pass keywords (subject) here
                 st.success("Summaries generated successfully!")
 
-                # Get the generated Markdown and summary files
-                md_files = [filename for filename in os.listdir() if filename.endswith(".md")]
-                summary_files = [filename for filename in os.listdir() if filename.endswith(".txt")]
-
-                # Create a zip file containing all the Markdown and summary files
-                zip_filename = create_zip_from_files(zip_filename="files.zip", md_files=md_files, summary_files=summary_files)
+                # Create a zip file containing all the Markdown files
+                zip_filename = create_zip_from_md_files()
 
                 # Provide a download button for the zip file
                 with open(zip_filename, "rb") as f:
                     st.download_button(
-                        label="Download All Files (Markdown & Summaries)",
+                        label="Download All Markdown Files",
                         data=f,
                         file_name=zip_filename,
                         mime="application/zip"
                     )
 
-                st.success("All Markdown and Summary files are packaged in a ZIP file!")
+                st.success("All Markdown files are packaged in a ZIP file!")
 
             except Exception as e:
                 st.error(f"An error occurred during processing: {e}")
