@@ -35,7 +35,7 @@ def main():
         help="You can manually upload PDFs to include them in the processing pipeline."
     )
 
-    if st.button("Generate Markdown"):
+    if st.button("Generate SLR"):
         if subject:
             try:
                 # Create necessary folders
