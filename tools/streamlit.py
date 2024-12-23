@@ -1,7 +1,16 @@
 import streamlit as st
-
 import os
+import zipfile
+
 from test import process_papers, batch_convert_pdfs_to_text, batch_summarize_papers
+
+def create_zip_from_md_files(zip_filename="markdown_files.zip"):
+    # Create a Zip file containing all .md files in the current directory
+    with zipfile.ZipFile(zip_filename, "w") as zipf:
+        for filename in os.listdir():
+            if filename.endswith(".md"):
+                zipf.write(filename, os.path.basename(filename))
+    return zip_filename
 
 def main():
     st.title("SLR Markdown Generator")
@@ -50,23 +59,25 @@ def main():
                 pdf_to_text_result = batch_convert_pdfs_to_text()
                 st.info(pdf_to_text_result)
 
-                # Summarize all text files
+                # Summarize all text files with the subject as the keywords
                 st.write("Summarizing papers...")
-                summaries_result = batch_summarize_papers(keywords=subject)
+                summaries_result = batch_summarize_papers(keywords=subject)  # Pass keywords (subject) here
                 st.success("Summaries generated successfully!")
 
-                # Provide download buttons for all generated Markdown files
-                st.write("Download generated Markdown files:")
-                for filename in os.listdir():
-                    if filename.endswith(".md"):
-                        with open(filename, "r") as file:
-                            st.download_button(
-                                label=f"Download {filename}",
-                                data=file.read(),
-                                file_name=filename,
-                                mime="text/markdown",
-                            )
-                st.success("Markdown files generated successfully!")
+                # Create a zip file containing all the Markdown files
+                zip_filename = create_zip_from_md_files()
+
+                # Provide a download button for the zip file
+                with open(zip_filename, "rb") as f:
+                    st.download_button(
+                        label="Download All Markdown Files",
+                        data=f,
+                        file_name=zip_filename,
+                        mime="application/zip"
+                    )
+
+                st.success("All Markdown files are packaged in a ZIP file!")
+
             except Exception as e:
                 st.error(f"An error occurred during processing: {e}")
         else:
