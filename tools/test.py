@@ -421,7 +421,7 @@ def process_papers(keywords: str, year_range: Tuple[int, int], num_papers: int) 
     print(f"\nPhase 2 Result: {result2}")
 
     # Phase 3: Summarize papers
-    summaries = batch_summarize_papers(keywords=keywords)
+    summaries = batch_summarize_papers(keywords=keywords,txt_folder= "txt_papers", summaries_folder= "summaries")
 
     # Phase 4: Create sections
     # print("\nGenerating Bibliometric Analysis section...")
