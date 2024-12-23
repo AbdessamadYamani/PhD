@@ -2,7 +2,9 @@
 /pdf_papers
 /summaries
 /txt_papers
-
+tools/pdf_papers
+tools/summaries
+tools/txt_papers
 # Ignore nested instances
 **/pdf_papers/
 **/summaries/
