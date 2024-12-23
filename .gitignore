@@ -1,3 +1,14 @@
-pdf_papers
-summaries
-txt_papers
+# Folders to ignore
+/pdf_papers
+/summaries
+/txt_papers
+
+# Ignore nested instances
+**/pdf_papers/
+**/summaries/
+**/txt_papers/
+
+# Python-specific ignores
+__pycache__/
+*.py[cod]
+*$py.class
