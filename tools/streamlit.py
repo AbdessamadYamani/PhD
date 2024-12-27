@@ -1,15 +1,21 @@
 import streamlit as st
 import os
 import zipfile
-
+import sys
+# Add the parent directory to Python path to import regex.py
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from test import process_papers, batch_convert_pdfs_to_text, batch_summarize_papers
+from tools.regex import process_files 
 
-def create_zip_from_md_files(zip_filename="markdown_files.zip"):
-    # Create a Zip file containing all .md files in the current directory
+
+def create_zip_of_results(zip_filename="results_files.zip"):
+    """Create a zip file containing results.md and results.tex"""
     with zipfile.ZipFile(zip_filename, "w") as zipf:
-        for filename in os.listdir():
-            if filename.endswith(".md"):
-                zipf.write(filename, os.path.basename(filename))
+        # Add both result files if they exist
+        if os.path.exists("results.md"):
+            zipf.write("results.md")
+        if os.path.exists("results.tex"):
+            zipf.write("results.tex")
     return zip_filename
 
 def main():
@@ -61,22 +67,50 @@ def main():
 
                 # Summarize all text files with the subject as the keywords
                 st.write("Summarizing papers...")
-                summaries_result = batch_summarize_papers(keywords=subject)  # Pass keywords (subject) here
+                summaries_result = batch_summarize_papers(keywords=subject)
                 st.success("Summaries generated successfully!")
 
-                # Create a zip file containing all the Markdown files
-                zip_filename = create_zip_from_md_files()
+                # Process the markdown files using regex.py script
+                st.write("Processing markdown files...")
+                if os.path.exists("Results"):
+                    process_files("Results")
+                    st.success("Markdown files processed successfully!")
 
-                # Provide a download button for the zip file
-                with open(zip_filename, "rb") as f:
-                    st.download_button(
-                        label="Download All Markdown Files",
-                        data=f,
-                        file_name=zip_filename,
-                        mime="application/zip"
-                    )
+                    # Create a zip file containing the results files
+                    zip_filename = create_zip_of_results()
 
-                st.success("All Markdown files are packaged in a ZIP file!")
+                    # Provide download buttons for individual files and zip
+                    col1, col2, col3 = st.columns(3)
+                    
+                    if os.path.exists("results.md"):
+                        with open("results.md", "rb") as f:
+                            col1.download_button(
+                                label="Download Results.md",
+                                data=f,
+                                file_name="results.md",
+                                mime="text/markdown"
+                            )
+                    
+                    if os.path.exists("results.tex"):
+                        with open("results.tex", "rb") as f:
+                            col2.download_button(
+                                label="Download Results.tex",
+                                data=f,
+                                file_name="results.tex",
+                                mime="text/plain"
+                            )
+                    
+                    with open(zip_filename, "rb") as f:
+                        col3.download_button(
+                            label="Download All Results",
+                            data=f,
+                            file_name=zip_filename,
+                            mime="application/zip"
+                        )
+
+                    st.success("All result files are ready for download!")
+                else:
+                    st.error("Results directory not found. Please ensure the directory exists.")
 
             except Exception as e:
                 st.error(f"An error occurred during processing: {e}")

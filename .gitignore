@@ -14,3 +14,4 @@ tools/txt_papers
 __pycache__/
 *.py[cod]
 *$py.class
+/Results
