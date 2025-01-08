@@ -733,7 +733,7 @@ def summarize_paper(paper_text: str, paper_name: str,subject: str) -> str:
     """
     prompt = f"""Summarize directly without you telling me what you are going like starting with "Okay, here's the... etc" the following paper for the systematic literature review (SLR) on the subject [{subject}].befor the summary you should mention these infos :Author ,title,journal,pages,year ,doi and Url.
     Discuss its relevance to the subject,  retreave key points as they wrote in the paper , and include the paper name [{paper_name}] in citations + add the type of the paper.
-NOTE: If the papers does not related with both LLM and Serious games say it , otherwise mention how these 2 aspect related in the paper mentioning the keys whare they are related.
+NOTE: If the papers does not related with all aspects of the Subejct {subject} ignore it.
     Paper Content:
     {paper_text}"""
     try:
@@ -808,7 +808,7 @@ def create_bibliometric() -> str:
     Summaries of papers:
     {summaries}"""
     
-    return generate_markdown(prompt, 'Bibliometric.bib')
+    return generate_markdown(prompt, 'biblio.bib')
 
 def read_metadata() -> str:
     """Read metadata from the output file."""
@@ -884,15 +884,14 @@ def create_related_works(summaries: str,subject: str) -> str:
     prompt = f"""Create directly without you telling me what you are going like starting with "Okay, here's the... etc" a comprehensive Related Works section for the systematic literature review (SLR) on the subject [{subject}]. 
     Use the following paper summaries to identify themes, compare approaches, and cite papers with there names, and it should be detailed each information you give should be from a paper of those.
 NOTE : Use all the papers .your result should start with the title of the section not with "Okay, here's the... etc" or similars.
-Results should be in Overleaf code format starting with "\section Related Works" you can add tables if you want to , the citations should be the name of the paper instead of number in [], add charts , graphes or tables if needed.
+Results should be in Overleaf code format starting with "\section Related Works" you can add tables if you want to .
 NOTE : DO not talk about papers that are not focus totally of the subject not only a part of it . and create a introduction for the section.
 NOTE : the paragraphes should be linked logicly , not each paragraph talk about a subject + the papers mentioned should be related and ignore the ones that are not related directly yo the subject, it should not be subsections but one big paragraph .
 NOTE: The subject is LLM and Serious games , so mention just papers who talk about both not only one of them , ignore the ones that are not related to both aspect of the subject,(Especialy Serious games not only games)
 
     Summaries of papers:
     {summaries}
-
-here are some types of tables in latex:
+LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create this section, but do not add the pachages of bibliographi at the end of the section , i have an other plan for it.
 
 
 
@@ -903,7 +902,6 @@ def create_reshearch_methodes(related_works: str,summaries: str) -> str:
 0- We Use the Kichenhim or PRIZMA  guidlines so mention one of them.
 1-Research questions with sub-questions with motivations for each question answering why its answer would help (as provided)
 2-Mapping questions (quantitative focus start with How much ,how many ...etc in goal to extract answers about the papers for example how many papers exist about the subject ... etc)
-3-Citation format: use paper names in brackets [PaperName]
 4-Search methodology using Kechenhime guidline [Create a chart for it]
 5-Inclusion/exclusion criteria section
 6-Quality assessment criteria section
@@ -915,29 +913,34 @@ NOTE: Create the research question with there motivations and sub questiona for 
     {summaries}
     Relative works:
     {related_works}
+LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create this section, but do not add the pachages of bibliographi at the end of the section , i have an other plan for it.
 """
     
     return generate_markdown(prompt, 'research_methodes.md')
 def create_review_findings(research_methodes: str, summaries: str,subject: str) -> str:
     prompt = f"""Create directly without you telling me what you are going like starting with "Okay, here's the... etc" a detailed Review Findings section for the systematic literature review (SLR) on the subject [{subject}].
     Use the research methodes section and paper summaries to answer research questions, explicitly citing papers by names and highlighting gaps and challenges + a review of the results .your result should start with the title of the section not with "Okay, here's the... etc" or similars.
-Results should be in Overleaf code format starting with "\section Reviewe finding" you can add tables or lists if you want to.the citations should be the name of the paper instead of number in [].and create an introduction for the section
+Results should be in Overleaf code format starting with "\section Reviewe finding" you can add tables or lists if you want to.and create an introduction for the section
     {research_methodes}
 
     Summaries:
-    {summaries}"""
+    {summaries}
+LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create this section, but do not add the pachages of bibliographi at the end of the section , i have an other plan for it.
+"""
     return generate_markdown(prompt, 'review_findings.md')
 
 def create_discussion_conclusion(review_findings: str, summaries: str,subject: str) -> str:
     prompt = f"""Create a detailed Discussion and Conclusion section for the systematic literature review (SLR) on the subject [{subject}].
     Use the review findings and paper summaries to discuss key insights, gaps, and future directions, explicitly citing papers. your result should start with the title of the section not with "Okay, here's the... etc" or similars.
-Results should be in Overleaf code format starting with "\section Discussion" you can add tables or lists if you want to.the citations should be the name of the paper instead of number in [].and create an introduction for the section
+Results should be in Overleaf code format starting with "\section Discussion" you can add tables or lists if you want to.and create an introduction for the section
 
     Review Findings:
     {review_findings}
 
     Summaries:
-    {summaries}"""
+    {summaries}
+LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create this section with the package for the biblio.bib file.
+"""
     return generate_markdown(prompt, 'discussion_conclusion.md')
 
 def create_abstract_intro(review_findings: str,related_works:str,research_methodes:str,discussion:str,subject: str) -> str:
@@ -954,7 +957,7 @@ NOTE:Create only these sections :abstract , the introducion ,the key words
     {research_methodes}
     discussion:
     {discussion}
-
+LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create the section [Introduction], but do not add the pachages of bibliographi at the end of the section , i have an other plan for it.
 """
     return generate_markdown(prompt, 'abstract_intro.md')
 
@@ -975,8 +978,8 @@ def process_papers(keywords: str, year_range: Tuple[int, int], num_papers: int) 
     summaries = batch_summarize_papers(keywords, "txt_papers", "summaries") # Pass keywords here
 
     # Phase 4: Create sections
-    # print("\nGenerating Bibliometric Analysis section...")
-    # bibliometric = create_bibliometric()
+    print("\nGenerating Bibliometric Analysis section...")
+    bibliometric = create_bibliometric(summaries)
 
     print("\nGenerating Related Works section...")
     related_works = create_related_works(summaries,keywords)
