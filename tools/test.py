@@ -733,7 +733,7 @@ def summarize_paper(paper_text: str, paper_name: str,subject: str) -> str:
     """
     prompt = f"""Summarize directly without you telling me what you are going like starting with "Okay, here's the... etc" the following paper for the systematic literature review (SLR) on the subject [{subject}].befor the summary you should mention these infos :Author ,title,journal,pages,year ,doi and Url.
     Discuss its relevance to the subject,  retreave key points as they wrote in the paper , and include the paper name [{paper_name}] in citations + add the type of the paper.
-
+NOTE: If the papers does not related with both LLM and Serious games say it , otherwise mention how these 2 aspect related in the paper mentioning the keys whare they are related.
     Paper Content:
     {paper_text}"""
     try:
@@ -833,7 +833,7 @@ def create_charts(section: str) -> str:
     
     # Create the file name based on the variable name
     if variable_name:
-        file_name = f"Results/{variable_name}_with_charts.md"
+        file_name = f"{variable_name}_with_charts.md"
     else:
         raise ValueError("Unable to determine the variable name.")
 
@@ -876,7 +876,7 @@ def create_background(review_findings: str,related_works: str,research_methodes:
     
     
     """
-    return generate_markdown(prompt, 'Results/background.md')
+    return generate_markdown(prompt, 'background.md')
 
 
 
@@ -886,6 +886,8 @@ def create_related_works(summaries: str,subject: str) -> str:
 NOTE : Use all the papers .your result should start with the title of the section not with "Okay, here's the... etc" or similars.
 Results should be in Overleaf code format starting with "\section Related Works" you can add tables if you want to , the citations should be the name of the paper instead of number in [], add charts , graphes or tables if needed.
 NOTE : DO not talk about papers that are not focus totally of the subject not only a part of it . and create a introduction for the section.
+NOTE : the paragraphes should be linked logicly , not each paragraph talk about a subject + the papers mentioned should be related and ignore the ones that are not related directly yo the subject, it should not be subsections but one big paragraph .
+NOTE: The subject is LLM and Serious games , so mention just papers who talk about both not only one of them , ignore the ones that are not related to both aspect of the subject,(Especialy Serious games not only games)
 
     Summaries of papers:
     {summaries}
@@ -895,7 +897,7 @@ here are some types of tables in latex:
 
 
 """
-    return generate_markdown(prompt, 'Results/related_works.md')
+    return generate_markdown(prompt, 'related_works.md')
 def create_reshearch_methodes(related_works: str,summaries: str) -> str:
     prompt = f"""Create a Research Methods section for an SLR in Overleaf format starting with \section Research Methods. Base your analysis on ArXiv,Research gates, google scholare, IEEExplore ,web of science papers ,and to create these sections:
 0- We Use the Kichenhim or PRIZMA  guidlines so mention one of them.
@@ -915,7 +917,7 @@ NOTE: Create the research question with there motivations and sub questiona for 
     {related_works}
 """
     
-    return generate_markdown(prompt, 'Results/research_methodes.md')
+    return generate_markdown(prompt, 'research_methodes.md')
 def create_review_findings(research_methodes: str, summaries: str,subject: str) -> str:
     prompt = f"""Create directly without you telling me what you are going like starting with "Okay, here's the... etc" a detailed Review Findings section for the systematic literature review (SLR) on the subject [{subject}].
     Use the research methodes section and paper summaries to answer research questions, explicitly citing papers by names and highlighting gaps and challenges + a review of the results .your result should start with the title of the section not with "Okay, here's the... etc" or similars.
@@ -924,7 +926,7 @@ Results should be in Overleaf code format starting with "\section Reviewe findin
 
     Summaries:
     {summaries}"""
-    return generate_markdown(prompt, 'Results/review_findings.md')
+    return generate_markdown(prompt, 'review_findings.md')
 
 def create_discussion_conclusion(review_findings: str, summaries: str,subject: str) -> str:
     prompt = f"""Create a detailed Discussion and Conclusion section for the systematic literature review (SLR) on the subject [{subject}].
@@ -936,7 +938,7 @@ Results should be in Overleaf code format starting with "\section Discussion" yo
 
     Summaries:
     {summaries}"""
-    return generate_markdown(prompt, 'Results/discussion_conclusion.md')
+    return generate_markdown(prompt, 'discussion_conclusion.md')
 
 def create_abstract_intro(review_findings: str,related_works:str,research_methodes:str,discussion:str,subject: str) -> str:
     prompt = f"""Create directly without you telling me what you are going like starting with "Okay, here's the... etc" these 3 sections: abstract , the introducion ,the key words , based on these 4 sections Review Findings , Related Works , Research Methodes and Discussion and Conclusion , so the SLR would be completed , the name of the paper should be the subject [{subject}].your result should start with the title of the section not with "Okay, here's the... etc" or similars. (The 3 sections should be short)
@@ -954,7 +956,7 @@ NOTE:Create only these sections :abstract , the introducion ,the key words
     {discussion}
 
 """
-    return generate_markdown(prompt, 'Results/abstract_intro.md')
+    return generate_markdown(prompt, 'abstract_intro.md')
 
 
 
@@ -1008,5 +1010,5 @@ def process_papers(keywords: str, year_range: Tuple[int, int], num_papers: int) 
 
     print("\nProcessing complete!")
     
-# if __name__ == "__main__":
-#     process_papers("Subject", (2022, 2024), num_papers=1)
+if __name__ == "__main__":
+    process_papers("LLM in serious games", (2022, 2024), num_papers=1)
