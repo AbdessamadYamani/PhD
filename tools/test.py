@@ -733,6 +733,7 @@ def summarize_paper(paper_text: str, paper_name: str,subject: str) -> str:
     """
     prompt = f"""Summarize directly without you telling me what you are going like starting with "Okay, here's the... etc" the following paper for the systematic literature review (SLR) on the subject [{subject}].befor the summary you should mention these infos :Author ,title,journal,pages,year ,doi and Url.
     Discuss its relevance to the subject,  retreave key points as they wrote in the paper , and include the paper name [{paper_name}] in citations + add the type of the paper.
+Note: Mention all the key points related to the subject quoting from the paper.
 NOTE: If the papers does not related with all aspects of the Subejct {subject} ignore it.
     Paper Content:
     {paper_text}"""
@@ -801,8 +802,7 @@ def generate_markdown(prompt: str, filename: str, context: str = "") -> str:
         print(f"Error generating {filename}: {e}")
         return ""
     
-def create_bibliometric() -> str:
-    summaries = read_metadata()  # Call the read_metadata function without parameters.
+def create_bibliometric(summaries:str) -> str:
     
     prompt = f"""Create the Bibliometric Analysis section Based on these papers Summaries , it should be in a .bib file for Overleaf project. Each paper has to have Author, title, journal, pages, year, doi and URL.
     Summaries of papers:
@@ -833,19 +833,62 @@ def create_charts(section: str) -> str:
     
     # Create the file name based on the variable name
     if variable_name:
-        file_name = f"{variable_name}_with_charts.md"
+        file_name = f"Results/{variable_name}_with_charts.md"
     else:
         raise ValueError("Unable to determine the variable name.")
 
     # Generate the prompt for chart analysis and addition
-    prompt = f"""This is a section from a paper. Analyze it to identify paragraphs or sections that can be converted into a chart or graph. Add the appropriate charts and return the entire LaTeX code, preserving the original format with the charts included.
-    NOTE: There are no PNGcahrt or pre created chart to import , you should create all the charts from scratch.
-    Also correct the tables if they are not in corrected form.
-    Section of paper:
-    {section}
-how to create tables : {tables}
-How to create charts : {Figures}
-    """
+    prompt = f"""
+Act as an expert researcher and perform the following tasks:
+
+### Task Description:
+1. Analyze the provided **section of the paper** to:
+   - Identify paragraphs or sections that can be represented as a chart or graph.
+   - Create the appropriate charts from scratch (do not use pre-created PNG charts or import them).
+   - Integrate the charts into the LaTeX code, preserving the original structure and format.
+
+2. Check the provided **tables**:
+   - Correct any issues with formatting or alignment.
+   - Ensure tables appear in the correct sections without floating to unrelated pages.
+
+3. **Correct LaTeX Errors**:
+   - Fix errors such as:
+     - `Unknown option 'gantt' for package 'pgfgantt'`: Ensure proper package loading in the preamble.
+     - `Commands in the main body`: Move commands like `documentclass` and `usepackage` into the preamble.
+     - `Runaway argument?`: Correct improperly terminated commands or missing braces.
+     - `Something's wrong--perhaps a missing \\item`: Ensure proper usage of `itemize` or `enumerate` environments.
+     - `Not in outer par mode`: Fix misplaced or incorrect commands used within environments.
+     - `Misplaced noalign`: Ensure proper placement of alignment-related commands (e.g., in tables).
+     - `Extra alignment tab changed to \\cr`: Resolve misaligned table columns.
+     - `Illegal bibstyle command`: Use only one bibliography style (e.g., `natbib` or `biblatex`).
+
+4. **Package Management**:
+   - Verify all `\\usepackage` commands are correct and appropriate for the document.
+   - Avoid using incorrect options like `\\usepackage[gantt, pgfgantt]` as they do not exist.
+
+5. **Debugging Citations**:
+   - Ensure consistency in citation keys (e.g., case sensitivity).
+   - Use a single bibliography management system (`natbib` or `biblatex`) and remove conflicts.
+
+6. **Formatting**:
+   - Correct placement of tables and figures to ensure they appear on the intended pages.
+   - Ensure all charts and graphs are properly formatted using TikZ or pgfplots, without external file dependencies.
+
+### General Tips:
+- Check syntax carefully for missing units in length-related commands.
+- Maintain consistent case for citation keys.
+- Compile the document step-by-step (e.g., pdflatex → bibtex → pdflatex → pdflatex) to debug progressively.
+
+### Input Data:
+- **Section of Paper**: {section}
+- **Tables**: {tables}
+- **Figures**: {Figures}
+
+Return the **corrected and complete LaTeX code** for the paper, integrating charts, correcting tables, and fixing all errors.
+- Give only the results without any explanaitions.
+- As results give just the usingpackages + the section do not add enything else about the bibliography
+"""
+
     
     # Pass the prompt to the markdown generator and create the file
     return generate_markdown(prompt, file_name)
@@ -859,107 +902,421 @@ def Results(abstract: str, related_works: str,research_methodes: str,review_find
 {discussion}
 
 """
-    return generate_markdown(prompt, 'result.md')
+    return generate_markdown(prompt, 'Results/result.md')
 
 
 
 def create_background(review_findings: str,related_works: str,research_methodes: str,discussion_conclusion: str) -> str:
-    prompt = f"""
-    Create the background section , it's a section where the creatore of the SRL have to define every keyword or concept that is going to be used in the paper , so the reader can understand the paper without any problem + define the reletive words were there definition maybe deferent from it's acadimic definition based on the context of the SLR, so you will need all the sections to get these keywords and based on the context of each one give there defifnition or what we mean by them, the section should be in Overleaf format starting with \section Background.
-    Sections:
-    {review_findings}
-    {related_works}
-    {research_methodes}
-    {discussion_conclusion}
+    prompt = fr"""
+Act as an expert researcher and perform the following tasks:
+
+### Task Description:
+1. Create the **Background Section**:
+   - The purpose of this section is to define every keyword or concept used throughout the paper to help readers understand it without confusion.
+   - For terms with context-specific meanings that may differ from their academic definitions, provide definitions tailored to the context of the paper.
+   - Extract keywords and concepts from the provided sections:
+     - {review_findings}
+     - {related_works}
+     - {research_methodes}
+     - {discussion_conclusion}
+   - Focus on defining the **top 3 most important concepts or works**, ensuring relevance and clarity.
+
+2. Citation Requirements:
+   - Use `\\cite` to cite references whenever defining a term or concept.
+   - Ensure citations follow the chosen bibliography management system (e.g., `natbib`, `biblatex`, or standard LaTeX).
+   - Verify citation keys are consistent (case-sensitive) to avoid citation-related errors.
+
+3. Formatting:
+   - The section must be in proper Overleaf-compatible LaTeX format:
+     - Start with `\\section{{Background}}`.
+     - Maintain Overleaf-specific requirements for formatting and compatibility.
+
+4. Package Management:
+   - Use `\\usepackage` commands only for packages not already included in the preamble.
+   - Avoid re-importing packages that are already used in other sections.
+   - Verify that only valid packages are used, and incorrect ones like `\\usepackage[gantt, pgfgantt]` are avoided.
+
+5. Debugging Tips:
+   - Compile the LaTeX code step-by-step (e.g., `pdflatex → bibtex → pdflatex → pdflatex`) to identify and resolve issues progressively.
+   - Ensure all syntax is correct:
+     - Avoid missing or incorrect units in commands.
+     - Check for proper matching of braces and commands.
+   - Use a single bibliography management system to avoid conflicts.
+
+6. General Error Corrections:
+   - Address common errors, such as:
+     - Undefined or duplicate citations.
+     - Commands placed incorrectly in the document body instead of the preamble.
+     - Misplaced or unmatched brackets or commands.
+     - Missing or inconsistent units in length-related commands.
+
+### Input Data:
+- **Sections**:
+  - Review Findings: {review_findings}
+  - Related Works: {related_works}
+  - Research Methods: {research_methodes}
+  - Discussion and Conclusion: {discussion_conclusion}
+
+Return the **complete LaTeX code** for the Background section with proper formatting, citations, and corrected errors to ensure flawless execution in Overleaf.
+- Give only the results without any explanaitions.
+- As results give just the usingpackages + the section do not add enything else about the bibliography
+
+"""
+
+    return generate_markdown(prompt, 'Results/background.md')
+
+
+
+def create_related_works(summaries: str,subject: str,Biblio:str) -> str:
+    prompt = rf"""
+Create a comprehensive **Related Works** section for the systematic literature review (SLR) on the subject [{subject}]. The section must include the following:
+
+### Requirements:
+1. **Content and Structure:**
+   - Start the section with `\\section{{Related Works}}`.
+   - Provide a detailed analysis of the related works, using the provided paper summaries:
+     - Identify themes and trends.
+     - Compare methodologies and approaches.
+     - Use information from all the provided summaries to support your discussion.
+   - Focus exclusively on papers that cover both aspects of the subject: **LLM** and **Serious Games**.
+     - Ignore papers that do not directly address the combination of these two aspects.
+     - Especially exclude papers focusing only on games rather than serious games.
+
+2. **Writing Style:**
+   - Create a cohesive and logically linked narrative. Avoid isolated paragraphs discussing unrelated topics.
+   - Do not create subsections; the content should form one integrated and well-structured paragraph.
+
+3. **Citations:**
+   - Use `\\cite` for citing papers, ensuring every sentence with information derived from the summaries is cited.
+   - Do not include bibliography packages (e.g., `biblatex` or `natbib`) at the end of the section, as those will be handled separately.
+
+4. **Formatting and Compatibility:**
+   - Return the output in Overleaf-compatible LaTeX code.
+   - Ensure proper syntax, correct use of commands, and compatibility with Overleaf.
+   - Do not include redundant or incorrect `\\usepackage` commands.
+### Inspiration:
+1. Introduction to Related Works
+Purpose: Briefly explain the purpose of the section: to provide an overview of relevant studies and how they relate to your research.
+Scope: Define the scope of the review (e.g., focusing on methodologies, results, gaps, or trends).
+Context: Position your work within the broader research landscape.
+2. Organizing the Section
+Organize the related works based on logical groupings, such as:
+
+Thematic Organization: Divide works into themes or areas relevant to your study.
+Chronological Organization: Present works in historical order to show the progression of the field.
+Methodological Organization: Compare and contrast different methodologies or techniques.
+Problem-Based Organization: Focus on how various works have approached the same or similar problems.
+For example:
+
+Theme 1: Early Research and Foundations
+Summarize foundational works and their contributions.
+Theme 2: Modern Approaches and Innovations
+Highlight recent studies, advancements, or innovations.
+Theme 3: Current Challenges
+Discuss gaps, limitations, or ongoing challenges in the field.
+3. Detailed Discussion of Relevant Studies
+For each study or group of studies:
+
+Summary: Provide a brief summary of the work, including objectives, methods, and key findings.
+Comparison: Highlight similarities or differences with your research.
+Relevance: Explain how it relates to your study or how it informs your approach.
+Critique: Point out strengths, weaknesses, or limitations (e.g., "While the study provides a robust framework, it lacks empirical validation.").
+4. Visual Summaries (Optional)
+Use tables or diagrams to compare multiple works:
+Methods, tools, datasets, or metrics used.
+Key findings or contributions.
+Limitations or gaps.
+5. Identifying Gaps
+Clearly state gaps or open research questions highlighted by the reviewed works.
+Show how your research addresses these gaps or advances the field.
+6. Summary and Transition
+Conclude with a concise summary of the key points covered in the section.
+Transition to your research by explaining how it builds upon or diverges from the related works.
+Best Practices
+Be Selective: Focus on the most relevant and impactful works.
+Be Critical: Don’t just summarize; analyze and critique the works.
+Be Systematic: Ensure consistent structure for each study discussed.
+Cite Appropriately: Provide proper citations to avoid plagiarism.
+Be Concise: Avoid overly lengthy descriptions; stick to what’s relevant.
+   
+### Error Prevention:
+- **Syntax Checks:**
+  - Ensure no missing or incorrect units in length-related commands.
+  - Verify all brackets and commands are properly closed and matched.
+- **Citation Management:**
+  - Use consistent case-sensitive citation keys.
+  - Stick to one bibliography system to avoid conflicts.
+- **Debugging Tips:**
+  - Compile step-by-step (e.g., `pdflatex -> bibtex -> pdflatex -> pdflatex`) to catch and fix errors.
+
+### Input Data:
+Summaries of Papers:
+{summaries}
+Bibliography:
+{Biblio}
+Return the complete LaTeX code for the **Related Works** section without adding introductory phrases like "Okay, here's the...". The result must be ready for Overleaf execution and meet all requirements listed above.
+- Give only the results without any explanaitions.
+- As results give just the usingpackages + the section do not add enything else about the bibliography
+
+"""
+
+    return generate_markdown(prompt, 'Results/related_works.md')
+def create_reshearch_methodes(related_works: str,summaries: str, Biblio:str) -> str:
+    prompt = rf"""
+Create a detailed **Research Methods** section for a systematic literature review (SLR) in Overleaf format, starting with `\\section{{Research Methods}}`. Base the analysis on papers from ArXiv, ResearchGate, Google Scholar, IEEE Xplore, and Web of Science, and include the following subsections:
+
+### Requirements:
+1. **Guidelines:**
+   - Mention the use of either the **Kitchenham** or **PRISMA** guidelines to structure the research methods. Provide a brief explanation of the chosen guideline.
+
+2. **Content Structure:**
+   - **Introduction:** Introduce the section with an overview of the methodology.
+   - **Research Questions:** Include:
+     - Primary research questions with clear motivations for each.
+     - Sub-questions for each primary question with explanations of why answering these is critical.
+   - **Mapping Questions:** Focus on quantitative questions (e.g., "How many papers exist on the subject?") to extract numerical insights from the literature.
+   - **Search Methodology:**
+     - Follow the chosen guideline and create a flowchart representing the search process.
+   - **Inclusion/Exclusion Criteria:** Define the criteria for selecting papers and justify these choices.
+   - **Quality Assessment Criteria:** List the criteria used to assess the quality of the included studies.
+   - **Search String:** Provide the search strings formulated using the **PICO technique** for all databases.
+
+3. **Formatting and Visuals:**
+   - Use Overleaf-compatible LaTeX code for the entire section.
+   - Include charts, graphs, tables, or lists as needed.
+   - Ensure all figures, charts, and tables are properly formatted and labeled for Overleaf.
+
+4. **Citations:**
+   - Cite all information using `\\cite` based on the provided summaries.
+   - Do not include bibliography packages (e.g., `biblatex`, `natbib`) at the end of the section; these will be handled separately.
+
+### Error Prevention:
+- **Syntax Checks:**
+  - Ensure no missing or incorrect units in length-related commands.
+  - Verify proper syntax and consistent case for citation keys.
+- **Bibliography System:**
+  - Use a single bibliography system consistently.
+  - Avoid mixing commands from different systems.
+- **Debugging Tips:**
+  - Compile step-by-step (e.g., `pdflatex -> bibtex -> pdflatex -> pdflatex`) to catch and resolve errors.
+
+### Input Data:
+- Summaries of Papers:
+{summaries}
+
+- Related Works:
+{related_works}
+- Biblio:
+{Biblio}
+Return the complete LaTeX code for the **Research Methods** section. Ensure it is Overleaf-compatible and ready for execution. Do not use introductory phrases like "Okay, here's the...". The response must adhere to the outlined requirements and be error-free.
+- Give only the results without any explanaitions.
+- As results give just the usingpackages + the section do not add enything else about the bibliography
+
+"""
 
     
-    
-    
-    """
-    return generate_markdown(prompt, 'background.md')
+    return generate_markdown(prompt, 'Results/research_methodes.md')
+def create_review_findings(research_methodes: str, summaries: str,subject: str,Biblio:str) -> str:
+    prompt = fr"""
+Create a detailed **Review Findings** section for the systematic literature review (SLR) on the subject [{subject}]. Follow these instructions:
 
+### Requirements:
+1. **Structure and Content:**
+   - Begin with the title `\\section{{Review Findings}}` in Overleaf-compatible LaTeX format.
+   - Provide an **introduction** for the section, summarizing the purpose of the findings and their relevance.
+   - Answer the research questions outlined in the `research_methodes` section by synthesizing insights from the provided paper summaries.
+   - Highlight:
+     - Key insights drawn from the studies.
+     - Existing gaps and challenges in the literature.
+     - A review of results relevant to the SLR subject.
 
+2. **Citations:**
+   - Cite all sources explicitly using `\\cite` and reference each paper by name.
+   - Ensure every sentence referencing a paper includes a citation.
 
-def create_related_works(summaries: str,subject: str) -> str:
-    prompt = f"""Create directly without you telling me what you are going like starting with "Okay, here's the... etc" a comprehensive Related Works section for the systematic literature review (SLR) on the subject [{subject}]. 
-    Use the following paper summaries to identify themes, compare approaches, and cite papers with there names, and it should be detailed each information you give should be from a paper of those.
-NOTE : Use all the papers .your result should start with the title of the section not with "Okay, here's the... etc" or similars.
-Results should be in Overleaf code format starting with "\section Related Works" you can add tables if you want to .
-NOTE : DO not talk about papers that are not focus totally of the subject not only a part of it . and create a introduction for the section.
-NOTE : the paragraphes should be linked logicly , not each paragraph talk about a subject + the papers mentioned should be related and ignore the ones that are not related directly yo the subject, it should not be subsections but one big paragraph .
-NOTE: The subject is LLM and Serious games , so mention just papers who talk about both not only one of them , ignore the ones that are not related to both aspect of the subject,(Especialy Serious games not only games)
+3. **Formatting and Visuals:**
+   - Use Overleaf-compatible code.
+   - Include tables or lists as needed to summarize key points.
+   - Ensure content flows logically, linking paragraphs rather than discussing unrelated topics in isolation.
 
-    Summaries of papers:
-    {summaries}
-LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create this section, but do not add the pachages of bibliographi at the end of the section , i have an other plan for it.
+4. **General Notes:**
+   - Do not add bibliography packages like `biblatex` or `natbib` at the end of the section.
+   - Use only packages already included in previous sections of the document.
+   - The content should be directly executable in Overleaf.
+### Inspirations:
+1. Introduction to Findings
+Briefly introduce what the section covers.
+Explain the scope of the findings (e.g., themes, patterns, or gaps observed in the reviewed literature).
+Mention any criteria or frameworks used for synthesis (e.g., thematic analysis, quantitative synthesis, narrative synthesis).
+2. Thematic or Research Question-Based Organization
+Organize the findings based on:
 
+Themes or Categories: Group results into thematic areas that emerged during the review.
+Research Questions: Align the findings directly with the questions the SLR aims to answer.
+For example:
 
+Theme 1: Emerging Trends
+Discuss key trends found in the literature.
+Theme 2: Methodological Approaches
+Summarize common methods used in the field.
+3. Detailed Synthesis
+Provide a detailed synthesis of the literature, emphasizing:
+
+Key Contributions: Highlight significant findings or consensus points in the literature.
+Contradictions or Divergences: Address conflicting evidence or differences in methods or outcomes.
+Trends Over Time: Show how the research has evolved (if applicable).
+Key Metrics or Statistics: If relevant, include quantitative summaries (e.g., "60% of studies used machine learning techniques").
+4. Visual Representations
+Use figures, tables, or graphs to summarize:
+
+Distribution of studies across themes.
+Research methods, technologies, or tools used.
+Chronological evolution of research topics.
+5. Gaps and Limitations in Literature
+Highlight gaps that you observed (e.g., under-researched areas, lack of empirical studies).
+Mention any limitations in methodologies, datasets, or generalizability identified in the reviewed literature.
+6. Summary
+Conclude with a concise summary of the findings.
+Link the findings back to the objectives of the SLR or the research questions.
+Best Practices
+Be Objective: Report findings neutrally, without personal interpretation.
+Be Systematic: Ensure every point is backed by references from the reviewed studies.
+Be Clear: Use straightforward language to explain complex findings.
+Be Concise: Avoid overloading with unnecessary details; stick to the main points.
+### Error Prevention:
+- **Syntax Checks:**
+  - Ensure no missing or incorrect units in length-related commands.
+  - Maintain consistent case for citation keys.
+- **Bibliography System:**
+  - Use one bibliography system consistently.
+  - Avoid mixing commands from different systems.
+- **Debugging Tips:**
+  - Compile the document step-by-step (e.g., `pdflatex -> bibtex -> pdflatex -> pdflatex`) to catch errors.
+
+### Input Data:
+- **Research Methods Section:**
+{research_methodes}
+
+- **Paper Summaries:**
+{summaries}
+- **Bibliography:**
+{Biblio}
+Return the complete LaTeX code for the **Review Findings** section. Ensure it is Overleaf-compatible, logically organized, and error-free. Avoid introductory phrases like "Okay, here's the...". Adhere strictly to the instructions above.
+- Give only the results without any explanaitions.
+- As results give just the usingpackages + the section do not add enything else about the bibliography
 
 """
-    return generate_markdown(prompt, 'related_works.md')
-def create_reshearch_methodes(related_works: str,summaries: str) -> str:
-    prompt = f"""Create a Research Methods section for an SLR in Overleaf format starting with \section Research Methods. Base your analysis on ArXiv,Research gates, google scholare, IEEExplore ,web of science papers ,and to create these sections:
-0- We Use the Kichenhim or PRIZMA  guidlines so mention one of them.
-1-Research questions with sub-questions with motivations for each question answering why its answer would help (as provided)
-2-Mapping questions (quantitative focus start with How much ,how many ...etc in goal to extract answers about the papers for example how many papers exist about the subject ... etc)
-4-Search methodology using Kechenhime guidline [Create a chart for it]
-5-Inclusion/exclusion criteria section
-6-Quality assessment criteria section
-7-the search string for all the data bases using PICO techniques .
-Format all content for Overleaf, including any relevant chart ,graphes, tables or lists. Start directly with the section content, no introductory phrases."
 
-NOTE: Create the research question with there motivations and sub questiona for each question.and create an introduction for the section
-    Summaries of papers:
-    {summaries}
-    Relative works:
-    {related_works}
-LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create this section, but do not add the pachages of bibliographi at the end of the section , i have an other plan for it.
+    return generate_markdown(prompt, 'Results/review_findings.md')
+
+def create_discussion_conclusion(review_findings: str, summaries: str,subject: str.capitalize,Biblio:str) -> str:
+    prompt = rf"""
+Create a detailed **Discussion and Conclusion** section for the systematic literature review (SLR) on the subject [{subject}]. Follow these instructions:
+
+### Requirements:
+1. **Structure and Content:**
+   - Begin with the title `\\section{{Discussion}}` in Overleaf-compatible LaTeX format.
+   - Provide an **introduction** that sets the context for the discussion and its relevance to the SLR subject.
+   - Discuss:
+     - Key insights gained from the `review_findings`.
+     - Identified gaps in the literature and unresolved challenges.
+     - Future research directions based on the findings.
+   - End with a **Conclusion**, synthesizing the main takeaways and emphasizing the importance of addressing the identified gaps.
+
+2. **Citations:**
+   - Explicitly cite relevant papers using `\\cite` in every sentence where a paper is referenced.
+   - Ensure that every citation corresponds to the provided `summaries`.
+
+3. **Formatting and Visuals:**
+   - Use Overleaf-compatible LaTeX code.
+   - Incorporate tables or lists where appropriate to enhance readability.
+   - Maintain logical flow, linking paragraphs cohesively rather than presenting disconnected points.
+
+4. **General Notes:**
+   - Do not include bibliography packages like `biblatex` or `natbib` in this section.
+   - Only use packages that have already been declared in previous sections.
+   - Ensure that the content is directly executable in Overleaf without syntax or compilation errors.
+
+### Error Prevention:
+- **Syntax Checks:**
+  - Double-check for missing or incorrect units in length-related commands.
+  - Use consistent case for citation keys.
+- **Bibliography System:**
+  - Stick to a single bibliography management system.
+  - Avoid mixing commands from different systems.
+- **Debugging Tips:**
+  - Compile the document step-by-step (e.g., `pdflatex -> bibtex -> pdflatex -> pdflatex`) to identify and fix errors.
+
+### Input Data:
+- **Review Findings:**
+{review_findings}
+
+- **Paper Summaries:**
+{summaries}
+- **Bibliography:**
+{Biblio}
+Return the complete LaTeX code for the **Discussion and Conclusion** section. Ensure it adheres to the instructions, is Overleaf-compatible, and does not include any introductory phrases like "Okay, here's the...".
+- Give only the results without any explanaitions.
+- As results give just the usingpackages + the section do not add enything else about the bibliography
+
 """
-    
-    return generate_markdown(prompt, 'research_methodes.md')
-def create_review_findings(research_methodes: str, summaries: str,subject: str) -> str:
-    prompt = f"""Create directly without you telling me what you are going like starting with "Okay, here's the... etc" a detailed Review Findings section for the systematic literature review (SLR) on the subject [{subject}].
-    Use the research methodes section and paper summaries to answer research questions, explicitly citing papers by names and highlighting gaps and challenges + a review of the results .your result should start with the title of the section not with "Okay, here's the... etc" or similars.
-Results should be in Overleaf code format starting with "\section Reviewe finding" you can add tables or lists if you want to.and create an introduction for the section
-    {research_methodes}
 
-    Summaries:
-    {summaries}
-LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create this section, but do not add the pachages of bibliographi at the end of the section , i have an other plan for it.
+    return generate_markdown(prompt, 'Results/discussion_conclusion.md')
+
+def create_abstract_intro(review_findings: str,related_works:str,research_methodes:str,discussion:str,subject: str,Biblio:str) -> str:
+    prompt = rf"""
+Create the following sections directly in Overleaf-compatible LaTeX format without introductory phrases like "Okay, here's the...":
+1. **Abstract**
+2. **Introduction**
+3. **Keywords**
+
+### Requirements:
+1. **Content Structure:**
+   - Use the following sections as the basis:
+     - Review Findings: {review_findings}
+     - Related Works: {related_works}
+     - Research Methods: {research_methodes}
+     - Discussion and Conclusion: {discussion}
+   - The title of the paper should be [{subject}].
+   - Include a proper start to the SLR with all necessary components such as title formatting, author placeholder, date, and document class.
+
+2. **Abstract:**
+   - Provide a concise summary of the paper’s purpose, methods, key findings, and significance.
+   - Keep it brief and impactful.
+
+3. **Introduction:**
+   - Introduce the topic, context, and importance of the SLR.
+   - Include clear citations using `\cite` for every statement derived from the provided data.
+   - Keep the introduction short but informative.
+
+4. **Keywords:**
+   - Provide 5–7 relevant keywords related to the paper’s subject.
+   - Format the keywords properly as part of the Overleaf document.
+
+5. **Packages:**
+   - Gather all `\usepackage` commands used throughout the sections and include them at the top of the LaTeX document.
+   - Ensure no duplicate packages and use only those required for proper functionality.
+
+6. **General Formatting and Error Prevention:**
+   - Syntax:
+     - Double-check for missing or incorrect units in length-related commands.
+     - Use consistent case for citation keys.
+   - Bibliography:
+     - Stick to one bibliography management system (e.g., natbib, biblatex, or plain LaTeX).
+   - Debugging:
+     - Compile step-by-step (pdflatex -> bibtex -> pdflatex -> pdflatex) to test functionality.
+- Give only the results without any explanaitions.
+Bibliography:
+{Biblio}
+### Output Format:
+- Start with the `\documentclass` and necessary preamble, including packages.
+- Create the **Abstract**, **Introduction**, and **Keywords** sections in sequence, ensuring Overleaf compatibility.
+- Give only the results without any explanaitions.
+- As results give just the usingpackages + the section do not add enything else about the bibliography
+
 """
-    return generate_markdown(prompt, 'review_findings.md')
 
-def create_discussion_conclusion(review_findings: str, summaries: str,subject: str) -> str:
-    prompt = f"""Create a detailed Discussion and Conclusion section for the systematic literature review (SLR) on the subject [{subject}].
-    Use the review findings and paper summaries to discuss key insights, gaps, and future directions, explicitly citing papers. your result should start with the title of the section not with "Okay, here's the... etc" or similars.
-Results should be in Overleaf code format starting with "\section Discussion" you can add tables or lists if you want to.and create an introduction for the section
-
-    Review Findings:
-    {review_findings}
-
-    Summaries:
-    {summaries}
-LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create this section with the package for the biblio.bib file.
-"""
-    return generate_markdown(prompt, 'discussion_conclusion.md')
-
-def create_abstract_intro(review_findings: str,related_works:str,research_methodes:str,discussion:str,subject: str) -> str:
-    prompt = f"""Create directly without you telling me what you are going like starting with "Okay, here's the... etc" these 3 sections: abstract , the introducion ,the key words , based on these 4 sections Review Findings , Related Works , Research Methodes and Discussion and Conclusion , so the SLR would be completed , the name of the paper should be the subject [{subject}].your result should start with the title of the section not with "Okay, here's the... etc" or similars. (The 3 sections should be short)
-Results should be in Overleaf code format starting with "\section Abstract" you can add tables or lists if you want to.
-NOTE:gather all the usebapaclage used in all of the sections and make it in top , the package may not be visible in some sections so figure it out and the right package to run the section or code + since the abstract and the instro are the first at the SLR can you make a proper start with title and all thigs that suppose to be at the begining of an SLR .
-NOTE:Create only these sections :abstract , the introducion ,the key words 
-    Review Findings:
-    {review_findings}
-
-    related works:
-    {related_works}
-    reseach methodes:
-    {research_methodes}
-    discussion:
-    {discussion}
-LASTE NOTE : Use Citations in every sentence based on summaries ,when you want to create the section [Introduction], but do not add the pachages of bibliographi at the end of the section , i have an other plan for it.
-"""
-    return generate_markdown(prompt, 'abstract_intro.md')
+    return generate_markdown(prompt, 'Results/abstract_intro.md')
 
 
 
@@ -982,22 +1339,22 @@ def process_papers(keywords: str, year_range: Tuple[int, int], num_papers: int) 
     bibliometric = create_bibliometric(summaries)
 
     print("\nGenerating Related Works section...")
-    related_works = create_related_works(summaries,keywords)
+    related_works = create_related_works(summaries,keywords,bibliometric)
 
     related_works_c=create_charts(related_works)
 
     print("\nGenerating Research Methodes section...")
-    research_methodes = create_reshearch_methodes(related_works, summaries)
+    research_methodes = create_reshearch_methodes(related_works, summaries,bibliometric)
 
     research_methodes_c=create_charts(research_methodes)
 
     print("\nGenerating Review Findings section...")
-    review_findings = create_review_findings(research_methodes, summaries,keywords)
+    review_findings = create_review_findings(research_methodes, summaries,keywords,bibliometric)
 
     review_findings_c=create_charts(review_findings)
 
     print("\nGenerating Discussion and Conclusion section...")
-    discussion_conclusion=create_discussion_conclusion(review_findings, summaries,keywords)
+    discussion_conclusion=create_discussion_conclusion(review_findings, summaries,keywords,bibliometric)
   
 
     print("\nGenerating Background section...")
@@ -1006,12 +1363,12 @@ def process_papers(keywords: str, year_range: Tuple[int, int], num_papers: int) 
 
     print("\nGenerating Abstract, Introduction, and Keywords...")
 
-    create_abstract_intro(review_findings_c,related_works_c,research_methodes_c,discussion_conclusion,keywords)
+    create_abstract_intro(review_findings_c,related_works_c,research_methodes_c,discussion_conclusion,keywords,bibliometric)
 
     # print("\nGenerating Results section...")
     # Results(abstract,related_works_charts, research_methodes_charts, review_findings_cahrts, discussion_conclusion)
 
     print("\nProcessing complete!")
     
-if __name__ == "__main__":
-    process_papers("LLM in serious games", (2022, 2024), num_papers=1)
+# if __name__ == "__main__":
+#     process_papers("LLM in serious games", (2022, 2024), num_papers=1)
