@@ -12,6 +12,8 @@ def create_zip_of_results(zip_filename="results_files.zip"):
             zipf.write("results.md")
         if os.path.exists("results.tex"):
             zipf.write("results.tex")
+        if os.path.exists("biblio.bib"):
+            zipf.write("biblio.bib")
     return zip_filename
 
 def main():
