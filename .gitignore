@@ -15,3 +15,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 relatedworks.py
+/Results
+tools/Results
+biblio.bib
