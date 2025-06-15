@@ -4,8 +4,8 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 import time
 import io
-from datetime import datetime
-from typing import Tuple, List, Dict, Optional, Callable # Added Optional and Callable
+from datetime import datetime, timedelta # Added timedelta
+from typing import Tuple, List, Dict, Optional, Callable, Union # Added Optional, Callable, and Union
 import PyPDF2 # type: ignore
 import google.generativeai as genai
 import inspect
@@ -15,20 +15,30 @@ import re
 import shutil
 import random # Added for selecting a random paper for style
 
+# Import for specific Google API exceptions
+from google.api_core import exceptions as google_api_exceptions
 # Imports for Scopus integration
 from pdf2image import convert_from_path # type: ignore
 import pytesseract # type: ignore
 import tempfile # Added import for tempfile
+
+def save_usage_metadata(usage_metadata, function_name: str):
+    """Save usage metadata to a file with timestamp and function name."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    metadata_file = "usage_metadata.txt"
+    
+    with open(metadata_file, "a", encoding="utf-8") as f:
+        f.write(f"\n[{timestamp}] Function: {function_name}\n")
+        f.write(f"Usage Metadata: {usage_metadata}\n")
+        f.write("-" * 80 + "\n")
+
 # ANSI escape codes for colors
 BLUE = '\033[94m'
 RED = '\033[91m' # For errors
 YELLOW = '\033[93m' # For warnings
-RESET = '\033[0m'
+RESET = '\033[0m' # Global Scopus API Key removed
 
-# Configure API keys for different tasks
-SUMMARY_API_KEY = 'AIzaSyDB34rofMFLYfo0zwXnPZ6DLWHs3-I_rjM' # This should be kept secure
-SCOPUS_API_KEY = "df21b06b13dd1a95c37ba72e5c47fab5" # Scopus API Key
-genai.configure(api_key=SUMMARY_API_KEY)
+summary_model = None # Will be initialized after API key is configured
 
 # Optional: If tesseract is not in PATH (for Scopus OCR)
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -55,17 +65,29 @@ NO_SUMMARIES_GENERATED = "NO_SUMMARIES_GENERATED"
 NO_LLM_CONFIRMED_RELEVANT_PAPERS = "NO_LLM_CONFIRMED_RELEVANT_PAPERS" # New status
 # you might need to change it to a model like 'gemini-1.5-flash-latest' or 'gemini-pro'.
 
+# --- Token for critical LLM API failures ---
+LLM_API_CRITICAL_FAILURE_TOKEN = "LLM_API_CRITICAL_FAILURE_TOKEN"
+LLM_ERROR_PREFIXES = ("% Error", "% Quota", "% MAX_TOKENS", LLM_API_CRITICAL_FAILURE_TOKEN)
+
 # --- Constants for Snowballing ---
 MAX_SNOWBALL_ITERATIONS = 1 # How many rounds of snowballing from relevant papers
-MAX_REFERENCES_TO_PROCESS_PER_PAPER = 5 # Max references to try to find from each source paper
-MAX_PAPERS_TO_ADD_VIA_SNOWBALLING = 10 # Overall cap on papers added through snowballing
-
-try:
-    summary_model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20') # Updated to a more recent model
-except Exception as e:
-    print(f"{RED}Error initializing Gemini model. Please check model name and API key: {e}{RESET}")
-    print("Using 'gemini-pro' as a fallback model.")
-    summary_model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20') # Corrected fallback model
+MAX_REFERENCES_TO_PROCESS_PER_PAPER = 3 # Max references to try to find from each source paper (as per new request)
+# MAX_PAPERS_TO_ADD_VIA_SNOWBALLING will be calculated dynamically based on initial relevant papers.
+# The old constant can be kept as an absolute fallback if needed, or removed if dynamic is always preferred.
+def initialize_gemini_model(api_key: str):
+    """Initializes the Gemini model with the provided API key."""
+    global summary_model
+    if not api_key:
+        print(f"{RED}Error: Gemini API key is missing. Cannot initialize model.{RESET}")
+        # Potentially raise an error or handle this more gracefully depending on desired behavior
+        raise ValueError("Gemini API key is required.")
+    try:
+        genai.configure(api_key=api_key)
+        summary_model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20') # Updated to a more recent model
+        print(f"{BLUE}Gemini model initialized successfully.{RESET}")
+    except Exception as e:
+        print(f"{RED}Error initializing Gemini model. Please check model name and API key: {e}{RESET}")
+        raise
 
 # --- Global Rate Limiting for LLM Calls ---
 LLM_CALL_COUNT = 0
@@ -668,7 +690,8 @@ In fact, the reviewed literature captures the multi-faceted role of AI in the ec
 """
 def create_arxiv_search_query_from_natural_language(
     natural_language_goal: str,
-    previous_angles_and_queries: List[Tuple[str, str]] = None
+    previous_angles_and_queries: List[Tuple[str, str]] = None,
+    previous_query_failed_in_iteration: bool = False
 ) -> Tuple[str, str]:
     """
     Uses a Gemini LLM to transform a natural language goal into a research angle
@@ -689,6 +712,9 @@ def create_arxiv_search_query_from_natural_language(
         for idx, (prev_angle, prev_query) in enumerate(previous_angles_and_queries):
             prompt_parts.append(f"{idx+1}. Angle: {prev_angle}\n   Search Phrase: {prev_query}")
         prompt_parts.append("\nPlease suggest a NEW and DISTINCT research angle and a corresponding very concise natural language search phrase (ideally 1 keyword, MAXIMUM 2 words) for the user's overarching goal. Avoid repeating themes or query structures already tried.")
+        if previous_query_failed_in_iteration:
+            prompt_parts.append("\nIMPORTANT: The most recent search phrase generated for a similar angle might have yielded NO results. Please try a significantly different keyword strategy or a more general/specific variation of the concept for the new search phrase to improve chances of finding papers.")
+
     else:
         prompt_parts.append("\nCreate the first research angle and query.")
 
@@ -722,9 +748,18 @@ def create_arxiv_search_query_from_natural_language(
         )
 
         # Check if generate_content_from_prompt returned an error string
-        if response_text.startswith("% Error"):
+        if response_text.startswith(LLM_ERROR_PREFIXES):
             print(f"{RED}Failed to generate ArXiv search query due to LLM error: {response_text}{RESET}")
-            return "Academic analysis of " + natural_language_goal, natural_language_goal
+            if response_text == LLM_API_CRITICAL_FAILURE_TOKEN:
+                return LLM_API_CRITICAL_FAILURE_TOKEN, LLM_API_CRITICAL_FAILURE_TOKEN
+            else: # Fallback for non-critical LLM errors during query gen
+                # Consider if even non-critical LLM errors here should halt,
+                # but for now, keeping the original fallback for non-critical.
+                # The user's concern is about API key issues leading to this.
+                return "Academic analysis of " + natural_language_goal, natural_language_goal
+        if not response_text: # If response_text is empty after stripping (from generate_content_from_prompt)
+            print(f"{RED}LLM returned an empty response for ArXiv Query Generation. This might indicate an API key or service issue. Aborting query generation.{RESET}")
+            return LLM_API_CRITICAL_FAILURE_TOKEN, LLM_API_CRITICAL_FAILURE_TOKEN
 
         # Proceed with parsing the successful response_text
         angle_match = re.search(r"RESEARCH_ANGLE_START\s*(.*?)\s*RESEARCH_ANGLE_END",
@@ -736,19 +771,134 @@ def create_arxiv_search_query_from_natural_language(
             angle = angle_match.group(1).strip()
             query = query_match.group(1).strip()
             if not angle or not query: # Check if extracted strings are empty
-                 print(f"{YELLOW}Warning: LLM response for query generation was parsed but angle or query is empty. Response: {response_text[:300]}{RESET}")
-                 return "Academic analysis of " + natural_language_goal, natural_language_goal # Fallback
+                print(f"{RED}LLM response for ArXiv Query Generation was parsed, but the extracted angle or query is empty. This might indicate an API key or service issue. Aborting query generation. Response: {response_text[:300]}{RESET}")
+                return LLM_API_CRITICAL_FAILURE_TOKEN, LLM_API_CRITICAL_FAILURE_TOKEN
             return angle, query
         else:
-            # Fallback if parsing fails
-            print(f"{YELLOW}Warning: Could not parse research angle and query from LLM response. Using fallback. Response: {response_text[:300]}{RESET}")
-            return "Academic analysis of " + natural_language_goal, natural_language_goal
+            print(f"{RED}Could not parse research angle and query from LLM response for ArXiv Query Generation. This might indicate an API key or service issue. Aborting query generation. Response: {response_text[:300]}{RESET}")
+            return LLM_API_CRITICAL_FAILURE_TOKEN, LLM_API_CRITICAL_FAILURE_TOKEN
 
     except Exception as e: # Catch any other unexpected errors during this function's execution
         # This might catch errors from generate_content_from_prompt if it raises an unexpected exception,
         # or errors during the parsing logic itself.
         print(f"{RED}Unexpected error in create_arxiv_search_query_from_natural_language: {e}{RESET}")
-        return "Academic analysis of " + natural_language_goal, natural_language_goal
+        # Check if the exception is a known critical API error type, though less likely here
+        if isinstance(e, (google_api_exceptions.PermissionDenied, google_api_exceptions.Unauthenticated)):
+            return LLM_API_CRITICAL_FAILURE_TOKEN, LLM_API_CRITICAL_FAILURE_TOKEN
+        return "Academic analysis of " + natural_language_goal, natural_language_goal # Fallback
+
+def parse_usage_metadata_file(metadata_file: str = "usage_metadata.txt") -> Dict[str, any]:
+    """
+    Parses the usage_metadata.txt file and sums up token counts per function
+    and overall.
+    Returns a dictionary with 'by_function' and 'overall_totals'.
+    """
+    parsed_data: Dict[str, any] = {
+        "by_function": {},
+        "overall_totals": {
+            "prompt_token_count": 0,
+            "candidates_token_count": 0,
+            "total_token_count": 0,
+            "total_llm_calls": 0
+        }
+    }
+
+    if not os.path.exists(metadata_file):
+        print(f"{YELLOW}Warning: Usage metadata file '{metadata_file}' not found.{RESET}")
+        return parsed_data
+
+    try:
+        with open(metadata_file, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # This regex expects entries like:
+        # [TIMESTAMP] Function: FUNCTION_NAME
+        # Usage Metadata: usage_metadata { prompt_token_count: X candidates_token_count: Y total_token_count: Z }
+        # It allows for various spacing and newlines within the "usage_metadata { ... }" block.
+        entry_pattern = re.compile(
+            r"\[.*?\]\s*Function:\s*(.*?)\s*\n"  # Capture function name
+            r"Usage Metadata:\s*usage_metadata\s*\{"  # Match up to the opening brace
+            r".*?prompt_token_count:\s*(\d+)"    # Non-greedily find prompt_token_count
+            r".*?candidates_token_count:\s*(\d+)" # Non-greedily find candidates_token_count
+            r".*?total_token_count:\s*(\d+)"      # Non-greedily find total_token_count
+            r".*?\}",  # Match up to the closing brace
+            re.DOTALL | re.IGNORECASE # DOTALL for `.` to match newlines, IGNORECASE for robustness
+        )
+        
+        # Fallback regex if the above doesn't find the "usage_metadata {" part,
+        # but the key-value pairs are directly present after "Usage Metadata:"
+        fallback_entry_pattern = re.compile(
+            r"\[.*?\]\s*Function:\s*(.*?)\s*\n"
+            r"Usage Metadata:.*?"
+            r"prompt_token_count:\s*(\d+).*?"
+            r"candidates_token_count:\s*(\d+).*?"
+            r"total_token_count:\s*(\d+)",
+            re.DOTALL | re.IGNORECASE
+        )
+
+        matches_found = False
+        
+        # Try the primary pattern first
+        for match in entry_pattern.finditer(content):
+            matches_found = True
+            function_name = match.group(1).strip()
+            prompt_tokens = int(match.group(2))
+            candidates_tokens = int(match.group(3))
+            total_tokens = int(match.group(4))
+
+            if function_name not in parsed_data["by_function"]:
+                parsed_data["by_function"][function_name] = {
+                    "prompt_token_count": 0, "candidates_token_count": 0,
+                    "total_token_count": 0, "call_count": 0
+                }
+            
+            parsed_data["by_function"][function_name]["prompt_token_count"] += prompt_tokens
+            parsed_data["by_function"][function_name]["candidates_token_count"] += candidates_tokens
+            parsed_data["by_function"][function_name]["total_token_count"] += total_tokens
+            parsed_data["by_function"][function_name]["call_count"] += 1
+
+            parsed_data["overall_totals"]["prompt_token_count"] += prompt_tokens
+            parsed_data["overall_totals"]["candidates_token_count"] += candidates_tokens
+            parsed_data["overall_totals"]["total_token_count"] += total_tokens
+            parsed_data["overall_totals"]["total_llm_calls"] += 1
+        
+        # If primary pattern found nothing, try fallback
+        if not matches_found:
+            print(f"{YELLOW}Primary regex did not find matches. Trying fallback regex.{RESET}")
+            for match in fallback_entry_pattern.finditer(content):
+                matches_found = True
+                function_name = match.group(1).strip()
+                prompt_tokens = int(match.group(2))
+                candidates_tokens = int(match.group(3))
+                total_tokens = int(match.group(4))
+
+                if function_name not in parsed_data["by_function"]:
+                    parsed_data["by_function"][function_name] = {
+                        "prompt_token_count": 0, "candidates_token_count": 0,
+                        "total_token_count": 0, "call_count": 0
+                    }
+                
+                parsed_data["by_function"][function_name]["prompt_token_count"] += prompt_tokens
+                parsed_data["by_function"][function_name]["candidates_token_count"] += candidates_tokens
+                parsed_data["by_function"][function_name]["total_token_count"] += total_tokens
+                parsed_data["by_function"][function_name]["call_count"] += 1
+
+                parsed_data["overall_totals"]["prompt_token_count"] += prompt_tokens
+                parsed_data["overall_totals"]["candidates_token_count"] += candidates_tokens
+                parsed_data["overall_totals"]["total_token_count"] += total_tokens
+                parsed_data["overall_totals"]["total_llm_calls"] += 1
+
+
+        if not matches_found and content.strip(): # If content exists but no matches by either regex
+            print(f"{YELLOW}Warning: No token usage entries found by any regex in '{metadata_file}'. File content snippet (first 1000 chars):{RESET}\n{content[:1000]}\n")
+            print(f"{YELLOW}Primary Regex used: {entry_pattern.pattern}{RESET}")
+            print(f"{YELLOW}Fallback Regex used: {fallback_entry_pattern.pattern}{RESET}")
+
+
+    except Exception as e:
+        print(f"{RED}Error parsing usage metadata file '{metadata_file}': {e}{RESET}")
+    
+    return parsed_data
 
 
 def fetch_arxiv_papers(
@@ -1041,15 +1191,18 @@ SLR Subject: [{subject}]
             [prompt, uploaded_file],
             generation_config=genai.types.GenerationConfig(temperature=0.7)
         )
-        
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         # Clean up: Delete the uploaded file after processing
         try:
             genai.delete_file(uploaded_file.name)
         except Exception as delete_error:
-            print(f"{YELLOW}Warning: Could not delete uploaded file: {delete_error}{RESET}")
+            print(f"{YELLOW}Warning: Could not delete uploaded file {uploaded_file.name} in summarize_paper: {delete_error}{RESET}")
             
         return response.text.strip()
     
+    except (google_api_exceptions.PermissionDenied, google_api_exceptions.Unauthenticated, google_api_exceptions.ResourceExhausted, google_api_exceptions.InternalServerError) as critical_e:
+        print(f"{RED}Critical API error during summarization for {paper_name}: {critical_e}{RESET}")
+        return LLM_API_CRITICAL_FAILURE_TOKEN
     except Exception as e:
         print(f"{RED}Error during summarization: {e}{RESET}")
         # Attempt to clean up even if summarization fails
@@ -1058,12 +1211,13 @@ SLR Subject: [{subject}]
         except:
             pass
         return f"Summarization error: {str(e)}"
+
 def batch_summarize_papers(
     subject_keywords: str,
     papers_to_summarize_details: List[Dict[str, any]],
     summaries_folder: str = SUMMARIES_FOLDER
-) -> List[Dict[str, any]]:
-    """
+) -> Union[List[Dict[str, any]], str]: # Can return list or error token
+    """    
     Summarize a list of papers using direct PDF processing with Gemini,
     or by uploading text files as a fallback.
     """
@@ -1075,6 +1229,7 @@ def batch_summarize_papers(
         return []
 
     processed_papers_with_summaries = []
+    api_error_count = 0
     for paper_info in papers_to_summarize_details:
         pdf_path = paper_info.get('local_pdf_path')
         # Ensure 'filename' key exists, fallback to a generic name if not
@@ -1118,6 +1273,10 @@ def batch_summarize_papers(
                         summary_content = f"Error: No PDF or valid text file path ({txt_file_path_for_fallback}) available for {paper_name_for_prompt}"
                         print(f"{RED}{summary_content}{RESET}")
 
+                if summary_content == LLM_API_CRITICAL_FAILURE_TOKEN:
+                    api_error_count += 1
+                    # Continue to attempt other summaries unless all fail
+
                 with open(summary_filepath, 'w', encoding='utf-8') as summary_file:
                     summary_file.write(summary_content)
                 print(f"Summary saved to: {summary_filepath}")
@@ -1136,6 +1295,10 @@ def batch_summarize_papers(
             augmented_paper_info['summary_filepath'] = None
             processed_papers_with_summaries.append(augmented_paper_info)
 
+    # If all summarization attempts failed due to critical API errors
+    if papers_to_summarize_details and api_error_count == len(papers_to_summarize_details):
+        print(f"{RED}All {api_error_count} summaries failed due to critical API errors. Batch summarization failed.{RESET}")
+        return LLM_API_CRITICAL_FAILURE_TOKEN
     return processed_papers_with_summaries
 
 
@@ -1173,9 +1336,12 @@ SLR Subject: [{subject}]
             [prompt_instructions, uploaded_file], # Pass as a list
             generation_config=genai.types.GenerationConfig(temperature=0.7)
         )
-        
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         return response.text.strip()
 
+    except (google_api_exceptions.PermissionDenied, google_api_exceptions.Unauthenticated, google_api_exceptions.ResourceExhausted, google_api_exceptions.InternalServerError) as critical_e:
+        print(f"{RED}Critical API error in fallback summarization for {paper_name}: {critical_e}{RESET}")
+        return LLM_API_CRITICAL_FAILURE_TOKEN
     except Exception as e:
         print(f"{RED}Error in fallback summarization for {paper_name}: {e}{RESET}")
         return f"Fallback summarization error for {paper_name}: {str(e)}"
@@ -1201,8 +1367,7 @@ def generate_content_from_prompt(prompt: str, context_for_error: str = "LLM Gene
 
     try:
         generation_config = genai.types.GenerationConfig(
-            temperature=0.7, # Increased temperature for more natural variety
-            max_output_tokens=8000
+            temperature=0.7
         )
         
         max_retries_quota = 3
@@ -1220,7 +1385,7 @@ def generate_content_from_prompt(prompt: str, context_for_error: str = "LLM Gene
                     prompt,
                     generation_config=generation_config
                 )
-
+                save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
                 # Handle MAX_TOKENS error
                 if response.candidates and response.candidates[0].finish_reason and response.candidates[0].finish_reason.name == 'MAX_TOKENS':
                     print(f"{YELLOW}MAX_TOKENS error for {context_for_error}. Skipping this request.{RESET}")
@@ -1231,8 +1396,13 @@ def generate_content_from_prompt(prompt: str, context_for_error: str = "LLM Gene
                     generated_text = response.text.strip()
                     return generated_text
                 except ValueError as ve:
-                    print(f"{YELLOW}Response issue for {context_for_error}: {ve}{RESET}")
-                    return f"% Response issue for {context_for_error}: {ve}"
+                    # This can happen if response.text is not available or malformed due to an API error
+                    # that wasn't caught as a google_api_exceptions.
+                    print(f"{RED}Critical issue accessing LLM response text for {context_for_error}: {ve}. This might indicate a severe API problem.{RESET}")
+                    return LLM_API_CRITICAL_FAILURE_TOKEN
+                if not response.text.strip() and not (response.candidates and response.candidates[0].finish_reason and response.candidates[0].finish_reason.name == 'MAX_TOKENS'):
+                    print(f"{RED}LLM returned an empty response (not MAX_TOKENS) for {context_for_error}. This might indicate an API key or service issue.{RESET}")
+                    return LLM_API_CRITICAL_FAILURE_TOKEN
 
             except Exception as e_inner:
                 error_str = str(e_inner)
@@ -1245,16 +1415,23 @@ def generate_content_from_prompt(prompt: str, context_for_error: str = "LLM Gene
                         attempt += 1
                         continue
                     else:
-                        print(f"{RED}Quota limit still exceeded after retries. Aborting.{RESET}")
-                        return f"% Quota exceeded error for {context_for_error}"
+                        print(f"{RED}Quota limit still exceeded after retries for {context_for_error}. Critical failure.{RESET}")
+                        return LLM_API_CRITICAL_FAILURE_TOKEN # Treat as critical
                 
+                # Check for other critical API errors
+                if isinstance(e_inner, (google_api_exceptions.PermissionDenied, google_api_exceptions.Unauthenticated, google_api_exceptions.InternalServerError)):
+                    print(f"{RED}Critical API error for {context_for_error}: {error_str}. Critical failure.{RESET}")
+                    return LLM_API_CRITICAL_FAILURE_TOKEN
                 # Handle other errors
-                print(f"{RED}Error during generation for {context_for_error}: {error_str}{RESET}")
+                print(f"{RED}Non-critical error during generation for {context_for_error}: {error_str}{RESET}")
                 return f"% Error during {context_for_error}: {error_str}"
 
     except Exception as e:
         print(f"{RED}Unexpected error in generate_content_from_prompt: {e}{RESET}")
-        return f"% Unexpected error in generate_content_from_prompt: {e}"
+        if isinstance(e, AttributeError) and "NoneType" in str(e) and "summary_model" in str(e).lower():
+             print(f"{RED}Critical: summary_model is None in generate_content_from_prompt. Gemini model likely not initialized due to API key issue.{RESET}")
+             return LLM_API_CRITICAL_FAILURE_TOKEN
+        return f"% Unexpected error in generate_content_from_prompt: {e}" # Fallback for other unexpected errors
 
 def generate_markdown(prompt: str, filename: str, context: str = "") -> str:
     """
@@ -1269,7 +1446,10 @@ def generate_markdown(prompt: str, filename: str, context: str = "") -> str:
     try:
         combined_prompt = context + "\n\n" + prompt if context else prompt
         generated_text = generate_content_from_prompt(combined_prompt, context_for_error=f"Markdown generation for {filename}")
-        
+
+        if generated_text == LLM_API_CRITICAL_FAILURE_TOKEN: # Propagate critical failure
+            return LLM_API_CRITICAL_FAILURE_TOKEN
+
         # Remove markdown code block fences (```latex or ```)
         generated_text = re.sub(r'^```(?:latex)?\s*[\r\n]*', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'[\r\n]*```\s*$', '', generated_text, flags=re.MULTILINE)
@@ -1408,12 +1588,17 @@ def download_pdf_from_scopus(
     doi: str,
     base_filename: str,
     pdf_folder: str,
-    txt_folder: str
+    txt_folder: str,
+    scopus_api_key: Optional[str] # Added parameter
 ) -> Tuple[Optional[str], Optional[str]]:
     """
     Downloads PDF from Scopus by DOI without OCR. Returns PDF path if successful.
     """
     if not doi:
+        return None, None
+
+    if not scopus_api_key:
+        print(f"    Scopus API key not provided. Skipping download for DOI: {doi}")
         return None, None
 
     pdf_path = os.path.join(pdf_folder, f"{base_filename}.pdf")
@@ -1423,7 +1608,7 @@ def download_pdf_from_scopus(
         print(f"    PDF and TXT already exist for {base_filename}, skipping download.")
         return pdf_path, txt_path
 
-    headers = {"X-ELS-APIKey": SCOPUS_API_KEY, "Accept": "application/pdf"}
+    headers = {"X-ELS-APIKey": scopus_api_key, "Accept": "application/pdf"}
     url = SCOPUS_ARTICLE_BASE_URL + urllib.parse.quote_plus(doi)
 
     try:
@@ -1448,13 +1633,17 @@ def fetch_scopus_papers_and_process(
     num_papers: int,
     pdf_folder: str,
     txt_folder: str,
-    already_fetched_primary_ids: set
+    already_fetched_primary_ids: set,
+    scopus_api_key: Optional[str] # Added parameter
 ) -> Tuple[List[Dict], int, str]:
     """ 
     Fetches paper metadata from Scopus, downloads PDFs, converts them to text (OCR),
     and returns a list of processed paper metadata.
     """
-    headers = {"X-ELS-APIKey": SCOPUS_API_KEY, "Accept": "application/json"}
+    if not scopus_api_key:
+        return [], 0, "Scopus: API key not provided. Skipping Scopus search."
+
+    headers = {"X-ELS-APIKey": scopus_api_key, "Accept": "application/json"}
     # Scopus query needs to be specific. Example: ALL(keyword) AND PUBYEAR > 2020 AND PUBYEAR < 2023
     # For simplicity, we'll use the input search_query_str directly in a Scopus-friendly way.
     # A more robust solution would involve LLM converting natural language to Scopus query syntax.
@@ -1501,7 +1690,7 @@ def fetch_scopus_papers_and_process(
         sanitized_base_filename = sanitize_filename(primary_id_scopus) # Uses the primary_id for filename base
         # pdf_path will be the path to the PDF if downloaded, else None.
         # ocr_txt_path will be the path to the OCR'd text if successful, else None.
-        pdf_downloaded_path, ocr_txt_path = download_pdf_from_scopus(doi, sanitized_base_filename, pdf_folder, txt_folder)
+        pdf_downloaded_path, ocr_txt_path = download_pdf_from_scopus(doi, sanitized_base_filename, pdf_folder, txt_folder, scopus_api_key)
 
         # Determine the text content and its source
         final_txt_path_for_meta = None
@@ -1623,7 +1812,7 @@ Return the **modified LaTeX code for the section ONLY**.
             generation_config=genai.types.GenerationConfig(temperature=0.3) # Lower temp for code generation
         )
         llm_output = response.text.strip()
-
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         if llm_output and not llm_output.startswith("% Error"):
             enhanced_content = llm_output
             if "[Actual Count]" in enhanced_content or "[Number Here]" in enhanced_content:
@@ -1940,7 +2129,7 @@ The BibTeX bibliography for context is in the uploaded 'biblio_context.bib' file
             generation_config=genai.types.GenerationConfig(temperature=0.7)
         )
         generated_text = response.text.strip()
-        
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         # Clean up markdown code block fences
         generated_text = re.sub(r'^```(?:latex)?\s*[\r\n]*', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'[\r\n]*```\s*$', '', generated_text, flags=re.MULTILINE)
@@ -2423,7 +2612,7 @@ def generate_critique(slr_content_tex_path: str, previous_critique_text: str = "
             generation_config=genai.types.GenerationConfig(temperature=0.5)
         )
         return response.text.strip()
-
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
     except Exception as e:
         print(f"{RED}Error generating critique for {slr_content_tex_path}: {e}{RESET}")
         return f"% Error generating critique: {str(e)}"
@@ -2611,7 +2800,7 @@ Return only the outline. Do not include conversational preambles.
             generation_config=genai.types.GenerationConfig(temperature=0.7)
         )
         generated_text = response.text.strip()
-        
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         # Save the generated outline
         output_filename = 'Results/slr_high_level_outline.txt'
         os.makedirs(os.path.dirname(output_filename), exist_ok=True)
@@ -2634,97 +2823,139 @@ Return only the outline. Do not include conversational preambles.
 
 def extract_references_from_paper_text(
     txt_file_path: str, # Changed from paper_text_content
-    paper_title: str,
-    _update_status_func: Callable[[str], None]
+    paper_title_for_logging: str,
+    status_update_func: Callable[[str], None]
 ) -> List[Dict[str, str]]:
     """
-    Extracts references from a paper's text file using an LLM to locate the reference section
-    by uploading the file, and then regex pattern matching on that section.
+    Extracts reference titles from a paper's text file.
+    It first uses regex to attempt to isolate the reference section,
+    then uses an LLM to extract titles from that section (or the full text if section not found).
     """
-    _update_status_func(f"  Attempting to extract references for '{paper_title[:50]}...' from file {os.path.basename(txt_file_path)}")
+    status_update_func(f"  Extracting references for '{paper_title_for_logging[:50]}...' from: {os.path.basename(txt_file_path)}")
 
-    reference_section_text_from_llm = ""
+    full_text_content = ""
+    try:
+        with open(txt_file_path, 'r', encoding='utf-8') as f:
+            full_text_content = f.read()
+    except Exception as e_read:
+        status_update_func(f"    Error reading text file {txt_file_path}: {e_read}")
+        return []
+
+    if not full_text_content.strip():
+        status_update_func(f"    Text file {txt_file_path} is empty. Cannot extract references.")
+        return []
+
+    # 1. Regex to attempt to isolate the reference section
+    reference_section_text_for_llm = ""
+    # Regex to find common reference section headers and capture text following them.
+    # This is a basic attempt; robustly finding the end of a reference section in plain text is hard.
+    # It looks for a header and then takes a substantial chunk of text, or up to a common next section.
+    ref_headers_pattern = r'\n\s*(REFERENCES|BIBLIOGRAPHY|WORKS CITED|LITERATURE CITED)\s*\n'
+    match = re.search(ref_headers_pattern, full_text_content, re.IGNORECASE | re.DOTALL)
+
+    if match:
+        status_update_func(f"    Regex found potential reference section header: '{match.group(1)}'")
+        # Take text from after the header to the end of the document
+        potential_section_text = full_text_content[match.end():]
+        
+        # Optional: Try to find a common subsequent section header to limit the reference text
+        # next_section_match = re.search(r'\n\s*(APPENDIX|ACKNOWLEDGEMENTS)\s*\n', potential_section_text, re.IGNORECASE)
+        # if next_section_match:
+        #     reference_section_text_for_llm = potential_section_text[:next_section_match.start()]
+        #     status_update_func(f"    Reference section text truncated before '{next_section_match.group(1)}'.")
+        # else:
+        reference_section_text_for_llm = potential_section_text
+        status_update_func(f"    Using text from '{match.group(1)}' onwards for LLM title extraction.")
+    else:
+        status_update_func(f"    Regex did not find a clear reference section header. Using full text for LLM title extraction.")
+        reference_section_text_for_llm = full_text_content
+
+    if not reference_section_text_for_llm.strip():
+        status_update_func(f"    No text (either section or full) to send to LLM for title extraction from '{paper_title_for_logging[:50]}...'.")
+        return []
+
     uploaded_paper_file = None
+    extracted_titles_from_llm = []
+    temp_ref_section_file_path = None # For temporary file
 
     try:
-        _update_status_func(f"    Uploading text file to LLM to locate reference section for '{paper_title[:50]}...'")
-        # Upload the entire text file
+        status_update_func(f"    Uploading reference section text (or full text) to LLM for title extraction from '{paper_title_for_logging[:50]}...'")
+        
+        # Limit the size of text sent to LLM to avoid excessive token usage for very long reference sections/papers
+        max_ref_text_len = 75000 # Approx 15k-20k tokens, adjust as needed
+        if len(reference_section_text_for_llm) > max_ref_text_len:
+            status_update_func(f"    Reference text for LLM is very long ({len(reference_section_text_for_llm)} chars), truncating to {max_ref_text_len} chars.")
+            reference_section_text_for_llm = reference_section_text_for_llm[:max_ref_text_len]
+
+        # Write the reference section text to a temporary file
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".txt", encoding='utf-8') as tmp_f:
+            tmp_f.write(reference_section_text_for_llm)
+            temp_ref_section_file_path = tmp_f.name
+        
+        if not temp_ref_section_file_path:
+            status_update_func(f"    Could not create temporary file for reference section of '{paper_title_for_logging[:50]}...'.")
+            return []
+
         uploaded_paper_file = genai.upload_file(
-            path=txt_file_path,
+            path=temp_ref_section_file_path, # Pass path to the temporary file
             mime_type='text/plain',
-            display_name=f"text_content_{os.path.basename(txt_file_path)}"
+            display_name=f"ref_section_{os.path.basename(txt_file_path)}"
         )
 
-        ref_section_prompt_instructions = f"""
-Analyze the provided academic paper text (uploaded file). Your task is to locate the section containing the list of references (often titled "References", "Bibliography", "Works Cited", etc.).
-Extract and return ONLY the raw text content of this specific reference list section.
-Do NOT include the section heading itself (e.g., do not include "References" or "\\section*{{References}}").
-Do NOT include any introductory or concluding sentences outside the actual list of references.
+        title_extraction_prompt = f"""
+From the provided text (uploaded file, which is believed to be a list of academic references or a full paper containing them), your task is to extract the titles of the cited works.
+
+Instructions:
+1. Focus on identifying and extracting only the main titles of papers, articles, books, or reports.
+2. List each distinct title on a new line.
+3. Provide only the titles. Do NOT include:
+    - Numbering (e.g., "[1]", "1.")
+    - Author names
+    - Year of publication
+    - Journal names, conference proceedings, or publisher information
+    - URLs, DOIs, page numbers, or volume/issue numbers
+4. If a line or entry does not appear to contain a valid reference title, or if it's ambiguous, skip it.
+5. Aim for accuracy. If a title is very long, provide a significant, identifiable portion of it.
 Do NOT include any markdown formatting, explanations, or conversational text.
-If you cannot confidently identify a distinct reference list section, return an empty string.
+
+Example of desired output format:
+The Role of AI in Modern Education
+A Study on Machine Learning Algorithms for Healthcare
+Climate Change Impacts on Biodiversity
 """
         llm_response_obj = summary_model.generate_content(
-            [ref_section_prompt_instructions, uploaded_paper_file], # Pass as list
-            generation_config=genai.types.GenerationConfig(temperature=0.2) # Lower temp for extraction
+            [title_extraction_prompt, uploaded_paper_file],
+            generation_config=genai.types.GenerationConfig(temperature=0.3) # Slightly higher temp for more creative extraction if needed
         )
         
         llm_response_text = llm_response_obj.text.strip()
 
         if llm_response_text:
-            reference_section_text_from_llm = llm_response_text
-            _update_status_func(f"    LLM successfully located potential reference section text ({len(reference_section_text_from_llm)} chars).")
+            extracted_titles_from_llm = [title.strip() for title in llm_response_text.splitlines() if title.strip() and len(title.strip()) > 5] # Basic filter
+            status_update_func(f"    LLM extracted {len(extracted_titles_from_llm)} potential titles from '{paper_title_for_logging[:50]}...'.")
         else:
-            _update_status_func(f"    LLM returned empty string for reference section (no distinct section found). Will attempt regex on full text from file.")
-            # If LLM fails to find section, read full text for regex as a fallback
-            with open(txt_file_path, 'r', encoding='utf-8') as f_full:
-                reference_section_text_from_llm = f_full.read()
-
+            status_update_func(f"    LLM returned no titles from the provided text for '{paper_title_for_logging[:50]}...'.")
 
     except Exception as e:
-        _update_status_func(f"    Error during LLM reference section location for '{paper_title[:50]}...': {e}. Will attempt regex on full text from file.")
-        # Fallback to reading the full file content for regex if LLM part fails
-        try:
-            with open(txt_file_path, 'r', encoding='utf-8') as f_full_fallback:
-                reference_section_text_from_llm = f_full_fallback.read()
-        except Exception as e_read_fallback:
-            _update_status_func(f"      Failed to read full text file {txt_file_path} for regex fallback: {e_read_fallback}")
-            return [] # Cannot proceed
+        status_update_func(f"    Error during LLM title extraction for '{paper_title_for_logging[:50]}...': {e}")
+        # No explicit fallback to old regex parsing here, as the request is to use LLM for titles.
+        # If LLM fails, we'll have an empty list of titles.
     finally:
         if uploaded_paper_file:
             try:
                 genai.delete_file(uploaded_paper_file.name)
             except Exception as delete_error:
-                print(f"{YELLOW}Warning: Could not delete uploaded file {uploaded_paper_file.name} in extract_references: {delete_error}{RESET}")
+                print(f"{YELLOW}Warning: Could not delete uploaded file {uploaded_paper_file.name} in extract_references_from_paper_text: {delete_error}{RESET}")
+        if temp_ref_section_file_path and os.path.exists(temp_ref_section_file_path):
+            os.remove(temp_ref_section_file_path) # Delete the temporary file
 
-    text_to_search_for_refs = reference_section_text_from_llm # This is now either LLM output or full file content
-    if not text_to_search_for_refs:
-        _update_status_func(f"    No text content available to search for references in '{paper_title[:50]}...'.")
-        return []
 
-    _update_status_func(f"    Applying regex to the identified/fallback text for '{paper_title[:50]}...'.")
-
-    references_found = []
-    # Pattern 1: [Number] Potentially Authors. (Year) "Title".
-    p1_matches = re.findall(r'\[\s*\d+\s*\]\s*(.*?)\s*\(([\d\s-]+)\)\s*["“](.+?)["”]\.?', text_to_search_for_refs, re.IGNORECASE)
-    for authors, year, title in p1_matches:
-        references_found.append({'title': title.strip(), 'authors': authors.strip().rstrip('.'), 'year': year.strip()})
-
-    # Pattern 2: Author, A. A., & Author, B. B. (Year). Title of work.
-    p2_matches = re.findall(r'([A-Z][A-Za-z\s,\.&’-]+)\s*\(([\d\s-]+)\)\.?\s*([A-Za-z0-9\s:\-\(\)_’]+?)\.(?=\s*[A-Z]|\n\n|$)', text_to_search_for_refs)
-    for authors, year, title in p2_matches:
-        if len(title.split()) < 25 and "et al" not in authors.lower() and len(title.strip()) > 5:
-            references_found.append({'title': title.strip(), 'authors': authors.strip(), 'year': year.strip()})
-
-    # Pattern 3: "Title" by Authors (Year). or "Title" Authors (Year).
-    p3_matches = re.findall(r'["“](.+?)["”]\s*(?:by\s*)?([A-Za-z\s,\.&’-]+?)\s*\(([\d\s-]+)\)', text_to_search_for_refs, re.IGNORECASE)
-    for title, authors, year in p3_matches:
-        if len(title.strip()) > 5:
-            references_found.append({'title': title.strip(), 'authors': authors.strip(), 'year': year.strip()})
-    
     unique_references = []
     seen_titles_lower = set()
-    for ref in references_found:
-        cleaned_title = re.sub(r'\.$', '', ref['title']).strip()
+    for title_str in extracted_titles_from_llm:
+        # Basic cleaning of titles from LLM
+        cleaned_title = re.sub(r'\.$', '', title_str).strip() # Remove trailing period
+        cleaned_title = re.sub(r'^["“](.*)["”]$', r'\1', cleaned_title) # Remove surrounding quotes
         cleaned_title = re.sub(r'\s+', ' ', cleaned_title)
 
         if not cleaned_title or len(cleaned_title) < 5:
@@ -2732,13 +2963,18 @@ If you cannot confidently identify a distinct reference list section, return an 
 
         title_lower_key = cleaned_title.lower()
         if title_lower_key not in seen_titles_lower:
-            unique_references.append({'title': cleaned_title, 'authors': ref['authors'], 'year': ref['year']})
+            # For snowballing, we primarily need the title. Authors/year from LLM title extraction are not reliable.
+            unique_references.append({
+                'title': cleaned_title,
+                'authors': 'N/A_LLM_Title_Extraction', # Mark that these are not parsed here
+                'year': 'N/A_LLM_Title_Extraction'      # Mark that these are not parsed here
+            })
             seen_titles_lower.add(title_lower_key)
 
     if unique_references:
-        _update_status_func(f"    Extracted {len(unique_references)} unique references for '{paper_title[:50]}...'")
+        status_update_func(f"    Finalized {len(unique_references)} unique titles for snowballing from '{paper_title_for_logging[:50]}...'.")
     else:
-        _update_status_func(f"    Regex extraction did not find usable references for '{paper_title[:50]}...'.")
+        status_update_func(f"    LLM did not yield usable titles for snowballing from '{paper_title_for_logging[:50]}...'.")
 
     return unique_references
 
@@ -2749,17 +2985,37 @@ def process_papers(
     num_search_iterations: int = 1,
     num_refinement_cycles: int = 1,
     min_relevant_papers_target: int = 5, # Target number of relevant papers
+    gemini_api_key: Optional[str] = None, # New parameter for Gemini API key
+    scopus_api_key: Optional[str] = None, # New parameter for Scopus API key
     max_supplementary_iterations: int = 2, # How many extra fetch rounds if target not met
-    status_update_callback: Optional[Callable[[str], None]] = None
-) -> Tuple[str, str | None]: # Returns (status_or_final_slr_path, refinement_report_path_or_None)
+    status_update_callback: Optional[Callable[[str], None]] = None,
+) -> Tuple[str, Optional[str], Optional[str]]: # Returns (status_or_final_slr_path, refinement_report_path, processing_summary_report_path)
     """
     Main processing function for SLR generation, including fetching, summarization,
     snowballing, and iterative refinement.
     """
+    overall_start_time = datetime.now()
+    phase_timings: Dict[str, timedelta] = {}
+    section_generation_timings_per_cycle: List[Dict[str, any]] = []
+    iteration_fetch_details: List[Dict[str, any]] = []
+
     def _update_status(message: str):
         print(message) # Always print to console
         if status_update_callback:
             status_update_callback(message)
+
+    # --- Initialize Gemini Model with provided API key ---
+    if not gemini_api_key:
+        _update_status(f"{RED}CRITICAL: Gemini API key not provided. Aborting.{RESET}")
+        return "PROCESS_INCOMPLETE_NO_GEMINI_KEY", None, None
+    try:
+        initialize_gemini_model(gemini_api_key)
+    except ValueError as ve: # Catch specific error from initialize_gemini_model
+        _update_status(f"{RED}CRITICAL: {ve} Aborting.{RESET}")
+        return "PROCESS_INCOMPLETE_GEMINI_INIT_FAILED", None, None
+    except Exception as e_gem_init: # Catch any other init errors
+        _update_status(f"{RED}CRITICAL: Failed to initialize Gemini model: {e_gem_init}. Aborting.{RESET}")
+        return "PROCESS_INCOMPLETE_GEMINI_INIT_FAILED", None, None
 
     _update_status(f"Starting SLR generation for: '{natural_language_paper_goal}'")
     _update_status(f"Configuration: Search Iterations: {num_search_iterations}, Papers/Iter: {num_papers_to_fetch_per_iteration}, Refinement Cycles: {num_refinement_cycles}, Min Relevant Target: {min_relevant_papers_target}")
@@ -2767,20 +3023,29 @@ def process_papers(
     # --- Setup ---
     pdf_folder = "pdf_papers"
     txt_papers_folder_path = TXT_PAPERS_FOLDER # Defined globally
+    MAX_SUB_QUERY_ATTEMPTS_PER_MAIN_ITERATION = 3 # Max query generation attempts per main search iteration
     summaries_folder_path = SUMMARIES_FOLDER # Defined globally
     results_folder_path = "Results"
+
+    # Define the usage metadata file path
+    usage_metadata_filepath = "usage_metadata.txt"
 
     # Clear and recreate working directories
     for folder_path in [results_folder_path, pdf_folder, txt_papers_folder_path, summaries_folder_path]:
         if os.path.exists(folder_path):
             shutil.rmtree(folder_path)
         os.makedirs(folder_path, exist_ok=True)
+    if os.path.exists(usage_metadata_filepath): # Clear usage metadata for the current run
+        os.remove(usage_metadata_filepath)
     _update_status(f"Cleared/Created working directories: {pdf_folder}, {txt_papers_folder_path}, {summaries_folder_path}, {results_folder_path}")
 
     all_angles_and_queries: List[Tuple[str, str]] = []
     cumulative_fetched_paper_metadata: List[Dict[str, any]] = []
     # Use a global set to track all primary IDs (arxiv_id, scopus_id, manual_id) fetched across all methods
     globally_fetched_primary_ids: set = set()
+    # Lists to store details of fetched papers for the report
+    manual_papers_added_details: List[Dict[str, str]] = []
+    all_snowballed_papers_added_details: List[Dict[str, str]] = []
 
     # PRISMA counts initialization
     counts_for_reporting = {
@@ -2797,54 +3062,139 @@ def process_papers(
 
     # --- Phase 1: Initial Paper Fetching ---
     _update_status("Phase 1: Initial Paper Fetching...")
-    for i in range(num_search_iterations):
-        _update_status(f"  Search Iteration {i + 1}/{num_search_iterations}")
-        # Generate a new research angle and query for this iteration
-        current_angle, current_query = create_arxiv_search_query_from_natural_language(
-            natural_language_paper_goal, all_angles_and_queries
-        )
-        _update_status(f"    Generated Angle: '{current_angle}', Query: '{current_query}'")
-        all_angles_and_queries.append((current_angle, current_query))
+    phase_start_time_initial_fetch = datetime.now()
+    
+    for i in range(num_search_iterations): # Main search iteration loop
+        _update_status(f"  Main Search Iteration {i + 1}/{num_search_iterations} (Target: {num_papers_to_fetch_per_iteration} papers)")
+        
+        papers_fetched_this_main_iteration_count = 0
+        last_sub_query_fetched_zero = False # Flag for query generation hint
 
-        if current_query == INVALID_QUERY_FOR_ACADEMIC_SEARCH or not current_query.strip():
-            _update_status(f"    LLM indicated query '{current_query}' is invalid for academic search or empty. Skipping this iteration.")
-            continue
+        for sub_query_attempt in range(MAX_SUB_QUERY_ATTEMPTS_PER_MAIN_ITERATION):
+            if papers_fetched_this_main_iteration_count >= num_papers_to_fetch_per_iteration:
+                _update_status(f"    Target of {num_papers_to_fetch_per_iteration} papers met for main iteration {i + 1}. Moving to next main iteration.")
+                break # Break from sub_query_attempt loop
 
-        # Fetch from ArXiv
-        try:
-            newly_fetched_meta_arxiv, fetched_count_arxiv, fetch_status_arxiv = fetch_arxiv_papers(
-                current_query, year_range, num_papers_to_fetch_per_iteration,
-                pdf_folder, globally_fetched_primary_ids
+            _update_status(f"    Sub-query Attempt {sub_query_attempt + 1}/{MAX_SUB_QUERY_ATTEMPTS_PER_MAIN_ITERATION} for Main Iteration {i + 1}")
+
+            current_angle, current_query = create_arxiv_search_query_from_natural_language(
+                natural_language_paper_goal,
+                all_angles_and_queries,
+                previous_query_failed_in_iteration=last_sub_query_fetched_zero
             )
-            _update_status(f"    ArXiv: {fetch_status_arxiv}")
-            counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_ARXIV"] += fetched_count_arxiv
-            if newly_fetched_meta_arxiv:
-                for meta_ax in newly_fetched_meta_arxiv: # Ensure correct metadata structure
-                    sanitized_id = os.path.splitext(os.path.basename(meta_ax['local_pdf_path']))[0]
-                    meta_ax['source'] = 'arxiv'
-                    meta_ax['id_primary'] = sanitized_id # Use filename base as primary ID for ArXiv
-                    meta_ax['abstract_api'] = meta_ax.get('summary', '') # ArXiv specific field for abstract
-                    meta_ax['local_txt_path'] = os.path.join(txt_papers_folder_path, f"{sanitized_id}.txt")
-                    cumulative_fetched_paper_metadata.append(meta_ax)
-                    _update_status(f"      Fetched ArXiv: {meta_ax.get('title', 'N/A Title')[:50]}...")
-        except Exception as e_arxiv:
-            _update_status(f"    Error during ArXiv fetch for query '{current_query}': {e_arxiv}")
+            _update_status(f"      Generated Angle: '{current_angle}', Query: '{current_query}'")
 
-        # Fetch from Scopus
-        try:
-            _update_status(f"    Searching Scopus for: '{current_query}'")
-            newly_fetched_meta_scopus, fetched_count_scopus, fetch_status_scopus = fetch_scopus_papers_and_process(
-                current_query, year_range, num_papers_to_fetch_per_iteration,
-                pdf_folder, txt_papers_folder_path, globally_fetched_primary_ids
-            )
-            _update_status(f"    Scopus: {fetch_status_scopus}")
-            counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_SCOPUS"] += fetched_count_scopus
-            if newly_fetched_meta_scopus:
-                cumulative_fetched_paper_metadata.extend(newly_fetched_meta_scopus) # Scopus metadata is already structured
-                for meta_sc in newly_fetched_meta_scopus:
-                     _update_status(f"      Fetched Scopus: {meta_sc.get('title', 'N/A Title')[:50]}...")
-        except Exception as e_scopus:
-            _update_status(f"    Error during Scopus fetch for query '{current_query}': {e_scopus}")
+            if (current_angle, current_query) not in all_angles_and_queries:
+                all_angles_and_queries.append((current_angle, current_query))
+
+            if current_query == INVALID_QUERY_FOR_ACADEMIC_SEARCH or not current_query.strip():
+                if current_query == LLM_API_CRITICAL_FAILURE_TOKEN: # Check for critical API failure from query gen
+                    _update_status(f"{RED}CRITICAL: LLM API failure during ArXiv query generation. Aborting.{RESET}")
+                    processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                    return LLM_API_CRITICAL_FAILURE_TOKEN, None, processing_summary_report_path
+
+
+                _update_status(f"      LLM indicated query '{current_query}' is invalid or empty. Skipping this sub-query attempt.")
+                last_sub_query_fetched_zero = True
+                continue # Try generating another sub-query if attempts left
+
+            fetched_this_sub_attempt_arxiv = 0
+            arxiv_titles_this_sub_attempt = []
+            fetched_this_sub_attempt_scopus = 0
+            scopus_titles_this_sub_attempt = []
+            
+            # Determine how many papers are still needed for this main iteration's target
+            papers_needed_for_main_iter_target = num_papers_to_fetch_per_iteration - papers_fetched_this_main_iteration_count
+            # Number of papers to request in this specific API call (fetch at least 1 if any are needed)
+            num_to_request_this_call_arxiv = max(1, papers_needed_for_main_iter_target // 2 if papers_needed_for_main_iter_target > 1 else 1) # Split between arxiv/scopus
+
+            # Fetch from ArXiv
+            try:
+                newly_fetched_meta_arxiv, fetched_count_arxiv, fetch_status_arxiv = fetch_arxiv_papers(
+                    current_query, year_range, 
+                    num_to_request_this_call_arxiv,
+                    pdf_folder, globally_fetched_primary_ids
+                )
+                _update_status(f"      ArXiv: {fetch_status_arxiv}")
+                fetched_this_sub_attempt_arxiv = fetched_count_arxiv # Count of *newly added*
+                counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_ARXIV"] += fetched_count_arxiv
+                if newly_fetched_meta_arxiv:
+                    for meta_ax in newly_fetched_meta_arxiv:
+                        sanitized_id = os.path.splitext(os.path.basename(meta_ax['local_pdf_path']))[0]
+                        meta_ax['source'] = 'arxiv'
+                        meta_ax['id_primary'] = sanitized_id
+                        meta_ax['abstract_api'] = meta_ax.get('summary', '')
+                        arxiv_titles_this_sub_attempt.append(meta_ax.get('title', 'N/A Title'))
+                        meta_ax['local_txt_path'] = os.path.join(txt_papers_folder_path, f"{sanitized_id}.txt")
+                        cumulative_fetched_paper_metadata.append(meta_ax)
+                        _update_status(f"        Fetched ArXiv: {meta_ax.get('title', 'N/A Title')[:50]}...")
+            except Exception as e_arxiv:
+                _update_status(f"      Error during ArXiv fetch for query '{current_query}': {e_arxiv}")
+
+            # Fetch from Scopus
+            papers_needed_after_arxiv = papers_needed_for_main_iter_target - fetched_this_sub_attempt_arxiv
+            if papers_needed_after_arxiv > 0 and scopus_api_key: # Check if Scopus key is provided
+                num_to_request_this_call_scopus = max(1, papers_needed_after_arxiv)
+                try:
+                    _update_status(f"      Searching Scopus for: '{current_query}' (requesting up to {num_to_request_this_call_scopus})")
+                    newly_fetched_meta_scopus, fetched_count_scopus, fetch_status_scopus = fetch_scopus_papers_and_process(
+                        current_query, year_range, 
+                        num_to_request_this_call_scopus,
+                        pdf_folder, txt_papers_folder_path, 
+                        globally_fetched_primary_ids,
+                        scopus_api_key # Pass the key
+                    )
+                    _update_status(f"      Scopus: {fetch_status_scopus}")
+                    fetched_this_sub_attempt_scopus = fetched_count_scopus
+                    counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_SCOPUS"] += fetched_count_scopus
+                    if newly_fetched_meta_scopus:
+                        cumulative_fetched_paper_metadata.extend(newly_fetched_meta_scopus)
+                        for meta_sc in newly_fetched_meta_scopus:
+                            scopus_titles_this_sub_attempt.append(meta_sc.get('title', 'N/A Title'))
+                        for meta_sc in newly_fetched_meta_scopus:
+                            _update_status(f"        Fetched Scopus: {meta_sc.get('title', 'N/A Title')[:50]}...")
+                except Exception as e_scopus:
+                    _update_status(f"      Error during Scopus fetch for query '{current_query}': {e_scopus}")
+            elif not scopus_api_key:
+                 _update_status(f"      Scopus: Skipped as Scopus API key was not provided.")
+            else:
+                _update_status(f"      Scopus: Skipped as ArXiv fetch met/exceeded current need for this sub-query's contribution to main iteration target.")
+
+
+            total_fetched_this_sub_attempt = fetched_this_sub_attempt_arxiv + fetched_this_sub_attempt_scopus
+            papers_fetched_this_main_iteration_count += total_fetched_this_sub_attempt
+
+            iteration_fetch_details.append({
+                "iteration_type": "Initial",
+                "main_iteration_num": i + 1,
+                "sub_query_attempt_num": sub_query_attempt + 1,
+                "angle": current_angle,
+                "query": current_query,
+                "arxiv_fetched_this_sub_attempt": fetched_this_sub_attempt_arxiv,
+                "arxiv_titles_fetched_this_sub_attempt": arxiv_titles_this_sub_attempt,
+                "scopus_fetched_this_sub_attempt": fetched_this_sub_attempt_scopus,
+                "scopus_titles_fetched_this_sub_attempt": scopus_titles_this_sub_attempt,
+                "total_fetched_for_main_iteration_so_far": papers_fetched_this_main_iteration_count
+            })
+
+            if total_fetched_this_sub_attempt == 0:
+                _update_status(f"      Sub-query '{current_query}' yielded no new papers.")
+                last_sub_query_fetched_zero = True
+            else:
+                _update_status(f"      Sub-query '{current_query}' fetched {total_fetched_this_sub_attempt} new papers. Main iteration {i+1} now has {papers_fetched_this_main_iteration_count} papers.")
+                last_sub_query_fetched_zero = False
+
+            if papers_fetched_this_main_iteration_count >= num_papers_to_fetch_per_iteration:
+                _update_status(f"    Target of {num_papers_to_fetch_per_iteration} papers met or exceeded for main iteration {i + 1}. Total: {papers_fetched_this_main_iteration_count}.")
+                break # from sub_query_attempt loop
+
+        # End of sub_query_attempt loop for main iteration i
+        if papers_fetched_this_main_iteration_count < num_papers_to_fetch_per_iteration:
+            _update_status(f"  Main Search Iteration {i + 1} completed with {papers_fetched_this_main_iteration_count}/{num_papers_to_fetch_per_iteration} papers after {MAX_SUB_QUERY_ATTEMPTS_PER_MAIN_ITERATION} sub-query attempts.")
+        else:
+            _update_status(f"  Main Search Iteration {i + 1} completed successfully with {papers_fetched_this_main_iteration_count}/{num_papers_to_fetch_per_iteration} papers.")
+
+    # End of main search iteration loop (i)
 
     # Fallback if initial fetching yields no papers
     if not cumulative_fetched_paper_metadata and num_search_iterations > 0 : # Only fallback if search was attempted
@@ -2853,6 +3203,16 @@ def process_papers(
         fallback_query_direct = natural_language_paper_goal
         all_angles_and_queries.append(("Direct Fallback", fallback_query_direct))
 
+        fallback_fetch_detail = {
+            "iteration_type": "Fallback", 
+            "main_iteration_num": "N/A", # Not applicable for fallback
+            "sub_query_attempt_num": 1, # Considered as one attempt
+            "angle": "Direct Fallback", 
+            "query": fallback_query_direct, 
+            "arxiv_fetched_this_sub_attempt": 0,
+            "arxiv_titles_fetched": [], # For fallback titles
+            "scopus_fetched_this_sub_attempt": 0,
+            "scopus_titles_fetched": []} # For fallback titles
         # ArXiv Fallback
         try:
             newly_fetched_meta_arxiv_fb, fetched_count_arxiv_fb, fetch_status_arxiv_fb = fetch_arxiv_papers(
@@ -2861,29 +3221,42 @@ def process_papers(
             )
             _update_status(f"    ArXiv (Fallback): {fetch_status_arxiv_fb}")
             counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_ARXIV"] += fetched_count_arxiv_fb
+            fallback_fetch_detail["arxiv_fetched_this_sub_attempt"] = fetched_count_arxiv_fb # Count
+            current_arxiv_fallback_titles = []
             if newly_fetched_meta_arxiv_fb:
                 for meta_ax_fb in newly_fetched_meta_arxiv_fb:
                     sanitized_id_fb = os.path.splitext(os.path.basename(meta_ax_fb['local_pdf_path']))[0]
                     meta_ax_fb['source'] = 'arxiv_fallback'
                     meta_ax_fb['id_primary'] = sanitized_id_fb
                     meta_ax_fb['abstract_api'] = meta_ax_fb.get('summary', '')
+                    current_arxiv_fallback_titles.append(meta_ax_fb.get('title', 'N/A Title'))
                     meta_ax_fb['local_txt_path'] = os.path.join(txt_papers_folder_path, f"{sanitized_id_fb}.txt")
                     cumulative_fetched_paper_metadata.append(meta_ax_fb)
+            fallback_fetch_detail["arxiv_titles_fetched"] = current_arxiv_fallback_titles
         except Exception as e_arxiv_fb:
             _update_status(f"    Error during ArXiv fallback: {e_arxiv_fb}")
-
+        
         # Scopus Fallback
-        try:
-            newly_fetched_meta_scopus_fb, fetched_count_scopus_fb, fetch_status_scopus_fb = fetch_scopus_papers_and_process(
-                fallback_query_direct, year_range, num_papers_to_fetch_per_iteration * 2,
-                pdf_folder, txt_papers_folder_path, globally_fetched_primary_ids
-            )
-            _update_status(f"    Scopus (Fallback): {fetch_status_scopus_fb}")
-            counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_SCOPUS"] += fetched_count_scopus_fb
-            if newly_fetched_meta_scopus_fb:
-                cumulative_fetched_paper_metadata.extend(newly_fetched_meta_scopus_fb)
-        except Exception as e_scopus_fb:
-            _update_status(f"    Error during Scopus fallback: {e_scopus_fb}")
+        if scopus_api_key:
+            try:
+                newly_fetched_meta_scopus_fb, fetched_count_scopus_fb, fetch_status_scopus_fb = fetch_scopus_papers_and_process(
+                    fallback_query_direct, year_range, num_papers_to_fetch_per_iteration * 2,
+                    pdf_folder, txt_papers_folder_path, globally_fetched_primary_ids, scopus_api_key
+                )
+                _update_status(f"    Scopus (Fallback): {fetch_status_scopus_fb}")
+                counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_SCOPUS"] += fetched_count_scopus_fb
+                fallback_fetch_detail["scopus_fetched_this_sub_attempt"] = fetched_count_scopus_fb # Count
+                current_scopus_fallback_titles = []
+                if newly_fetched_meta_scopus_fb:
+                    cumulative_fetched_paper_metadata.extend(newly_fetched_meta_scopus_fb)
+                    for meta_sc_fb in newly_fetched_meta_scopus_fb:
+                        current_scopus_fallback_titles.append(meta_sc_fb.get('title', 'N/A Title'))
+                fallback_fetch_detail["scopus_titles_fetched"] = current_scopus_fallback_titles
+            except Exception as e_scopus_fb:
+                _update_status(f"    Error during Scopus fallback: {e_scopus_fb}")
+        else:
+            _update_status(f"    Scopus (Fallback): Skipped as Scopus API key was not provided.")
+        iteration_fetch_details.append(fallback_fetch_detail)
 
     # Process manually uploaded PDFs (if any)
     manual_pdf_files = [f for f in os.listdir(pdf_folder) if f.lower().endswith('.pdf')]
@@ -2913,7 +3286,7 @@ def process_papers(
                 for p in cumulative_fetched_paper_metadata if p.get('source') != 'manual'
             )
             if not is_potential_api_duplicate:
-                cumulative_fetched_paper_metadata.append(manual_meta)
+                manual_papers_added_details.append({'title': manual_meta['title'], 'filename': pdf_file_manual})
                 globally_fetched_primary_ids.add(manual_primary_id)
                 counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_MANUAL"] += 1
                 _update_status(f"  Added manual PDF to processing list: {pdf_file_manual}")
@@ -2923,20 +3296,24 @@ def process_papers(
             # _update_status(f"  Skipping manual PDF '{pdf_file_manual}', ID '{manual_primary_id}' already processed.")
 
 
+    phase_timings['Initial Paper Fetching (including Fallback & Manual)'] = datetime.now() - phase_start_time_initial_fetch
     if not cumulative_fetched_paper_metadata:
         _update_status(f"{RED}CRITICAL: No papers found from any source (ArXiv, Scopus, Manual). Aborting.{RESET}")
         last_query_info = all_angles_and_queries[-1][1] if all_angles_and_queries else "NO_PAPERS_UPLOADED_OR_FETCHED"
-        return f"PROCESS_INCOMPLETE_LAST_QUERY_INFO:{last_query_info}", None
+        processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+        return f"PROCESS_INCOMPLETE_LAST_QUERY_INFO:{last_query_info}", None, processing_summary_report_path
 
     counts_for_reporting["NUMBER_RECORDS_AFTER_DUPLICATES_REMOVED"] = len(cumulative_fetched_paper_metadata)
     _update_status(f"Total unique papers identified for processing: {len(cumulative_fetched_paper_metadata)}")
 
 
     # --- Phase 2: PDF-to-Text Conversion ---
+    phase_start_time_pdf_to_text = datetime.now()
     _update_status("Phase 2: PDF-to-Text Conversion...")
     try:
         conversion_status = batch_convert_pdfs_to_text(pdf_folder, txt_papers_folder_path)
         _update_status(f"  {conversion_status}")
+        phase_timings['PDF-to-Text Conversion'] = datetime.now() - phase_start_time_pdf_to_text
     except Exception as e_pdf_text:
         _update_status(f"  {RED}Error during PDF-to-text conversion: {e_pdf_text}{RESET}")
         return NO_TEXT_FILES_GENERATED, None
@@ -2965,20 +3342,29 @@ def process_papers(
     counts_for_reporting["NUMBER_RECORDS_SCREENED_FOR_SUMMARIZATION"] = len(papers_to_summarize_details_initial)
     if not papers_to_summarize_details_initial:
         _update_status(f"{RED}CRITICAL: No papers could be prepared for summarization (no valid text files). Aborting.{RESET}")
-        return COULD_NOT_READ_RELEVANT_PAPERS, None
+        processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+        return COULD_NOT_READ_RELEVANT_PAPERS, None, processing_summary_report_path
 
     # --- Phase 3: Summarization & Initial Relevance Filtering ---
     _update_status(f"Phase 3: Summarizing {len(papers_to_summarize_details_initial)} papers for relevance to '{natural_language_paper_goal[:50]}...'")
+    phase_start_time_initial_summarization = datetime.now()
     try:
         initial_papers_with_summaries = batch_summarize_papers(
             natural_language_paper_goal,
             papers_to_summarize_details_initial,
             summaries_folder_path
         )
+        if isinstance(initial_papers_with_summaries, str) and initial_papers_with_summaries == LLM_API_CRITICAL_FAILURE_TOKEN:
+            _update_status(f"{RED}CRITICAL: All paper summarizations failed due to LLM API errors. Aborting.{RESET}")
+            processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+            return LLM_API_CRITICAL_FAILURE_TOKEN, None, processing_summary_report_path
+
     except Exception as e_summarize:
         _update_status(f"  {RED}Error during initial summarization: {e_summarize}{RESET}")
-        return NO_SUMMARIES_GENERATED, None
+        processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+        return NO_SUMMARIES_GENERATED, None, processing_summary_report_path
 
+    # Ensure initial_papers_with_summaries is a list before proceeding
     counts_for_reporting["NUMBER_SUMMARIES_GENERATED"] = len([p for p in initial_papers_with_summaries if p.get('summary_text')])
 
     llm_confirmed_relevant_papers: List[Dict[str, any]] = []
@@ -2986,7 +3372,7 @@ def process_papers(
         summary_text = paper_info_with_summary.get('summary_text', '')
         title_for_log = paper_info_with_summary.get('title', paper_info_with_summary.get('filename', 'Unknown Paper'))
 
-        if summary_text and \
+        if summary_text and not summary_text.startswith(LLM_ERROR_PREFIXES) and \
            "Error summarizing paper" not in summary_text and \
            "This paper does not appear to be relevant" not in summary_text.lower():
             llm_confirmed_relevant_papers.append(paper_info_with_summary)
@@ -2996,18 +3382,29 @@ def process_papers(
             counts_for_reporting["NUMBER_EXCLUDED_BY_LLM_RELEVANCE_FILTER"] += 1
 
     counts_for_reporting["NUMBER_STUDIES_INCLUDED_QUALITATIVE"] = len(llm_confirmed_relevant_papers)
+    phase_timings['Initial Summarization & Relevance Filtering'] = datetime.now() - phase_start_time_initial_summarization
     _update_status(f"  Initial relevance filter: {len(llm_confirmed_relevant_papers)} papers deemed relevant.")
 
     # --- SNOWBALLING PHASE ---
     if llm_confirmed_relevant_papers and MAX_SNOWBALL_ITERATIONS > 0:
+        phase_start_time_snowballing = datetime.now()
         _update_status(f"Phase 3.5: Snowballing from {len(llm_confirmed_relevant_papers)} relevant papers...")
+        
+        # Dynamically calculate the target number of papers to add via snowballing
+        num_initial_relevant_for_snowball_sources = len(llm_confirmed_relevant_papers)
+        target_papers_to_add_via_snowballing = num_initial_relevant_for_snowball_sources * 3
+        if target_papers_to_add_via_snowballing == 0:
+            _update_status("  No initial relevant papers to source snowballing from, or target is 0. Skipping snowballing.")
+        else:
+            _update_status(f"  Targeting to add up to {target_papers_to_add_via_snowballing} papers via snowballing (3 per initial relevant paper).")
+
         papers_added_via_snowball_total_count = 0
 
         for sb_iteration in range(MAX_SNOWBALL_ITERATIONS):
-            if papers_added_via_snowball_total_count >= MAX_PAPERS_TO_ADD_VIA_SNOWBALLING:
-                _update_status(f"  Reached max papers ({MAX_PAPERS_TO_ADD_VIA_SNOWBALLING}) to add via snowballing. Halting.")
+            if papers_added_via_snowball_total_count >= target_papers_to_add_via_snowballing:
+                _update_status(f"  Reached target of {target_papers_to_add_via_snowballing} papers to add via snowballing. Halting.")
                 break
-            
+            if target_papers_to_add_via_snowballing == 0: break # Skip if target is 0
             _update_status(f"  Snowball Iteration {sb_iteration + 1}/{MAX_SNOWBALL_ITERATIONS}")
             # Use a copy of the current relevant papers as sources for this iteration
             # This prevents issues if llm_confirmed_relevant_papers is modified mid-iteration by other processes (though unlikely here)
@@ -3015,7 +3412,7 @@ def process_papers(
             newly_found_metadata_this_iteration: List[Dict[str, any]] = []
 
             for source_paper_idx, source_paper_meta in enumerate(current_snowball_source_papers):
-                if papers_added_via_snowball_total_count >= MAX_PAPERS_TO_ADD_VIA_SNOWBALLING:
+                if papers_added_via_snowball_total_count >= target_papers_to_add_via_snowballing:
                     break
 
                 source_title = source_paper_meta.get('title', 'Unknown Source Paper')
@@ -3026,17 +3423,11 @@ def process_papers(
                     _update_status(f"      Skipping snowballing from '{source_title[:50]}...': Text file not found at {source_text_path}")
                     continue
                 
-                try:
-                    with open(source_text_path, 'r', encoding='utf-8') as f_source:
-                        source_content = f_source.read()
-                except Exception as e_read:
-                    _update_status(f"      Error reading text file for '{source_title[:50]}...': {e_read}")
-                    continue
-
                 extracted_references = []
                 try:
                     # Pass the _update_status function to extract_references_from_paper_text
-                    extracted_references = extract_references_from_paper_text(source_content, source_title, _update_status)
+                    # The function now takes txt_file_path directly
+                    extracted_references = extract_references_from_paper_text(source_text_path, source_title, _update_status)
                 except Exception as e_extract_ref:
                     _update_status(f"      Error extracting references from '{source_title[:50]}...': {e_extract_ref}")
                     continue
@@ -3052,7 +3443,7 @@ def process_papers(
                     if references_processed_from_this_source >= MAX_REFERENCES_TO_PROCESS_PER_PAPER:
                         _update_status(f"        Reached max references to process for '{source_title[:50]}...'")
                         break
-                    if papers_added_via_snowball_total_count >= MAX_PAPERS_TO_ADD_VIA_SNOWBALLING:
+                    if papers_added_via_snowball_total_count >= target_papers_to_add_via_snowballing:
                         break
 
                     ref_title_to_search = ref_data.get('title', '').strip()
@@ -3066,7 +3457,7 @@ def process_papers(
                     try:
                         # Pass globally_fetched_primary_ids to avoid re-fetching
                         arxiv_results_meta, arxiv_fetched_count, arxiv_status_msg = fetch_arxiv_papers(
-                            search_query_str=f'ti:"{ref_title_to_search}"', # Search by title
+                            search_query_str=ref_title_to_search, # Use raw title for search
                             year_range=year_range, num_papers=1, # Aim for 1 specific paper
                             pdf_folder=pdf_folder, already_fetched_primary_ids=globally_fetched_primary_ids
                         )
@@ -3076,11 +3467,15 @@ def process_papers(
                                 # Ensure correct metadata structure for snowballed papers
                                 sanitized_id_snow_ax = os.path.splitext(os.path.basename(meta_ax_snow['local_pdf_path']))[0]
                                 meta_ax_snow['source'] = 'arxiv_snowball'
-                                meta_ax_snow['id_primary'] = sanitized_id_snow_ax # This ID is now in globally_fetched_primary_ids
+                                meta_ax_snow['id_primary'] = sanitized_id_snow_ax 
                                 meta_ax_snow['abstract_api'] = meta_ax_snow.get('summary', '')
                                 meta_ax_snow['local_txt_path'] = os.path.join(txt_papers_folder_path, f"{sanitized_id_snow_ax}.txt")
+                                # Add snowball context before appending
+                                meta_ax_snow['snowball_source_paper_title'] = source_title
+                                meta_ax_snow['snowball_searched_reference_title'] = ref_title_to_search
                                 newly_found_metadata_this_iteration.append(meta_ax_snow)
                                 counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_SNOWBALL"] += 1 # Count each identified record
+                                
                     except Exception as e_arxiv_snow:
                         _update_status(f"          Error during ArXiv snowball search for '{ref_title_to_search[:50]}...': {e_arxiv_snow}")
 
@@ -3088,14 +3483,18 @@ def process_papers(
                     try:
                         # Pass globally_fetched_primary_ids
                         scopus_results_meta, scopus_fetched_count, scopus_status_msg = fetch_scopus_papers_and_process(
-                            search_query_str=f'TITLE("{ref_title_to_search}")', # Scopus title search
+                            search_query_str=ref_title_to_search, # Use raw title for search
                             year_range=year_range, num_papers=1,
                             pdf_folder=pdf_folder, txt_folder=txt_papers_folder_path,
                             already_fetched_primary_ids=globally_fetched_primary_ids
                         )
                         _update_status(f"          Scopus search for '{ref_title_to_search[:50]}...': {scopus_status_msg}")
                         if scopus_results_meta: # scopus_results_meta is a list of dicts
-                            newly_found_metadata_this_iteration.extend(scopus_results_meta) # IDs are added within fetch_scopus_papers_and_process
+                            for meta_sc_snow in scopus_results_meta:
+                                # Add snowball context before appending
+                                meta_sc_snow['snowball_source_paper_title'] = source_title
+                                meta_sc_snow['snowball_searched_reference_title'] = ref_title_to_search
+                                newly_found_metadata_this_iteration.append(meta_sc_snow)
                             counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_SNOWBALL"] += scopus_fetched_count
                     except Exception as e_scopus_snow:
                         _update_status(f"          Error during Scopus snowball search for '{ref_title_to_search[:50]}...': {e_scopus_snow}")
@@ -3133,12 +3532,18 @@ def process_papers(
                         natural_language_paper_goal, # Use the main goal for relevance
                         snowball_papers_to_summarize_and_filter,
                         summaries_folder_path
-                    )
+                    )                    
+                    if isinstance(snowballed_papers_with_summaries, str) and snowballed_papers_with_summaries == LLM_API_CRITICAL_FAILURE_TOKEN:
+                        _update_status(f"{RED}CRITICAL: All snowballed paper summarizations failed due to LLM API errors. Aborting snowball processing for this batch.{RESET}")
+                        # Potentially break or return from the main process_papers if this is critical enough
+                        # For now, we'll let it try to continue if other papers exist or other snowball iterations.
+                        # If this is the *only* source of papers and it fails, the later checks for empty llm_confirmed_relevant_papers will catch it.
+                        continue # to next source_paper_meta in current_snowball_source_papers
                     
                     newly_confirmed_snowballed_papers_count = 0
                     for paper_info_snow_processed in snowballed_papers_with_summaries:
-                        if papers_added_via_snowball_total_count >= MAX_PAPERS_TO_ADD_VIA_SNOWBALLING: break
-                        summary_text_snow = paper_info_snow_processed.get('summary_text', '')
+                        if papers_added_via_snowball_total_count >= target_papers_to_add_via_snowballing: break
+                        summary_text_snow = paper_info_snow_processed.get('summary_text', '')                        
                         title_snow_log = paper_info_snow_processed.get('title', paper_info_snow_processed.get('filename', 'Unknown Snowballed Paper'))
                         
                         # LLM relevance check based on summary content
@@ -3150,6 +3555,13 @@ def process_papers(
                                 papers_added_via_snowball_total_count += 1
                                 newly_confirmed_snowballed_papers_count += 1
                                 counts_for_reporting["NUMBER_STUDIES_INCLUDED_QUALITATIVE"] += 1 # Update PRISMA
+                                # Add to all_snowballed_papers_added_details for the report
+                                all_snowballed_papers_added_details.append({
+                                    'title': paper_info_snow_processed.get('title', 'N/A Title'),
+                                    'source_api': paper_info_snow_processed.get('source', 'snowball'), # e.g., 'arxiv_snowball'
+                                    'searched_reference_title': paper_info_snow_processed.get('snowball_searched_reference_title', 'N/A'),
+                                    'source_snowball_paper_title': paper_info_snow_processed.get('snowball_source_paper_title', 'N/A')
+                                })
                                 _update_status(f"        RELEVANT snowballed paper added: '{title_snow_log[:60]}...' (Total snowballed: {papers_added_via_snowball_total_count})")
                             else:
                                 _update_status(f"        Snowballed paper '{title_snow_log[:60]}...' was already in relevant list.")
@@ -3162,10 +3574,12 @@ def process_papers(
             else: # No new metadata found in this iteration
                 _update_status(f"    No new papers found in snowball iteration {sb_iteration + 1}. Ending snowballing early.")
                 break # No new papers found, stop snowballing
+        phase_timings['Snowballing'] = datetime.now() - phase_start_time_snowballing
     # --- End of Snowballing Phase ---
 
     # --- Phase 3.6: Supplementary Fetching if target not met ---
     supplementary_iteration_num = 0
+    phase_start_time_supplementary_fetch = None # Initialize here
     all_queries_ever_used_for_supplementary = list(all_angles_and_queries) # Use a copy
 
     while len(llm_confirmed_relevant_papers) < min_relevant_papers_target and supplementary_iteration_num < max_supplementary_iterations:
@@ -3173,6 +3587,18 @@ def process_papers(
         papers_still_needed = min_relevant_papers_target - len(llm_confirmed_relevant_papers)
         num_to_fetch_supp = min(max(papers_still_needed, 1), num_papers_to_fetch_per_iteration)
 
+        current_supplementary_fetch_detail = {
+            "iteration_type": "Supplementary",
+            "main_iteration_num": supplementary_iteration_num, # Using this to track supplementary rounds
+            "sub_query_attempt_num": 1, # Each supplementary round is one query attempt
+            "angle": "N/A", "query": "N/A", # Will be updated
+            "arxiv_fetched_this_sub_attempt": 0,
+            "arxiv_titles_fetched_this_sub_attempt": [], # For supplementary titles
+            "scopus_fetched_this_sub_attempt": 0,
+            "scopus_titles_fetched_this_sub_attempt": []  # For supplementary titles
+        }
+        if phase_start_time_supplementary_fetch is None: 
+            phase_start_time_supplementary_fetch = datetime.now()
         _update_status(f"Supplementary Fetch Iteration {supplementary_iteration_num}/{max_supplementary_iterations}: Need {papers_still_needed} more relevant papers, attempting to fetch {num_to_fetch_supp}.")
 
         try:
@@ -3181,6 +3607,13 @@ def process_papers(
             )
             _update_status(f"  Supplementary Angle: '{supp_angle}', Query: '{supp_query}'")
             all_queries_ever_used_for_supplementary.append((supp_angle, supp_query))
+            current_supplementary_fetch_detail["angle"] = supp_angle
+            if supp_query == LLM_API_CRITICAL_FAILURE_TOKEN:
+                _update_status(f"{RED}CRITICAL: LLM API failure during supplementary query generation. Aborting.{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, None, processing_summary_report_path
+
+            current_supplementary_fetch_detail["query"] = supp_query
 
             if supp_query == INVALID_QUERY_FOR_ACADEMIC_SEARCH or not supp_query.strip():
                 _update_status(f"    LLM indicated supplementary query '{supp_query}' is invalid. Skipping this supplementary attempt.")
@@ -3196,28 +3629,42 @@ def process_papers(
             )
             _update_status(f"  ArXiv Supplementary: {supp_fetch_status_arxiv}")
             counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_ARXIV"] += fetched_count_supp_arxiv
+            current_supplementary_fetch_detail["arxiv_fetched_this_sub_attempt"] = fetched_count_supp_arxiv # Count
+            current_arxiv_supp_titles = []
             if newly_fetched_meta_supp_arxiv:
                 for meta_ax_supp in newly_fetched_meta_supp_arxiv:
                     sanitized_id_supp_ax = os.path.splitext(os.path.basename(meta_ax_supp['local_pdf_path']))[0]
                     meta_ax_supp['source'] = 'arxiv_supplementary'
                     meta_ax_supp['id_primary'] = sanitized_id_supp_ax
                     meta_ax_supp['abstract_api'] = meta_ax_supp.get('summary', '')
+                    current_arxiv_supp_titles.append(meta_ax_supp.get('title', 'N/A Title'))
                     meta_ax_supp['local_txt_path'] = os.path.join(txt_papers_folder_path, f"{sanitized_id_supp_ax}.txt")
                     current_supplementary_batch_metadata.append(meta_ax_supp)
+            current_supplementary_fetch_detail["arxiv_titles_fetched_this_sub_attempt"] = current_arxiv_supp_titles
         except Exception as e_supp_arxiv:
             _update_status(f"    {RED}Error in supplementary ArXiv fetch: {e_supp_arxiv}{RESET}")
 
-        try:
-            newly_fetched_meta_supp_scopus, fetched_count_supp_scopus, supp_fetch_status_scopus = fetch_scopus_papers_and_process(
-                supp_query, year_range, num_to_fetch_supp, pdf_folder, txt_papers_folder_path, globally_fetched_primary_ids
-            )
-            _update_status(f"  Scopus Supplementary: {supp_fetch_status_scopus}")
-            counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_SCOPUS"] += fetched_count_supp_scopus
-            if newly_fetched_meta_supp_scopus:
-                current_supplementary_batch_metadata.extend(newly_fetched_meta_supp_scopus)
-        except Exception as e_supp_scopus:
-            _update_status(f"    {RED}Error in supplementary Scopus fetch: {e_supp_scopus}{RESET}")
-
+        if scopus_api_key:
+            current_scopus_supp_titles = []
+            try:
+                newly_fetched_meta_supp_scopus, fetched_count_supp_scopus, supp_fetch_status_scopus = fetch_scopus_papers_and_process(
+                    supp_query, year_range, num_to_fetch_supp, pdf_folder, txt_papers_folder_path, globally_fetched_primary_ids, scopus_api_key
+                )
+                _update_status(f"  Scopus Supplementary: {supp_fetch_status_scopus}")
+                counts_for_reporting["NUMBER_RECORDS_IDENTIFIED_SCOPUS"] += fetched_count_supp_scopus
+                current_supplementary_fetch_detail["scopus_fetched_this_sub_attempt"] = fetched_count_supp_scopus # Count
+                if newly_fetched_meta_supp_scopus:
+                    current_supplementary_batch_metadata.extend(newly_fetched_meta_supp_scopus)
+                    for meta_sc_supp in newly_fetched_meta_supp_scopus:
+                        current_scopus_supp_titles.append(meta_sc_supp.get('title', 'N/A Title'))
+                current_supplementary_fetch_detail["scopus_titles_fetched_this_sub_attempt"] = current_scopus_supp_titles
+            except Exception as e_supp_scopus:
+                _update_status(f"    {RED}Error in supplementary Scopus fetch: {e_supp_scopus}{RESET}")
+        else:
+            _update_status(f"  Scopus Supplementary: Skipped as Scopus API key was not provided.")
+        
+        # Append fetch detail regardless of Scopus success, as ArXiv might have run
+        iteration_fetch_details.append(current_supplementary_fetch_detail)
 
         if not current_supplementary_batch_metadata:
             _update_status("  No new supplementary papers found in this iteration.")
@@ -3249,11 +3696,16 @@ def process_papers(
         _update_status(f"    Summarizing {len(papers_to_summarize_details_supp)} supplementary papers...")
         supplementary_papers_with_summaries = batch_summarize_papers(
             natural_language_paper_goal, papers_to_summarize_details_supp, summaries_folder_path
-        )
+        )        
+        if isinstance(supplementary_papers_with_summaries, str) and supplementary_papers_with_summaries == LLM_API_CRITICAL_FAILURE_TOKEN:
+            _update_status(f"{RED}CRITICAL: All supplementary paper summarizations failed due to LLM API errors. Aborting supplementary fetch iteration.{RESET}")
+            # This will likely lead to the main loop condition (len(llm_confirmed_relevant_papers) < min_relevant_papers_target)
+            # being re-evaluated, or if max_supplementary_iterations is reached, the process will end.
+            continue # to next supplementary_iteration_num
 
         newly_confirmed_supp_count = 0
         for paper_info_supp_processed in supplementary_papers_with_summaries:
-            summary_text_supp = paper_info_supp_processed.get('summary_text', '')
+            summary_text_supp = paper_info_supp_processed.get('summary_text', '')            
             title_for_log_supp = paper_info_supp_processed.get('title', paper_info_supp_processed.get('filename', 'Unknown Supp. Paper'))
             if summary_text_supp and "Error summarizing paper" not in summary_text_supp and \
                "This paper does not appear to be relevant" not in summary_text_supp.lower():
@@ -3269,37 +3721,47 @@ def process_papers(
         
         counts_for_reporting["NUMBER_STUDIES_INCLUDED_QUALITATIVE"] = len(llm_confirmed_relevant_papers)
         _update_status(f"    Added {newly_confirmed_supp_count} relevant papers from supplementary fetch. Total relevant: {len(llm_confirmed_relevant_papers)}.")
+    
+    if phase_start_time_supplementary_fetch: # If supplementary fetching was done
+        phase_timings['Supplementary Fetching & Processing'] = datetime.now() - phase_start_time_supplementary_fetch
     # --- End of Supplementary Fetching Phase ---
 
     if not llm_confirmed_relevant_papers:
         _update_status(f"{RED}CRITICAL: No papers passed relevance filter after all fetching and snowballing attempts. Aborting.{RESET}")
         last_query_info = all_queries_ever_used_for_supplementary[-1][1] if all_queries_ever_used_for_supplementary else \
                           (all_angles_and_queries[-1][1] if all_angles_and_queries else "NO_QUERY_ATTEMPTED")
-        return f"PROCESS_INCOMPLETE_LAST_QUERY_INFO:{last_query_info}", None
-
+        processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+        return f"PROCESS_INCOMPLETE_LAST_QUERY_INFO:{last_query_info}", None, processing_summary_report_path
+    
     _update_status(f"Total LLM-confirmed relevant papers for SLR: {len(llm_confirmed_relevant_papers)}")
 
     # --- Phase 4: Final SLR Document Preparation ---
     _update_status("Phase 4: Preparing for Final SLR Document Generation...")
-    final_summaries_text = "\n\n---\n\n".join(
+    final_summaries_text_for_sections = "\n\n---\n\n".join(
         [p['summary_text'] for p in llm_confirmed_relevant_papers if p.get('summary_text') and \
          "This paper does not appear to be relevant" not in p['summary_text'].lower() and \
          "Error summarizing paper" not in p['summary_text']]
     ).strip()
 
-    if not final_summaries_text:
+    if not final_summaries_text_for_sections: # Corrected variable name here
         _update_status(f"{RED}CRITICAL: No valid summaries available from relevant papers for SLR generation. Aborting.{RESET}")
-        return NO_SUMMARIES_GENERATED, None
+        processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+        return NO_SUMMARIES_GENERATED, None, processing_summary_report_path
 
     final_metadata_for_biblio = [
         {k: v for k, v in p.items() if k not in ['text', 'summary_text', 'summary_filepath', 'llm_relevance_judgment', 'llm_relevance_reason', 'score']}
         for p in llm_confirmed_relevant_papers
     ]
 
+    phase_start_time_outline_gen = datetime.now()
     _update_status("Generating SLR Outline...")
     slr_outline = "% No SLR outline generated."
     try:
-        slr_outline_content = generate_slr_outline(natural_language_paper_goal, final_summaries_text, natural_language_paper_goal)
+        slr_outline_content = generate_slr_outline(natural_language_paper_goal, final_summaries_text_for_sections, natural_language_paper_goal)
+        if slr_outline_content.startswith(LLM_ERROR_PREFIXES):
+            _update_status(f"{RED}CRITICAL: LLM API error during SLR Outline generation: {slr_outline_content}{RESET}")
+            processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+            return LLM_API_CRITICAL_FAILURE_TOKEN, None, processing_summary_report_path
         if slr_outline_content and not slr_outline_content.startswith(("% Error", "% No relevant")):
             slr_outline = slr_outline_content
             outline_filename = os.path.join(results_folder_path, "slr_high_level_outline.txt")
@@ -3311,12 +3773,17 @@ def process_papers(
     except Exception as e_outline:
         _update_status(f"  {RED}Error generating SLR outline: {e_outline}{RESET}")
         slr_outline = f"% Error generating SLR outline: {e_outline}"
+    phase_timings['SLR Outline Generation'] = datetime.now() - phase_start_time_outline_gen
 
-
+    phase_start_time_biblio_gen = datetime.now()
     _update_status("Generating Bibliometric Analysis (biblio.bib)...")
     bibliometric_content = "% No BibTeX content generated."
     try:
-        bib_content = create_bibliometric(final_metadata_for_biblio, final_summaries_text)
+        bib_content = create_bibliometric(final_metadata_for_biblio, final_summaries_text_for_sections)
+        if bib_content.startswith(LLM_ERROR_PREFIXES):
+            _update_status(f"{RED}CRITICAL: LLM API error during BibTeX generation: {bib_content}{RESET}")
+            processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+            return LLM_API_CRITICAL_FAILURE_TOKEN, None, processing_summary_report_path
         if bib_content and not bib_content.startswith("% Error"):
             bibliometric_content = bib_content
         else:
@@ -3324,7 +3791,7 @@ def process_papers(
     except Exception as e_bib:
         _update_status(f"  {RED}Error creating bibliometric content: {e_bib}{RESET}")
         bibliometric_content = f"% Error generating BibTeX: {e_bib}"
-
+    phase_timings['Bibliometric (BibTeX) Generation'] = datetime.now() - phase_start_time_biblio_gen
 
     actual_paper_title_final = f"A Systematic Literature Review on: {natural_language_paper_goal}"
     if all_angles_and_queries and all_angles_and_queries[0][0]:
@@ -3336,6 +3803,7 @@ def process_papers(
 
     # --- Phase 5: Iterative SLR Document Refinement ---
     _update_status("Phase 5: Iterative SLR Document Refinement...")
+    phase_start_time_refinement = datetime.now()
     iterative_refinement_report_data: List[Dict[str, any]] = []
     current_parsed_critique_data: Dict[str, any] = {}
     iter_output_filename = ""
@@ -3373,6 +3841,7 @@ def process_papers(
     for iteration in range(num_refinement_cycles + 1):
         _update_status(f"SLR DOCUMENT GENERATION CYCLE {iteration}/{num_refinement_cycles}")
         
+        current_cycle_section_timings: Dict[str, timedelta] = {}
         def get_suggestions_for_section(section_key: str) -> str:
             if not current_parsed_critique_data: return ""
             section_specific_list = current_parsed_critique_data.get("suggestions_by_section", {}).get(section_key, [])
@@ -3394,23 +3863,38 @@ def process_papers(
             review_findings_base_filename = "review_findings.tex"
             discussion_conclusion_base_filename = "discussion_conclusion.tex"
             abstract_intro_keywords_base_filename = "abstract_intro_keywords.tex"
-
+            
+            # Related Works
+            section_start_time = datetime.now()
             _update_status(f"    Generating Related Works...")
             related_works_tex_content = create_related_works(
-                final_summaries_text, natural_language_paper_goal, bibliometric_content,
+                final_summaries_text_for_sections, natural_language_paper_goal, bibliometric_content,
                 reviewer_suggestions=get_suggestions_for_section("Related Works") if iteration > 0 else "",
                 slr_outline=slr_outline,
                 human_style_example_text=oldest_paper_text_for_style
             )
+            if related_works_tex_content.startswith(LLM_ERROR_PREFIXES):
+                _update_status(f"{RED}CRITICAL: LLM API error during Related Works generation: {related_works_tex_content}{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, refinement_report_path, processing_summary_report_path # refinement_report_path might be None
             related_works_tex_content = replace_placeholders_in_latex(related_works_tex_content, final_counts_for_placeholders)
+            current_cycle_section_timings['Related Works Generation'] = datetime.now() - section_start_time
             # create_related_works saves to Results/related_works.tex
             related_works_input_path = os.path.join(results_folder_path, related_works_base_filename)
+            section_start_time = datetime.now()
             related_works_enhanced_tex = create_charts(related_works_input_path, f"Related_Works_Iter{iteration}")
+            current_cycle_section_timings['Related Works Charting'] = datetime.now() - section_start_time
+            if related_works_enhanced_tex.startswith(LLM_ERROR_PREFIXES): # Check chart enhancement too
+                _update_status(f"{RED}CRITICAL: LLM API error during Related Works chart enhancement: {related_works_enhanced_tex}{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, refinement_report_path, processing_summary_report_path
 
+            # Research Methods
+            section_start_time = datetime.now()
             _update_status(f"    Generating Research Methods...")
             research_methodes_tex_content = create_reshearch_methodes(
                 related_works_content=related_works_enhanced_tex,
-                summaries=final_summaries_text,
+                summaries=final_summaries_text_for_sections,
                 subject=natural_language_paper_goal,
                 Biblio_content=bibliometric_content,
                 year_range_for_prompt=year_range,
@@ -3418,10 +3902,23 @@ def process_papers(
                 slr_outline=slr_outline,
                 human_style_example_text=oldest_paper_text_for_style
             )
+            if research_methodes_tex_content.startswith(LLM_ERROR_PREFIXES):
+                _update_status(f"{RED}CRITICAL: LLM API error during Research Methods generation: {research_methodes_tex_content}{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, refinement_report_path, processing_summary_report_path
             research_methodes_tex_content = replace_placeholders_in_latex(research_methodes_tex_content, final_counts_for_placeholders)
+            current_cycle_section_timings['Research Methods Generation'] = datetime.now() - section_start_time
             research_methodes_input_path = os.path.join(results_folder_path, research_methodes_base_filename)
+            section_start_time = datetime.now()
             research_methodes_enhanced_tex = create_charts(research_methodes_input_path, f"Research_Methods_Iter{iteration}")
+            current_cycle_section_timings['Research Methods Charting'] = datetime.now() - section_start_time
+            if research_methodes_enhanced_tex.startswith(LLM_ERROR_PREFIXES):
+                _update_status(f"{RED}CRITICAL: LLM API error during Research Methods chart enhancement: {research_methodes_enhanced_tex}{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, refinement_report_path, processing_summary_report_path
 
+            # Background
+            section_start_time = datetime.now()
             _update_status(f"    Generating Background...")
             background_tex_content = create_background_string(
                 "", related_works_enhanced_tex, research_methodes_enhanced_tex, "",
@@ -3430,28 +3927,55 @@ def process_papers(
                 slr_outline=slr_outline,
                 human_style_example_text=oldest_paper_text_for_style
             )
+            if background_tex_content.startswith(LLM_ERROR_PREFIXES):
+                _update_status(f"{RED}CRITICAL: LLM API error during Background generation: {background_tex_content}{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, refinement_report_path, processing_summary_report_path
             background_tex_content = replace_placeholders_in_latex(background_tex_content, final_counts_for_placeholders)
+            current_cycle_section_timings['Background Generation'] = datetime.now() - section_start_time
 
+            # Review Findings
+            section_start_time = datetime.now()
             _update_status(f"    Generating Review Findings...")
             review_findings_tex_content = create_review_findings(
-                research_methodes_enhanced_tex, final_summaries_text, natural_language_paper_goal, bibliometric_content,
+                research_methodes_enhanced_tex, final_summaries_text_for_sections, natural_language_paper_goal, bibliometric_content,
                 reviewer_suggestions=get_suggestions_for_section("Review Findings") if iteration > 0 else "",
                 slr_outline=slr_outline,
                 human_style_example_text=oldest_paper_text_for_style
             )
+            if review_findings_tex_content.startswith(LLM_ERROR_PREFIXES):
+                _update_status(f"{RED}CRITICAL: LLM API error during Review Findings generation: {review_findings_tex_content}{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, refinement_report_path, processing_summary_report_path
             review_findings_tex_content = replace_placeholders_in_latex(review_findings_tex_content, final_counts_for_placeholders)
+            current_cycle_section_timings['Review Findings Generation'] = datetime.now() - section_start_time
             review_findings_input_path = os.path.join(results_folder_path, review_findings_base_filename)
+            section_start_time = datetime.now()
             review_findings_enhanced_tex = create_charts(review_findings_input_path, f"Review_Findings_Iter{iteration}")
+            current_cycle_section_timings['Review Findings Charting'] = datetime.now() - section_start_time
+            if review_findings_enhanced_tex.startswith(LLM_ERROR_PREFIXES):
+                _update_status(f"{RED}CRITICAL: LLM API error during Review Findings chart enhancement: {review_findings_enhanced_tex}{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, refinement_report_path, processing_summary_report_path
 
+            # Discussion & Conclusion
+            section_start_time = datetime.now()
             _update_status(f"    Generating Discussion & Conclusion...")
             discussion_conclusion_tex_content = create_discussion_conclusion(
-                review_findings_enhanced_tex, final_summaries_text, natural_language_paper_goal, bibliometric_content,
+                review_findings_enhanced_tex, final_summaries_text_for_sections, natural_language_paper_goal, bibliometric_content,
                 reviewer_suggestions=get_suggestions_for_section("Discussion_Conclusion") if iteration > 0 else "",
                 slr_outline=slr_outline,
                 human_style_example_text=oldest_paper_text_for_style
             )
+            if discussion_conclusion_tex_content.startswith(LLM_ERROR_PREFIXES):
+                _update_status(f"{RED}CRITICAL: LLM API error during Discussion/Conclusion generation: {discussion_conclusion_tex_content}{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, refinement_report_path, processing_summary_report_path
             discussion_conclusion_tex_content = replace_placeholders_in_latex(discussion_conclusion_tex_content, final_counts_for_placeholders)
+            current_cycle_section_timings['Discussion & Conclusion Generation'] = datetime.now() - section_start_time
 
+            # Abstract, Keywords & Introduction
+            section_start_time = datetime.now()
             _update_status(f"    Generating Abstract, Keywords & Introduction...")
             abstract_intro_keywords_tex_content = create_abstract_intro(
                 review_findings_content=review_findings_enhanced_tex,
@@ -3464,7 +3988,12 @@ def process_papers(
                 slr_outline=slr_outline,
                 human_style_example_text=oldest_paper_text_for_style
             )
+            if abstract_intro_keywords_tex_content.startswith(LLM_ERROR_PREFIXES):
+                _update_status(f"{RED}CRITICAL: LLM API error during Abstract/Intro generation: {abstract_intro_keywords_tex_content}{RESET}")
+                processing_summary_report_path = generate_final_processing_report(overall_start_time, datetime.now(), phase_timings, section_generation_timings_per_cycle, counts_for_reporting, iteration_fetch_details, manual_papers_added_details, all_snowballed_papers_added_details, natural_language_paper_goal, results_folder_path)
+                return LLM_API_CRITICAL_FAILURE_TOKEN, refinement_report_path, processing_summary_report_path
             abstract_intro_keywords_tex_content = replace_placeholders_in_latex(abstract_intro_keywords_tex_content, final_counts_for_placeholders)
+            current_cycle_section_timings['Abstract, Keywords & Introduction Generation'] = datetime.now() - section_start_time
 
             _update_status(f"  Assembling Full LaTeX Document (Cycle {iteration})...")
             
@@ -3512,10 +4041,16 @@ def process_papers(
 
 
             if iteration < num_refinement_cycles:
+                section_start_time = datetime.now()
                 _update_status(f"  Generating Critique for Cycle {iteration} output...")
                 previous_critique_raw_text_for_llm = iterative_refinement_report_data[-1]["raw_critique"] if iterative_refinement_report_data else ""
                 
                 critique_output_text = generate_critique(current_slr_latex_content, previous_critique_raw_text_for_llm, natural_language_paper_goal)
+                if critique_output_text.startswith(LLM_ERROR_PREFIXES): # Check if critique generation itself failed
+                    _update_status(f"{RED}CRITICAL: LLM API error during critique generation: {critique_output_text}. Continuing without this critique.{RESET}")
+                    # Don't halt the whole process for a failed critique, but log it.
+                    # The loop will continue, and the next iteration will use an empty/previous critique.
+                current_cycle_section_timings['Critique Generation'] = datetime.now() - section_start_time
                 
                 critique_filename = os.path.join(results_folder_path, f"raw_critique_cycle_{iteration}.txt")
                 with open(critique_filename, 'w', encoding='utf-8') as f_critique_write:
@@ -3549,6 +4084,7 @@ def process_papers(
                     "parsed_critique": {},
                     "output_tex_file": iter_output_filename
                 })
+            section_generation_timings_per_cycle.append({"cycle": iteration, "timings": current_cycle_section_timings})
 
         except Exception as e_iter_gen:
             _update_status(f"  {RED}Error in SLR generation cycle {iteration}: {e_iter_gen}{RESET}")
@@ -3563,6 +4099,7 @@ def process_papers(
                 "parsed_critique": {"rating": "Error", "new_issues": [f"Generation error: {e_iter_gen}"]},
                 "output_tex_file": iter_output_filename if iter_output_filename else "Error_NoFile"
             })
+            section_generation_timings_per_cycle.append({"cycle": iteration, "timings": current_cycle_section_timings if 'current_cycle_section_timings' in locals() else {"error_state": str(e_iter_gen)}})
             if iteration < num_refinement_cycles :
                  _update_status(f"  {YELLOW}Attempting to continue to next refinement cycle despite error in cycle {iteration}.{RESET}")
                  continue
@@ -3570,6 +4107,7 @@ def process_papers(
                  _update_status(f"  {RED}Error in final SLR generation cycle. Process will conclude with available data.{RESET}")
                  break
 
+    phase_timings['Iterative SLR Document Refinement & Critique'] = datetime.now() - phase_start_time_refinement
     _update_status("Iterative SLR document refinement complete!")
     
     refinement_report_path = None
@@ -3581,18 +4119,153 @@ def process_papers(
     except Exception as e_report:
         _update_status(f"  {RED}Error generating refinement report: {e_report}{RESET}")
 
+    overall_end_time = datetime.now()
+    processing_summary_report_path = generate_final_processing_report(
+        overall_start_time,
+        overall_end_time,
+        phase_timings,
+        section_generation_timings_per_cycle,
+        counts_for_reporting,
+        iteration_fetch_details,
+        manual_papers_added_details,
+        all_snowballed_papers_added_details,
+        natural_language_paper_goal,
+        results_folder_path
+    )
+
     if iter_output_filename and os.path.exists(iter_output_filename):
         _update_status(f"Final SLR document produced: {iter_output_filename}")
-        return f"FINAL_SLR_OUTPUT:{iter_output_filename}", refinement_report_path
+        return f"FINAL_SLR_OUTPUT:{iter_output_filename}", refinement_report_path, processing_summary_report_path
     else:
         _update_status(f"{RED}CRITICAL: Final SLR document was not generated or found. Path: {iter_output_filename}{RESET}")
         last_query_info = all_queries_ever_used_for_supplementary[-1][1] if all_queries_ever_used_for_supplementary else \
                           (all_angles_and_queries[-1][1] if all_angles_and_queries else "NO_QUERY_ATTEMPTED_OR_ERROR_BEFORE_QUERY")
-        return f"PROCESS_INCOMPLETE_LAST_QUERY_INFO:{last_query_info}", refinement_report_path
+        return f"PROCESS_INCOMPLETE_LAST_QUERY_INFO:{last_query_info}", refinement_report_path, processing_summary_report_path # Already has all args
+def generate_final_processing_report(
+    overall_start_time: datetime,
+    overall_end_time: datetime,
+    phase_timings: Dict[str, timedelta],
+    section_generation_timings_per_cycle: List[Dict[str, any]],
+    prisma_counts: Dict[str, int],
+    iteration_fetch_details: List[Dict[str, any]],
+    manual_papers_details: List[Dict[str, str]],
+    snowballed_papers_details: List[Dict[str, str]],
+    slr_goal: str,
+    results_folder: str
+) -> Optional[str]:
+    report_lines = []
+    report_lines.append(f"SLR Processing Summary Report for: {slr_goal}")
+    report_lines.append(f"Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_lines.append("-" * 40)
 
+    total_duration = overall_end_time - overall_start_time
+    report_lines.append(f"Total Processing Time: {str(total_duration)}")
+    report_lines.append("-" * 40)
 
+    report_lines.append("Phase Timings:")
+    for phase, duration in phase_timings.items():
+        report_lines.append(f"  - {phase}: {str(duration)}")
+    report_lines.append("-" * 40)
 
+    report_lines.append("Section Generation Timings per Cycle:")
+    for cycle_data in section_generation_timings_per_cycle:
+        report_lines.append(f"  Cycle {cycle_data['cycle']}:")
+        for section_name, duration in cycle_data.get('timings', {}).items():
+            report_lines.append(f"    - {section_name}: {str(duration)}")
+    report_lines.append("-" * 40)
 
+    report_lines.append("Paper Fetching Details per Iteration/Attempt (including titles):")
+    for fetch_detail in iteration_fetch_details:
+        iter_type = fetch_detail.get('iteration_type', 'N/A')
+        main_iter_num = fetch_detail.get("main_iteration_num", "N/A")
+        sub_attempt_num = fetch_detail.get("sub_query_attempt_num", "N/A")
+        report_lines.append(f"  Type: {iter_type} (Iter/Attempt: {main_iter_num}.{sub_attempt_num})")
+        report_lines.append(f"    Angle: '{fetch_detail.get('angle', 'N/A')}'")
+        report_lines.append(f"    Query: '{fetch_detail.get('query', 'N/A')}'")
+        report_lines.append(f"    ArXiv Fetched (this sub-attempt): {fetch_detail.get('arxiv_fetched_this_sub_attempt', 0)}")
+        if fetch_detail.get("arxiv_titles_fetched_this_sub_attempt"):
+            report_lines.append(f"      ArXiv Titles ({len(fetch_detail['arxiv_titles_fetched_this_sub_attempt'])}):")
+            for title in fetch_detail['arxiv_titles_fetched_this_sub_attempt']:
+                report_lines.append(f"        - {title[:100]}")
+        elif fetch_detail.get("arxiv_titles_fetched"): # For fallback
+            report_lines.append(f"      ArXiv Fallback Titles ({len(fetch_detail['arxiv_titles_fetched'])}):")
+            for title in fetch_detail['arxiv_titles_fetched']:
+                report_lines.append(f"        - {title[:100]}")
+
+        report_lines.append(f"    Scopus Fetched (this sub-attempt): {fetch_detail.get('scopus_fetched_this_sub_attempt', 0)}")
+        if fetch_detail.get("scopus_titles_fetched_this_sub_attempt"):
+            report_lines.append(f"      Scopus Titles ({len(fetch_detail['scopus_titles_fetched_this_sub_attempt'])}):")
+            for title in fetch_detail['scopus_titles_fetched_this_sub_attempt']:
+                report_lines.append(f"        - {title[:100]}")
+        elif fetch_detail.get("scopus_titles_fetched"): # For fallback
+            report_lines.append(f"      Scopus Fallback Titles ({len(fetch_detail['scopus_titles_fetched'])}):")
+            for title in fetch_detail['scopus_titles_fetched']:
+                report_lines.append(f"        - {title[:100]}")
+
+        if 'total_fetched_for_main_iteration_so_far' in fetch_detail:
+            report_lines.append(f"    Total for Main Iteration {main_iter_num} so far: {fetch_detail['total_fetched_for_main_iteration_so_far']}")
+    report_lines.append("-" * 40)
+
+    if manual_papers_details:
+        report_lines.append("Manually Added Papers:")
+        for paper_detail in manual_papers_details:
+            report_lines.append(f"  - Title: {paper_detail.get('title', 'N/A')[:100]} (Filename: {paper_detail.get('filename', 'N/A')})")
+        report_lines.append("-" * 40)
+
+    if snowballed_papers_details:
+        report_lines.append("Papers Added and Confirmed Relevant via Snowballing:")
+        snowball_sources = {}
+        for detail in snowballed_papers_details:
+            source_p_title = detail.get('source_snowball_paper_title', 'Unknown Source Paper')
+            if source_p_title not in snowball_sources:
+                snowball_sources[source_p_title] = []
+            snowball_sources[source_p_title].append(detail)
+        
+        for source_p_title, found_refs in snowball_sources.items():
+            report_lines.append(f"  From source paper: '{source_p_title[:80]}...'")
+            for detail in found_refs:
+                report_lines.append(f"    - Found: '{detail.get('title', 'N/A Found Title')[:80]}...' (via {detail.get('source_api', 'N/A API')})")
+                report_lines.append(f"      (Searched for reference: '{detail.get('searched_reference_title', 'N/A Ref Title')[:70]}...')")
+        report_lines.append("-" * 40)
+
+    report_lines.append("PRISMA-like Counts / Other Metrics:")
+    for key, value in prisma_counts.items():
+        report_lines.append(f"  - {key.replace('_', ' ').title()}: {value}")
+    report_lines.append(f"  - Total LLM-Confirmed Relevant Papers (Final for Synthesis): {prisma_counts.get('NUMBER_STUDIES_INCLUDED_QUALITATIVE', 0)}")
+    report_lines.append(f"  - Refinement Cycles Completed: {len(section_generation_timings_per_cycle) -1 if section_generation_timings_per_cycle else 0}")
+    report_lines.append("-" * 40)
+
+    # Add LLM Token Usage (Granular and Overall)
+    report_lines.append("LLM Token Usage (from usage_metadata.txt):")
+    token_usage_data = parse_usage_metadata_file() # Assumes usage_metadata.txt is in CWD
+
+    if token_usage_data["by_function"]:
+        report_lines.append("  Token Usage by Function/Step:")
+        # Sort by function name for consistent reporting
+        sorted_functions = sorted(token_usage_data["by_function"].items())
+        for func_name, counts in sorted_functions:
+            report_lines.append(f"    - {func_name}:")
+            report_lines.append(f"        Prompt Tokens: {counts['prompt_token_count']}")
+            report_lines.append(f"        Candidates Tokens: {counts['candidates_token_count']}")
+            report_lines.append(f"        Total Tokens: {counts['total_token_count']}")
+    else:
+        report_lines.append("  No per-function token usage data found.")
+    
+    report_lines.append("  Overall Token Usage:")
+    overall_totals = token_usage_data["overall_totals"]
+    report_lines.append(f"    - Total Prompt Tokens: {overall_totals['prompt_token_count']}")
+    report_lines.append(f"    - Total Candidates Tokens: {overall_totals['candidates_token_count']}")
+    report_lines.append(f"    - Overall Total Tokens: {overall_totals['total_token_count']}")
+
+    report_filename = os.path.join(results_folder, "slr_processing_summary_report.txt")
+    try:
+        with open(report_filename, 'w', encoding='utf-8') as f:
+            f.write("\n".join(report_lines))
+        print(f"Processing summary report saved to: {report_filename}")
+        return report_filename
+    except Exception as e:
+        print(f"{RED}Error writing processing summary report: {e}{RESET}")
+        return None
 def generate_refinement_report(report_data: List[Dict[str, any]], slr_goal: str) -> Optional[str]:
     if not report_data:
         print("No refinement data to generate a report.")
@@ -3778,7 +4451,7 @@ Return *only* the complete LaTeX code for the `\section{{Background}}`. Do not i
         generated_text = re.sub(r'^```(?:latex)?\s*[\r\n]*', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'[\r\n]*```\s*$', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'\\cite\s*\{\s*([^}\s]+)\s*\}', r'\\cite{\1}', generated_text)
-
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         output_filename = 'Results/background.tex'
         os.makedirs(os.path.dirname(output_filename), exist_ok=True)
         with open(output_filename, 'w', encoding='utf-8') as file:
@@ -3999,7 +4672,7 @@ Return *only* the complete LaTeX code for the `\section{{Research Methods}}`.
         generated_text = re.sub(r'^```(?:latex)?\s*[\r\n]*', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'[\r\n]*```\s*$', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'\\cite\s*\{\s*([^}\s]+)\s*\}', r'\\cite{\1}', generated_text)
-
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         output_filename = 'Results/research_methodes.tex'
         os.makedirs(os.path.dirname(output_filename), exist_ok=True)
         with open(output_filename, 'w', encoding='utf-8') as file:
@@ -4116,7 +4789,7 @@ Return *only* the complete LaTeX code for the `\section{{Review Findings}}`.
         generated_text = re.sub(r'^```(?:latex)?\s*[\r\n]*', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'[\r\n]*```\s*$', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'\\cite\s*\{\s*([^}\s]+)\s*\}', r'\\cite{\1}', generated_text)
-
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         output_filename = 'Results/review_findings.tex'
         os.makedirs(os.path.dirname(output_filename), exist_ok=True)
         with open(output_filename, 'w', encoding='utf-8') as file:
@@ -4234,7 +4907,7 @@ Return *only* the complete LaTeX code for the `\section{{Discussion}}` and `\sec
         generated_text = re.sub(r'^```(?:latex)?\s*[\r\n]*', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'[\r\n]*```\s*$', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'\\cite\s*\{\s*([^}\s]+)\s*\}', r'\\cite{\1}', generated_text)
-
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         output_filename = 'Results/discussion_conclusion.tex'
         os.makedirs(os.path.dirname(output_filename), exist_ok=True)
         with open(output_filename, 'w', encoding='utf-8') as file:
@@ -4354,7 +5027,7 @@ Return *only* the LaTeX code for the Abstract (within `\begin{{abstract}}...\end
         generated_text = re.sub(r'^```(?:latex)?\s*[\r\n]*', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'[\r\n]*```\s*$', '', generated_text, flags=re.MULTILINE)
         generated_text = re.sub(r'\\cite\s*\{\s*([^}\s]+)\s*\}', r'\\cite{\1}', generated_text)
-
+        save_usage_metadata(response.usage_metadata, inspect.currentframe().f_code.co_name)
         output_filename = 'Results/abstract_intro_keywords.tex'
         os.makedirs(os.path.dirname(output_filename), exist_ok=True)
         with open(output_filename, 'w', encoding='utf-8') as file:

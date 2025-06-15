@@ -2,8 +2,8 @@ import streamlit as st
 import os
 import zipfile
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from tools.test import process_papers 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # noqa: E402
+from tools.agent import process_papers 
 import shutil # Added for shutil.which
 from tools.regex import process_files
 
@@ -26,7 +26,10 @@ PROCESSING_FAILED_STATUSES = [
     "NO_TEXT_FILES_GENERATED",
     "COULD_NOT_READ_RELEVANT_PAPERS",
     "NO_SUMMARIES_GENERATED",
-    "NO_LLM_CONFIRMED_RELEVANT_PAPERS" # Added this status
+    "NO_LLM_CONFIRMED_RELEVANT_PAPERS", # Added this status
+    "PROCESS_INCOMPLETE_NO_GEMINI_KEY", # New status for missing API key
+    "PROCESS_INCOMPLETE_GEMINI_INIT_FAILED", # New status for Gemini model init failure
+    "LLM_API_CRITICAL_FAILURE_TOKEN", # New status for critical LLM API errors from agent
 ]
 
 def main():
@@ -45,6 +48,18 @@ def main():
     os.makedirs("Results", exist_ok=True)
     os.makedirs("pdf_papers", exist_ok=True)
 
+    gemini_api_key_input = st.text_input(
+        "Enter your Gemini API Key:",
+        type="password",
+        help="Your Google Generative AI API key. This will not be stored after the session."
+    )
+    scopus_api_key_input = st.text_input(
+        "Enter your Scopus API Key (optional):",
+        type="password",
+        help="Your Elsevier Scopus API key. If provided, Scopus will be used as an additional paper source. This will not be stored after the session."
+    )
+
+
     # Rest of your code remains the same until the process_files section
     subject = st.text_input(
         "Describe your desired paper topic/goal:",
@@ -57,7 +72,7 @@ def main():
 
     num_papers_fetch_per_arxiv_iteration = st.number_input(
         "Number of papers to fetch per ArXiv search iteration:",
-        min_value=1, max_value=50, value=3,
+        min_value=1, max_value=700, value=3,
         help="For each search query iteration, how many new papers to attempt to fetch."
     )
     num_arxiv_search_iterations = st.number_input(
@@ -79,7 +94,7 @@ def main():
     )
 
     if st.button("Generate SLR"):
-        if subject: # Removed semantic_query from this condition
+        if subject and gemini_api_key_input: # Scopus key is optional, so not checking it here for button enablement
             try:
                 if uploaded_files:
                     st.write("Saving uploaded PDFs...")
@@ -103,11 +118,16 @@ def main():
                         num_papers_to_fetch_per_iteration=num_papers_fetch_per_arxiv_iteration,
                         num_search_iterations=num_arxiv_search_iterations,
                         num_refinement_cycles=num_refinement_cycles_ui, # Pass the new UI value
+                        gemini_api_key=gemini_api_key_input, # Pass the API key
+                        scopus_api_key=scopus_api_key_input, # Pass the Scopus API key
                         status_update_callback=streamlit_status_update # Pass the callback
                     )
                                 
                 if main_output_path_or_status == INVALID_QUERY_STATUS:
                     st.warning("The provided paper topic/goal was deemed unsuitable for academic search by the LLM. No arXiv query was executed. Further processing steps are skipped.")
+                elif main_output_path_or_status == "LLM_API_CRITICAL_FAILURE_TOKEN": # Specific check for critical LLM API failure
+                    st.error("Paper processing stopped due to a critical error with the LLM API (e.g., invalid API key, quota exceeded, or service issue). Please check your API key configuration in `agent.py` (or the UI input if applicable) and ensure the Gemini API service is operational. Review the console logs from `agent.py` for more details.")
+
                 elif main_output_path_or_status in PROCESSING_FAILED_STATUSES:
                     # Display the specific failure reason
                     failure_reason = main_output_path_or_status.replace('_', ' ').title()
@@ -204,7 +224,12 @@ def main():
             except Exception as e:
                 st.error(f"An error occurred during processing: {e}")
         else:
-            st.warning("Please describe your desired paper topic/goal to proceed.")
+            if not subject:
+                st.warning("Please describe your desired paper topic/goal to proceed.")
+            if not gemini_api_key_input:
+                st.warning("Please enter your Gemini API Key to proceed.")
+            # No warning for Scopus key as it's optional
+
 
 if __name__ == "__main__":
     main()
